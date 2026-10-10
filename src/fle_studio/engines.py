@@ -281,10 +281,11 @@ class Engines:
         text = out.lower() + " " + " ".join(x.name.lower() for x in p.parent.iterdir())
         backend = ("cuda" if "cuda" in text else "metal" if "metal" in text or paths.IS_MAC else
                    "vulkan" if "vulkan" in text else "cpu")
-        flavor = "fle" if "--moe-expert-cache-inserts" in (hlp.stdout or "") + (hlp.stderr or "") else "upstream"
+        help_text = (hlp.stdout or "") + (hlp.stderr or "")
+        flavor = "fle" if "--moe-expert-cache-inserts" in help_text else "upstream"
         ok = ver.returncode == 0 and bool(m)
         result = {"ok": ok, "version": (m.group(1) + (f" ({m.group(2)})" if m.group(2) else "")) if m else "",
-                  "backend": backend, "flavor": flavor,
+                  "backend": backend, "flavor": flavor, "log_verbosity": "--log-verbosity" in help_text,
                   "problem": "" if ok else (out.strip().splitlines() or ["no output"])[-1][:300]}
         self._detect_cache[key] = result
         return result
@@ -300,7 +301,8 @@ class Engines:
             if not info.get("ok"):
                 raise RuntimeError(f"Your llama-server does not start: {info.get('problem')}")
             return {"kind": "custom", "flavor": info["flavor"], "backend": info["backend"],
-                    "path": str(Path(path).expanduser()), "version": info.get("version", "")}
+                    "path": str(Path(path).expanduser()), "version": info.get("version", ""),
+                    "log_verbosity": info.get("log_verbosity", False)}
         if want == "auto":
             want = eng.get("choice", "auto")
         order = [v["id"] for v in variants(sysinfo)]
@@ -311,8 +313,9 @@ class Engines:
         if not have:
             raise RuntimeError("Install an engine first (Engine page)")
         e = have[0]
+        # Engines installed here are recent releases, which all know -lv.
         return {"kind": e["kind"], "flavor": e.get("flavor") or e["kind"], "backend": e.get("backend"),
-                "path": e["path"], "version": e.get("version", ""), "id": e["id"]}
+                "path": e["path"], "version": e.get("version", ""), "id": e["id"], "log_verbosity": True}
 
 
 def _find_server(root: Path) -> Path | None:

@@ -140,7 +140,11 @@ class Studio:
             prof = self.profiles.get(prof_id)
             if not prof:
                 raise ApiError(404, f"No launch profile {prof_id}")
-            eng = None if prof.engine == "custom" else self.engine_for(prof.engine, info)
+            if prof.engine == "custom":
+                # Only to learn which flags its binary knows; the profile still starts that binary (cached per version).
+                eng = self.engines.detect(prof.binary) if prof.binary and "{" not in prof.binary else None
+            else:
+                eng = self.engine_for(prof.engine, info)
             return launch.profile_plan(profile=prof, model=model, engine=eng, settings=settings, sysinfo=info,
                                        port=port, data_dir=self.data_dir)
         except launch.PlanError as exc:
@@ -368,7 +372,9 @@ class Handler(BaseHTTPRequestHandler):
                 return False
             if path.startswith("/api/") and not hmac.compare_digest(self.headers.get("X-FLE-Token", ""),
                                                                     self.studio.token):
-                self.send_json(403, {"error": {"message": "Session expired; reload the page"}})
+                # Usually a page from before a restart of Studio; the header tells it to reload for the new token.
+                self._send(403, json.dumps({"error": {"message": "Session expired; reload the page"}}).encode(),
+                           "application/json; charset=utf-8", {"X-FLE-Session": "expired"})
                 return False
         return True
 

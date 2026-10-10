@@ -25,7 +25,8 @@ from .launch import Plan
 
 # Log lines that mark a loading phase (checked in order, first match wins).
 PHASES = (
-    ("server is listening", "Ready"),
+    ("listening on", "Ready"),  # "srv main: listening on http://…"; older builds: "server is listening on …"
+    ("model loaded", "Starting the server"),
     ("warming up", "Warming up"),
     ("moe expert cache enabled", "Setting up the GPU expert cache"),
     ("llama_kv_cache", "Allocating the KV cache"),

@@ -490,7 +490,8 @@ table.t tr.click:hover td { background: var(--soft); }
 .meter .top span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; }
 .gpu { display: grid; gap: 7px; }
 .gpu-name { font-size: 12.5px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
-.gpu-name span { color: var(--faint); font-weight: 500; font-variant-numeric: tabular-nums; }
+/* nowrap: a long card name ("NVIDIA RTX PRO 4500 Blackwell") wraps instead, so "40 W" never splits across lines. */
+.gpu-name span { color: var(--faint); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* ------------------------------------------------------------------------------------------- markdown */
 

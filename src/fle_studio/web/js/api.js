@@ -9,6 +9,18 @@ class ApiError extends Error {
   }
 }
 
+// FLE Studio was restarted and this page still holds the old run's token: reload once to get the new one.
+// At most every 15 s, so a server that keeps refusing cannot put the page into a reload loop.
+function reloadForNewSession(res) {
+  if (res.status !== 403 || res.headers.get("X-FLE-Session") !== "expired") return false;
+  let last = 0;
+  try { last = Number(sessionStorage.getItem("fle-session-reload") || 0); } catch { /* storage blocked */ }
+  if (Date.now() - last < 15000) return false;
+  try { sessionStorage.setItem("fle-session-reload", String(Date.now())); } catch { /* reload anyway */ }
+  location.reload();
+  return true;
+}
+
 async function api(method, path, body) {
   const opts = { method, headers: { "X-FLE-Token": TOKEN } };
   if (body !== undefined) {
@@ -25,6 +37,7 @@ async function api(method, path, body) {
     location.href = "/login";
     throw new ApiError(401, "Sign in first");
   }
+  if (reloadForNewSession(res)) throw new ApiError(403, "FLE Studio was restarted; reloading the page");
   const text = await res.text();
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = null; }
@@ -46,6 +59,7 @@ export async function streamChat(body, { signal, onChunk }) {
     signal,
   });
   if (!res.ok) {
+    if (reloadForNewSession(res)) throw new ApiError(403, "FLE Studio was restarted; reloading the page");
     let msg = `${res.status} ${res.statusText}`;
     try { msg = (await res.json())?.error?.message || msg; } catch { /* keep status text */ }
     throw new ApiError(res.status, msg);

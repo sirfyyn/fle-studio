@@ -325,16 +325,22 @@ def auto_plan(*, model: dict[str, Any], engine: dict[str, Any], settings: dict[s
     args += _words(launch.get("extra_args", ""))
     env.update(parse_env_lines(launch.get("extra_env", "")))
     return _finish(Plan(engine=kind, binary=engine["path"], args=args, env=env, port=port, model=model,
-                        profile="auto", notes=notes, draft=draft))
+                        profile="auto", notes=notes, draft=draft), bool(engine.get("log_verbosity", True)))
 
 
 def _words(text: str) -> list[str]:
     return _split_words(text) if text and text.strip() else []
 
 
-def _finish(plan: Plan) -> Plan:
-    """Add what FLE Studio needs to reach the engine, unless the command sets it itself."""
+def _finish(plan: Plan, log_verbosity: bool) -> Plan:
+    """Add what FLE Studio needs to reach and follow the engine, unless the command sets it itself.
+
+    log_verbosity: the engine knows -lv. llama.cpp logs its library lines (loading phases, the FLE expert-cache hit
+    rate) at level 4 only, one above the default; without them the live panel shows neither."""
     a = plan.args
+    if log_verbosity and "LLAMA_ARG_LOG_VERBOSITY" not in plan.env and not _has(
+            a, "-v", "--verbose", "--log-verbose", "-lv", "--verbosity", "--log-verbosity"):
+        a += ["-lv", "4"]
     if not _has(a, "--host"):
         a += ["--host", "127.0.0.1"]
     if _has(a, "--port"):
@@ -505,4 +511,5 @@ def profile_plan(*, profile: Profile, model: dict[str, Any] | None, engine: dict
     draft = _arg_value(args, "-md", "--model-draft")
     plan = Plan(engine=kind, binary=binary, args=args, env=env, port=port, model=model, profile=profile.id,
                 notes=notes, draft=draft)
-    return _finish(plan)
+    # For a custom profile `engine` is the check of its own binary (None if that could not run): no -lv unless known.
+    return _finish(plan, bool((engine or {}).get("log_verbosity", profile.engine != "custom")))
