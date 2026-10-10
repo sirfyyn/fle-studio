@@ -21,7 +21,6 @@ import os
 import re
 import shlex
 import shutil
-import signal
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,6 +48,11 @@ SECRET_OPTIONS = ("--api-key", "--hf-token", "-hft")  # shown as <hidden>
 DENIED = re.compile(r"access denied|interactive authentication required|not authorized|permission denied", re.I)
 SUDO_DENIED = re.compile(r"password is required|not allowed to|terminal is required|not in the sudoers|"
                          r"may not run sudo|no askpass", re.I)
+# systemd reports Linux signal numbers; Python's signal module only knows the host's own (Windows has no SIGKILL).
+LINUX_SIGNALS = dict(enumerate(
+    ("SIGHUP SIGINT SIGQUIT SIGILL SIGTRAP SIGABRT SIGBUS SIGFPE SIGKILL SIGUSR1 SIGSEGV SIGUSR2 SIGPIPE SIGALRM "
+     "SIGTERM SIGSTKFLT SIGCHLD SIGCONT SIGSTOP SIGTSTP SIGTTIN SIGTTOU SIGURG SIGXCPU SIGXFSZ SIGVTALRM SIGPROF "
+     "SIGWINCH SIGIO SIGPWR SIGSYS").split(), start=1))
 RESULTS = {
     "exit-code": "exited with an error",
     "signal": "was ended by a signal",
@@ -297,10 +301,8 @@ def failure(unit: Unit, props: dict[str, str]) -> str:
     if code == "1" and status not in ("", "0"):
         detail = f" (exit code {status})"
     elif code in ("2", "3") and status.isdigit():
-        try:
-            detail = f" ({signal.Signals(int(status)).name})"
-        except ValueError:
-            detail = f" (signal {status})"
+        name = LINUX_SIGNALS.get(int(status))
+        detail = f" ({name})" if name else f" (signal {status})"
     return f"{unit.name} {what}{detail}."
 
 
