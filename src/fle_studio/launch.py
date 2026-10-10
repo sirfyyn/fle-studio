@@ -28,6 +28,11 @@ from . import paths
 from .system import GiB, MiB
 
 FIT_TARGET_MIB = 1115  # free GPU memory next to the expert cache, from the reference command
+# GPU memory the engine needs besides the always-on weights, the KV cache, the expert cache and the fit margin: CUDA
+# context, compute buffers and the MTP head. Measured with the reference command on the reference machine (FLE-IQ3_M,
+# 262,144 tokens in two slots, -ub 4096 with ubatch lending): 32,623 MiB card - 4,460 always-on - 3,264 KV - 1,115
+# margin - 17,035 cache = 6,749 MiB. Other settings are not measured; they get the same value as a cautious estimate.
+ENGINE_OVERHEAD_MIB = 6749
 
 # The command from the model card (sirfyyn/Qwen3.8-Flash-Next-FLE-GGUF, section "FLE engine"), as a profile.
 REFERENCE_ENV = {
@@ -255,16 +260,19 @@ def auto_plan(*, model: dict[str, Any], engine: dict[str, Any], settings: dict[s
         vram_free = sum(max(0, g["memory_total"] - g.get("memory_used", 0)) for g in chosen)
         ub = 4096 if vram_total >= 20 * GiB else 2048
         kv = float(info.get("kv_bytes_per_token_q8") or 0) * ctx
-        compute = (3.0 if ub == 4096 else 1.5) * GiB  # estimate; the fit step corrects it
+        overhead = ENGINE_OVERHEAD_MIB * MiB
         gpu_weights = float(info.get("gpu_bytes") or 0)
         budget_mib = int(launch.get("gpu_cache_mib") or 0)
         if budget_mib <= 0:
-            budget_mib = _round_mib(vram_free - gpu_weights - kv - compute - FIT_TARGET_MIB * MiB)
+            # The budget is added to the fit margin (FLE_MOE_CACHE_BUDGET_FIT=1): too large a budget makes the fit step
+            # move weights to the CPU, so it errs on the small side.
+            budget_mib = _round_mib(vram_free - gpu_weights - kv - overhead - FIT_TARGET_MIB * MiB, 1)
             notes.append(
                 f"GPU expert cache {budget_mib / 1024:.1f} GiB: {vram_free / GiB:.1f} GiB free GPU memory minus "
-                f"{gpu_weights / GiB:.1f} GiB of always-on weights, {kv / GiB:.1f} GiB KV cache, about "
-                f"{compute / GiB:.1f} GiB compute buffers and {FIT_TARGET_MIB} MiB margin. Set it by hand on the "
-                "Engine page if loading fails or memory is left over.")
+                f"{gpu_weights / GiB:.1f} GiB of always-on weights, {kv / GiB:.1f} GiB KV cache, "
+                f"{overhead / GiB:.1f} GiB for compute buffers and the CUDA context (measured with the reference "
+                f"command) and {FIT_TARGET_MIB} MiB margin. Set it by hand on the Engine page if loading fails or "
+                "memory is left over.")
         if budget_mib < 1024:
             notes.append("Little GPU memory is left for the expert cache, so most experts run on the CPU.")
         env.update(FLE_POLICY_ENV)
