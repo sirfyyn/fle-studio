@@ -186,6 +186,18 @@ touch stub.gguf
 python tests/fake_llama_server.py -m stub.gguf --port 18080 --metrics
 ```
 
+The browser end-to-end test starts Studio with the stand-in engine, sends one chat message, visits every page in light
+and dark mode and saves a screenshot of each into `e2e-out/`. It fails on any page error or console error. To run it
+yourself (the second command downloads Chromium once):
+
+```sh
+python -m pip install -e . playwright
+python -m playwright install chromium
+python tests/e2e/run_e2e.py --out e2e-out
+```
+
+`--channel chrome` (or `msedge`) uses a browser you already have instead of the download.
+
 ## Licenses
 
 - FLE Studio: [MIT](LICENSE).

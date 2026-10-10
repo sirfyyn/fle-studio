@@ -501,7 +501,9 @@ export function mount(main) {
             h("div", { class: "small faint mono", style: { overflowWrap: "anywhere" } }, e.path),
             e.ok === false ? h("div", { class: "small", style: { color: "var(--bad)" } }, e.problem) : null),
           h("button", { class: "btn ghost icon sm", title: "Remove this engine", "aria-label": "Remove", onclick: () => removeEngine(e) }, icon("trash", "sm")))))
-          : h("div", { class: "callout" }, icon("info", "sm"), h("div", null, "No engine installed yet. Install one below or point to your own llama-server.")),
+          : choice === "custom" && st.settings.engine?.custom_path
+            ? h("div", { class: "callout" }, icon("info", "sm"), h("div", null, "No prebuilt engine installed. FLE Studio uses your own build (below)."))
+            : h("div", { class: "callout" }, icon("info", "sm"), h("div", null, "No engine installed yet. Install one below or point to your own llama-server.")),
         jobs.map((j) => h("div", { class: "stack tight" },
           h("div", { class: "row small" }, h("b", null, j.title), h("span", { class: "grow" }), h("span", { class: "muted num" }, `${Math.round((j.progress || 0) * 100)} %`)),
           h("div", { class: "bar" }, h("i", { style: { width: `${Math.round((j.progress || 0) * 100)}%` } })),

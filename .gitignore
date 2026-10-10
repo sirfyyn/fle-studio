@@ -8,4 +8,5 @@ dist/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+e2e-out/
 .DS_Store

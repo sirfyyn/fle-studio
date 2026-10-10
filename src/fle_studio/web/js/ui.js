@@ -261,7 +261,10 @@ export function sparkline(values, { color = "var(--accent)", max = null, height 
       svg("stop", { offset: 1, "stop-color": color, "stop-opacity": 0 }))),
     svg("line", { class: "base", x1: 0, y1: H - 0.5, x2: W, y2: H - 0.5 }));
   for (const s of segs) {
-    if (s.length === 1) s.push([s[0][0] + 2, s[0][1]]);
+    if (s.length === 1) {  // a lone sample: draw a short dash that points into the chart, not out of it
+      const [a, b] = s[0];
+      if (a > W / 2) s.unshift([a - 8, b]); else s.push([a + 8, b]);
+    }
     const pts = s.map(([a, b]) => `${a.toFixed(1)},${b.toFixed(1)}`).join(" ");
     out.append(svg("polygon", { class: "ar", points: `${s[0][0].toFixed(1)},${H} ${pts} ${s[s.length - 1][0].toFixed(1)},${H}`, fill: `url(#${gid})` }));
     out.append(svg("polyline", { class: "ln", points: pts, stroke: color }));

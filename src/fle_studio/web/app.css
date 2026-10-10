@@ -367,7 +367,7 @@ svg.i.lg { width: 22px; height: 22px; }
 }
 .cmd .copy { position: absolute; top: 6px; right: 6px; }
 .cmd .env { color: var(--tok-k); }
-.cmd .flag { color: var(--tok-f); }
+.cmd .flag { color: var(--tok-f); white-space: nowrap; }  /* never break inside --a-long-flag */
 .cmd .ph { color: var(--tok-l); }
 
 .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
