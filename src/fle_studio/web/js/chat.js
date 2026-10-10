@@ -585,7 +585,8 @@ export function mount(main, chatId) {
       return null;
     };
     const lr = meta.last_response;
-    const decodeNow = recent("decode", 3);
+    const perAnswer = !!lastS.last_answer;  // a server without --metrics: the numbers are each finished answer's
+    const decodeNow = perAnswer ? null : recent("decode", 3);
     const decode = decodeNow ?? lr?.predicted_per_second ?? null;
     const prefill = recent("prefill", 15) ?? lr?.prompt_per_second ?? null;
     let accept = recent("accept", 20);
@@ -601,7 +602,7 @@ export function mount(main, chatId) {
       h("div", { class: "k" }, h("span", null, "Generation"), h("span", { class: "faint" }, decodeNow !== null ? "now" : lr ? "last answer" : "")),
       h("div", { class: "v" }, fmt.rate(decode), h("small", null, "tok/s")),
       sparkline(hist.map((x) => x.decode ?? null), { color: "var(--accent)", id: "dec" }),
-      h("div", { class: "sub" }, "Tokens per second while answering, last two minutes")));
+      h("div", { class: "sub" }, perAnswer ? "Average of each finished answer, last two minutes" : "Tokens per second while answering, last two minutes")));
     tiles.push(h("div", { class: "tile" },
       h("div", { class: "k" }, h("span", null, "Prompt reading (prefill)")),
       h("div", { class: "v" }, fmt.rate(prefill), h("small", null, "tok/s")),
