@@ -275,6 +275,13 @@ def auto_plan(*, model: dict[str, Any], engine: dict[str, Any], settings: dict[s
                 "memory is left over.")
         if budget_mib < 1024:
             notes.append("Little GPU memory is left for the expert cache, so most experts run on the CPU.")
+        if not launch.get("threads") and physical > 1 and int(sysinfo["cpu"].get("logical") or physical) <= physical:
+            # With a compute thread on every core, the engine's own threads (the one driving the GPU, the expert
+            # cache's copy thread) wait for a free core. Measured with a small MoE model, 8 threads on 8 cores: decode
+            # took 19-75 ms instead of 0.6-1.0 ms per token in 3 of 22 runs; with 6 threads none in 10 runs.
+            threads = physical - 1
+            notes.append(f"{threads} threads: this processor runs one thread per core, so one core stays free for "
+                         "the engine's GPU and expert-cache threads.")
         env.update(FLE_POLICY_ENV)
         env["FLE_MOE_CACHE_BUDGET_MIB"] = str(budget_mib)
         env["FLE_MOE_PROFILE"] = str(paths.ensure(data_dir / "expert-profiles") / f"{model['id']}.bin")
