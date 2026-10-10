@@ -45,5 +45,9 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
 
+[tool.ruff.lint.isort]
+# Fixed here, so the import order does not depend on the directory ruff runs from.
+known-first-party = ["fle_studio"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

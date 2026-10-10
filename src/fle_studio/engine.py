@@ -11,6 +11,7 @@ import json
 import os
 import queue
 import re
+import socket
 import subprocess
 import sys
 import threading
@@ -62,6 +63,19 @@ class EngineBusy(RuntimeError):
     pass
 
 
+def port_taken(port: int) -> bool:
+    """True when something already accepts connections on this local port.
+
+    A second llama-server started there would take its share of RAM and GPU memory next to the first one, or fail
+    only after a while, so FLE Studio refuses the start instead. A server bound to 0.0.0.0 answers on 127.0.0.1 too.
+    """
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+
 class Engine:
     def __init__(self, data_dir: Path) -> None:
         self.data_dir = data_dir
@@ -98,6 +112,12 @@ class Engine:
     # ------------------------------------------------------------------------------------------ control
 
     def start(self, plan: Plan) -> None:
+        with self._lock:
+            if self.state in ("starting", "ready", "stopping"):
+                raise EngineBusy("An engine is already running. Stop it first.")
+        if port_taken(plan.port):
+            raise EngineBusy(f"Port {plan.port} is already in use: another server answers there. Stop that server "
+                             "first, or give this start another port.")
         with self._lock:
             if self.state in ("starting", "ready", "stopping"):
                 raise EngineBusy("An engine is already running. Stop it first.")
@@ -282,8 +302,8 @@ class Engine:
             def restart() -> None:
                 try:
                     self.start(plan)
-                except EngineBusy:
-                    pass
+                except EngineBusy as exc:
+                    self._append(f"FLE Studio: not restarted. {exc}")
 
             threading.Timer(5.0, restart).start()
 
