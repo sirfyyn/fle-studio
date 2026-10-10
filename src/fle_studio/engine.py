@@ -114,6 +114,7 @@ class Engine:
         self.svc: dict[str, Any] = {}
         self._svc_pid = 0  # main process of the run the numbers belong to
         self._svc_hold = 0.0  # until then the unit may still show the state before FLE Studio's request
+        self._svc_asked = ("", 0)  # that request, and the main process at the time
         self._attached_at = 0.0
         self._journal: subprocess.Popen[bytes] | None = None
         threading.Thread(target=self._supervise, name="engine-supervisor", daemon=True).start()
@@ -248,7 +249,9 @@ class Engine:
         self.rss = rss
         self.svc = service.summary(unit, props)
         active = props.get("ActiveState", "")
-        if now < self._svc_hold and active not in ("activating", "deactivating", "failed"):
+        asked, pid_then = self._svc_asked
+        done = active == "inactive" if asked == "stop" else active == "active" and self._svc_pid not in (0, pid_then)
+        if now < self._svc_hold and active not in ("activating", "deactivating", "failed") and not done:
             return  # systemd has not picked up FLE Studio's request yet
         self._svc_hold = 0.0
         if active == "active" and code == 200:
@@ -285,7 +288,7 @@ class Engine:
         how = service.act(unit, action)
         with self._lock:
             if self.unit is unit:
-                self._svc_hold = time.time() + 2.0
+                self._svc_hold, self._svc_asked = time.time() + 2.0, (action, self._svc_pid)
                 if action == "stop":
                     self.state, self.phase = "stopping", "Stopping"
                 else:

@@ -206,7 +206,10 @@ def test_attach_start_ready_stop(systemd: FakeSystemd, engine: Engine, tmp_path:
     assert "Started fake.service" in log_text(engine)
 
     engine.service_action("stop")
-    st = settle(engine, "stopped")
+    wait_for(lambda: systemd.unit("fake.service")["ActiveState"] == "inactive", "systemd to stop the unit")
+    engine.refresh_attached()
+    st = engine.status()  # once systemd says the stop is done, the page says so too, without a grace period
+    assert st["state"] == "stopped", st["state"]
     assert st["service"]["active"] == "inactive" and not st["error"]
     engine.stop()  # disconnect: FLE Studio lets go of the unit and its journal
     assert engine.unit is None and engine._journal is None and engine.status()["service"] is None
