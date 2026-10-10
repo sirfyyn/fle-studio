@@ -66,6 +66,25 @@ def test_address_from_environment_or_none() -> None:
     assert service.address(plain) == "http://127.0.0.1:8080"  # llama-server's default port
 
 
+def test_expert_cache_and_log_level() -> None:
+    unit = service.Unit("rhea.service")
+
+    def seen(props: dict[str, str]) -> tuple[bool, int, bool]:
+        s = service.summary(unit, props)
+        return s["expert_cache"], s["log_level"], s["cache_in_log"]
+
+    def extra(args: str, env: str = "") -> dict[str, str]:
+        return {**RHEA, "ExecStart": RHEA["ExecStart"].replace(" -t 16", f" {args} -t 16"), "Environment": env}
+
+    assert seen(RHEA) == (False, 3, False)
+    assert seen(extra("--moe-expert-cache 173")) == (True, 3, False)  # the hit-rate lines stay out of the journal
+    assert seen(extra("--moe-expert-cache 173 -lv 4")) == (True, 4, True)
+    assert seen(extra("--moe-expert-cache 173 -v")) == (True, 99, True)
+    assert seen(extra("--moe-expert-cache=0 --log-verbosity=4")) == (False, 4, False)
+    assert seen(extra("--moe-expert-cache 64", "LLAMA_ARG_LOG_VERBOSITY=4")) == (True, 4, True)
+    assert seen(extra("-lv 2", "LLAMA_ARG_MOE_EXPERT_CACHE=64 LLAMA_ARG_LOG_VERBOSITY=5")) == (True, 2, False)
+
+
 def test_failures_in_words() -> None:
     unit = service.Unit("rhea.service")
     assert service.failure(unit, {"Result": "success"}) == ""

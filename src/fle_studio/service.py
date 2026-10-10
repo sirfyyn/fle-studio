@@ -36,9 +36,15 @@ PROPS = ("LoadState", "ActiveState", "SubState", "Result", "MainPID", "ExecMainC
          "InactiveExitTimestamp", "ExecMainStartTimestamp", "ExecStart", "Environment")
 # llama-server options FLE Studio reads from the unit's command; long spellings map to the short ones.
 OPTIONS = {"-m": "-m", "--model": "-m", "-md": "-md", "--model-draft": "-md", "--host": "--host",
-           "--port": "--port", "-a": "-a", "--alias": "-a"}
+           "--port": "--port", "-a": "-a", "--alias": "-a", "--moe-expert-cache": "--moe-expert-cache",
+           "-lv": "-lv", "--verbosity": "-lv", "--log-verbosity": "-lv"}
 ENV_OPTIONS = {"LLAMA_ARG_MODEL": "-m", "LLAMA_ARG_MODEL_DRAFT": "-md", "LLAMA_ARG_HOST": "--host",
-               "LLAMA_ARG_PORT": "--port", "LLAMA_ARG_ALIAS": "-a"}
+               "LLAMA_ARG_PORT": "--port", "LLAMA_ARG_ALIAS": "-a", "LLAMA_ARG_MOE_EXPERT_CACHE": "--moe-expert-cache",
+               "LLAMA_ARG_LOG_VERBOSITY": "-lv"}
+VERBOSE_FLAGS = ("-v", "--verbose", "--log-verbose")  # log everything
+# llama.cpp logs its library lines (the FLE expert-cache hit rate among them) at level 4; without -lv it shows up to 3.
+DEFAULT_LOG_LEVEL = 3
+CACHE_LOG_LEVEL = 4
 SECRET_OPTIONS = ("--api-key", "--hf-token", "-hft")  # shown as <hidden>
 DENIED = re.compile(r"access denied|interactive authentication required|not authorized|permission denied", re.I)
 SUDO_DENIED = re.compile(r"password is required|not allowed to|terminal is required|not in the sudoers|"
@@ -165,7 +171,8 @@ def argv(props: dict[str, str]) -> list[str]:
 
 
 def options(props: dict[str, str]) -> dict[str, str]:
-    """Model, draft model, host, port and alias as the command (or the unit's LLAMA_ARG_* variables) set them."""
+    """Model, draft model, host, port, alias, expert-cache slots and log level as the command (or the unit's
+    LLAMA_ARG_* variables) set them. -v counts as the highest log level."""
     found: dict[str, str] = {}
     try:
         env = shlex.split(props.get("Environment", ""))
@@ -179,7 +186,9 @@ def options(props: dict[str, str]) -> dict[str, str]:
     i = 1
     while i < len(args):
         flag, eq, value = args[i].partition("=") if args[i].startswith("--") else (args[i], "", "")
-        if flag in OPTIONS:
+        if flag in VERBOSE_FLAGS:
+            found["-lv"] = "99"
+        elif flag in OPTIONS:
             if eq:
                 found[OPTIONS[flag]] = value
             elif i + 1 < len(args):
@@ -207,6 +216,13 @@ def address(props: dict[str, str]) -> str:
     except ValueError:
         return ""
     return f"http://{host}:{port}"
+
+
+def _number(value: str | None, default: int) -> int:
+    try:
+        return int(value) if value else default
+    except ValueError:
+        return default
 
 
 def model_files(props: dict[str, str]) -> list[Path]:
@@ -294,6 +310,8 @@ def summary(unit: Unit, props: dict[str, str]) -> dict[str, Any]:
              "reloading": "ActiveEnterTimestamp", "deactivating": "ActiveEnterTimestamp"}.get(
         active, "InactiveEnterTimestamp")
     opts = options(props)
+    expert_cache = _number(opts.get("--moe-expert-cache"), 0) > 0
+    log_level = _number(opts.get("-lv"), DEFAULT_LOG_LEVEL)
     return {
         "unit": unit.name,
         "user": unit.user,
@@ -308,6 +326,10 @@ def summary(unit: Unit, props: dict[str, str]) -> dict[str, Any]:
         "command": command_line(props),
         "model": opts.get("-m", ""),
         "alias": opts.get("-a", ""),
+        # the FLE expert cache is on, and whether the journal carries its hit rate (log level 4 and up)
+        "expert_cache": expert_cache,
+        "log_level": log_level,
+        "cache_in_log": expert_cache and log_level >= CACHE_LOG_LEVEL,
     }
 
 

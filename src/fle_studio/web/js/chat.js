@@ -592,7 +592,8 @@ export function mount(main, chatId) {
     if (accept === null && meta.accept_logged !== null && meta.accept_logged !== undefined) accept = meta.accept_logged;
     if (accept === null && lr?.draft_n) accept = (lr.draft_n_accepted || 0) / lr.draft_n;
     const cacheHit = meta.cache?.hit_rate !== undefined && meta.cache?.hit_rate !== null ? meta.cache.hit_rate / 100 : null;
-    const fle = (e.plan?.args || []).includes("--moe-expert-cache-inserts") || cacheHit !== null;
+    const svc = e.service || null;
+    const fle = (e.plan?.args || []).includes("--moe-expert-cache-inserts") || cacheHit !== null || !!svc?.expert_cache;
 
     const tiles = [];
     tiles.push(h("div", { class: "row between" }, h("h4", null, "Live"), stateBadge(e.state)));
@@ -628,6 +629,10 @@ export function mount(main, chatId) {
     tiles.push(memTile);
     if (meta.metrics_available === false) {
       tiles.push(h("div", { class: "callout" }, icon("info", "sm"), h("div", { class: "small" }, "This server runs without --metrics, so the numbers come from each finished answer.")));
+    }
+    if (svc?.expert_cache && !svc.cache_in_log && cacheHit === null) {
+      tiles.push(h("div", { class: "callout" }, icon("info", "sm"), h("div", { class: "small" },
+        `The expert-cache hit rate is a log line at level 4; ${svc.unit} logs up to level ${svc.log_level}. Add -lv 4 to its command to see it here.`)));
     }
     clear(live, tiles);
   }
