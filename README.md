@@ -155,6 +155,11 @@ far the server has read the model while it loads, and offers Start, Stop and Res
 the unit: systemd starts the server with the unit's command, as before. Disconnect leaves the service as it is. The
 command shown on the Engine page hides `--api-key` and the Hugging Face token.
 
+Two options in the unit fill the live panel. `--metrics` gives the speeds second by second; without it, the panel
+shows the speeds of each finished answer. `-lv 4` lets the FLE engine's expert-cache hit rate into the journal, where
+FLE Studio reads it. Both also work as variables, for example in a drop-in:
+`Environment=LLAMA_ARG_ENDPOINT_METRICS=1 LLAMA_ARG_LOG_VERBOSITY=4`.
+
 Starting or stopping a system service needs privileges. FLE Studio first asks systemd (enough as root, for a user
 unit, or with a polkit rule), then tries `sudo -n`. It never asks for a password; when neither works, the Engine page
 says so and shows the line to add, for example with `sudo visudo -f /etc/sudoers.d/fle-studio`:
