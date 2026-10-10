@@ -1,7 +1,9 @@
-"""The engine: one llama-server process that FLE Studio starts and watches, or a server it attaches to.
+"""The engine: one llama-server process that FLE Studio starts and watches, or a server it attaches to. A server
+that runs as a systemd service can be attached together with its unit (see service.py); FLE Studio then follows
+the unit's state and journal and can start, stop and restart it through systemd.
 
-All process starts happen on one long-lived supervisor thread. On Linux the engine is told to exit when the thread
-that started it ends (PR_SET_PDEATHSIG), so that thread must not be a short-lived HTTP request thread.
+All process starts happen on one long-lived supervisor thread. On Linux the engine (and journalctl) is told to exit
+when the thread that started it ends (PR_SET_PDEATHSIG), so that thread must not be a short-lived HTTP request thread.
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from . import gguf, paths, procutil
+from . import gguf, paths, procutil, service
 from .launch import Plan
 
 # Log lines that mark a loading phase (checked in order, first match wins).
@@ -107,20 +109,31 @@ class Engine:
         self._crashes: collections.deque[float] = collections.deque(maxlen=10)
         self._stop_requested = False
         self._log_file: Any = None
+        # A service the attached server runs as: its unit, its state for the page, and the journal follower.
+        self.unit: service.Unit | None = None
+        self.svc: dict[str, Any] = {}
+        self._svc_pid = 0  # main process of the run the numbers belong to
+        self._svc_hold = 0.0  # until then the unit may still show the state before FLE Studio's request
+        self._attached_at = 0.0
+        self._journal: subprocess.Popen[bytes] | None = None
         threading.Thread(target=self._supervise, name="engine-supervisor", daemon=True).start()
 
     # ------------------------------------------------------------------------------------------ control
 
+    def _refuse_start_locked(self) -> None:
+        if self.unit is not None:
+            raise EngineBusy(f"FLE Studio is connected to {self.unit.name}. Disconnect it on the Engine page first.")
+        if self.state in ("starting", "ready", "stopping"):
+            raise EngineBusy("An engine is already running. Stop it first.")
+
     def start(self, plan: Plan) -> None:
         with self._lock:
-            if self.state in ("starting", "ready", "stopping"):
-                raise EngineBusy("An engine is already running. Stop it first.")
+            self._refuse_start_locked()
         if port_taken(plan.port):
             raise EngineBusy(f"Port {plan.port} is already in use: another server answers there. Stop that server "
                              "first, or give this start another port.")
         with self._lock:
-            if self.state in ("starting", "ready", "stopping"):
-                raise EngineBusy("An engine is already running. Stop it first.")
+            self._refuse_start_locked()
             self.reachable = False
             self.state, self.plan, self.phase = "starting", plan, "Starting the engine"
             self.error = self.hint = ""
@@ -132,8 +145,9 @@ class Engine:
         self._ops.put(("start", plan))
 
     def stop(self) -> None:
+        """Stop the engine FLE Studio started, or disconnect from an attached server (a service keeps running)."""
         with self._lock:
-            if self.state == "attached":
+            if self.state == "attached" or self.unit is not None:
                 self._detach_locked()
                 return
             if self.proc is None:
@@ -144,8 +158,16 @@ class Engine:
             self.state, self.phase = "stopping", "Stopping"
         self._ops.put(("stop", None))
 
-    def attach(self, url: str, key: str = "") -> dict[str, Any]:
+    def attach(self, url: str, key: str = "", unit: str = "") -> dict[str, Any]:
+        """Use a server that runs already. With `unit` (a systemd service) the address may be left empty: it then
+        comes from the unit's command."""
+        found = service.find(unit) if unit.strip() else None
         url = url.strip().rstrip("/")
+        if not url and found:
+            url = service.address(found[1])
+            if not url:
+                raise ValueError(f"Enter the server address too: the command of {found[0].name} does not say which "
+                                 "port it listens on.")
         if not url:
             raise ValueError("Enter the server address, e.g. http://127.0.0.1:8080")
         if not re.match(r"^https?://", url):
@@ -154,31 +176,147 @@ class Engine:
         with self._lock:
             if self.proc is not None:
                 raise EngineBusy("Stop the engine FLE Studio started before attaching to another server.")
+            self._stop_journal_locked()
             self.state, self.base_url, self.api_key, self.plan = "attached", url, key, None
             self.error = self.hint = self.phase = ""
             self.cache, self.accept_logged, self.props = {}, None, {}
+            self.exit_code, self.rss, self.load_total, self.load_read = None, None, 0, 0
+            self.unit, self.svc, self._svc_pid, self._svc_hold = None, {}, 0, 0.0
+            self._attached_at = time.time()
+            if found:
+                self.unit, self.svc = found[0], service.summary(*found)
+                self._note_run_locked(found[1])
+        if found:
+            self._ops.put(("journal", found[0]))
         self.refresh_attached()
         return self.status()
 
-    def refresh_attached(self) -> None:
-        code = self._health()
-        props = self.get_json("/props") if code == 200 else None
+    def bound(self) -> str:
+        """"service", "url" (attached without a unit) or ""."""
         with self._lock:
-            if self.state == "attached":
-                self.reachable = code == 200
-                if props:
-                    self.props = props
-                self.error = "" if code == 200 else ("The server is loading its model" if code == 503 else
-                                                     "The server does not answer")
+            return "service" if self.unit is not None else "url" if self.state == "attached" else ""
+
+    def refresh_attached(self) -> None:
+        """Read the attached server's health again and, for a service, the unit's state."""
+        with self._lock:
+            unit = self.unit
+            if unit is None and self.state != "attached":
+                return
+        props: dict[str, str] | None = None
+        problem = ""
+        if unit is not None:
+            try:
+                props = unit.show()
+            except (service.ServiceError, OSError, subprocess.SubprocessError) as exc:
+                problem = f"Could not read the state of {unit.name}: {exc}"
+        code = self._health()
+        info = self.get_json("/props") if code == 200 else None
+        with self._lock:
+            if self.unit is not unit:  # disconnected or connected elsewhere meanwhile
+                return
+            if unit is None:
+                if self.state == "attached":
+                    self.reachable = code == 200
+                    if info:
+                        self.props = info
+                    self.error = "" if code == 200 else ("The server is loading its model" if code == 503 else
+                                                         "The server does not answer")
+                return
+            if props is None:
+                self.error = problem
+                return
+            self._apply_service_locked(unit, props, code, info)
+
+    def _note_run_locked(self, props: dict[str, str]) -> None:
+        """A new main process of the service (or none any more): its numbers start from zero."""
+        pid = service.main_pid(props)
+        if pid == self._svc_pid:
+            return
+        self._svc_pid = pid
+        if pid:
+            self.started = service.timestamp(props.get("ExecMainStartTimestamp")) or time.time()
+            self.ready_at, self.cache, self.accept_logged, self.props = 0.0, {}, None, {}
+            self.load_total, self.load_read = service.model_bytes(props), 0
+
+    def _apply_service_locked(self, unit: service.Unit, props: dict[str, str], code: int,
+                              info: dict[str, Any] | None) -> None:
+        now = time.time()
+        self._note_run_locked(props)
+        read, rss = procutil.read_and_memory_pid(self._svc_pid)
+        if read is not None:
+            self.load_read = read
+        self.rss = rss
+        self.svc = service.summary(unit, props)
+        active = props.get("ActiveState", "")
+        if now < self._svc_hold and active not in ("activating", "deactivating", "failed"):
+            return  # systemd has not picked up FLE Studio's request yet
+        self._svc_hold = 0.0
+        if active == "active" and code == 200:
+            if self.state != "attached":
+                self.ready_at = self.ready_at or now
+            self.state, self.phase, self.reachable, self.error, self.exit_code = "attached", "Ready", True, "", None
+            if info:
+                self.props = info
+        elif active in ("active", "activating", "reloading"):
+            if self.state != "starting":
+                self.state, self.error, self.exit_code = "starting", "", None
+                if self.phase in ("", "Ready", "Stopping"):
+                    self.phase = "Starting the service"
+            if active == "active" and self.phase == "Starting the service":
+                self.phase = "Loading the model"
+            self.reachable = False
+        elif active == "deactivating":
+            self.state, self.phase, self.reachable = "stopping", "Stopping", False
+        elif active == "failed":
+            self.state, self.phase, self.reachable = "crashed", "", False
+            self.error = service.failure(unit, props) or f"{unit.name} failed."
+            status = props.get("ExecMainStatus", "")
+            self.exit_code = int(status) if status.isdigit() and props.get("ExecMainCode") == "1" else None
+        else:  # inactive (or maintenance): say why when its last start went wrong, e.g. an ExecCondition said no
+            self.state, self.phase, self.reachable = "stopped", "", False
+            self.error, self.exit_code = service.failure(unit, props), None
+
+    def service_action(self, action: str) -> dict[str, Any]:
+        """Ask systemd to start, stop or restart the attached service."""
+        with self._lock:
+            unit = self.unit
+        if unit is None:
+            raise ValueError("FLE Studio is not connected to a service.")
+        how = service.act(unit, action)
+        with self._lock:
+            if self.unit is unit:
+                self._svc_hold = time.time() + 2.0
+                if action == "stop":
+                    self.state, self.phase = "stopping", "Stopping"
+                else:
+                    self.state, self.phase, self.reachable = "starting", "Starting the service", False
+                    self.error = self.hint = ""
+                    self.exit_code = None
+        via = " (through sudo)" if how == "sudo" else ""
+        self._append(f"FLE Studio: asked systemd to {action} {unit.name}{via}")
+        return self.status()
 
     def _detach_locked(self) -> None:
+        self._stop_journal_locked()
         self.state, self.base_url, self.api_key, self.reachable, self.props = "stopped", "", "", False, {}
+        self.unit, self.svc, self._svc_pid = None, {}, 0
+        self.error = self.hint = self.phase = ""
+        self.load_total, self.load_read, self.rss = 0, 0, None
+
+    def _stop_journal_locked(self) -> None:
+        proc, self._journal = self._journal, None
+        if proc is not None and proc.poll() is None:
+            try:
+                proc.terminate()
+            except OSError:
+                pass
 
     def shutdown(self) -> None:
-        """Stop a running engine and wait for it; used when FLE Studio exits."""
+        """Stop a running engine and wait for it; used when FLE Studio exits. An attached service keeps running."""
         with self._lock:
             proc = self.proc
             self._stop_requested = True
+            self._stop_journal_locked()
         if proc and proc.poll() is None:
             procutil.ask_to_stop(proc)
             try:
@@ -196,7 +334,12 @@ class Engine:
                     self._spawn(arg)
                 elif op == "stop":
                     self._terminate()
+                elif op == "journal":
+                    self._follow_journal(arg)
             except Exception as exc:  # the supervisor must survive anything a start can throw
+                if op == "journal":
+                    self._append(f"FLE Studio: cannot follow the log of {arg.name}: {exc}")
+                    continue
                 with self._lock:
                     self.proc = None
                     self.state, self.error, self.phase = "crashed", f"Could not start the engine: {exc}", ""
@@ -255,6 +398,49 @@ class Engine:
                 self._on_line(line)
         rc = proc.wait()
         self._on_exit(proc, rc)
+
+    def _follow_journal(self, unit: service.Unit) -> None:
+        with self._lock:
+            if self.unit is not unit:
+                return
+        proc = subprocess.Popen(unit.journal_command(), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, env=service.environment(), **procutil.popen_kwargs())
+        with self._lock:
+            mine = self.unit is unit
+            if mine:
+                self._stop_journal_locked()
+                self._journal = proc
+        if not mine:  # disconnected while journalctl started
+            proc.terminate()
+            proc.wait(timeout=10)
+            return
+        threading.Thread(target=self._read_journal, args=(proc, unit), name="engine-journal", daemon=True).start()
+
+    def _read_journal(self, proc: subprocess.Popen[bytes], unit: service.Unit) -> None:
+        assert proc.stdout is not None
+        for raw in iter(proc.stdout.readline, b""):
+            with self._lock:
+                if self._journal is not proc:
+                    break
+                pid, since = self._svc_pid, self._attached_at
+            entry = service.journal_entry(raw)
+            if entry is None:  # journalctl itself, e.g. that this account may not read the system journal
+                text = raw.decode("utf-8", "replace").strip()
+                if text:
+                    self._append(f"FLE Studio: journalctl: {text}")
+                continue
+            text, line_pid, when = entry
+            if text.strip():
+                # Lines of earlier runs (the first 200 come from the past) only fill the log; numbers and loading
+                # phases come from this run.
+                self._on_line(text, parse=when >= since - 2 or (line_pid > 1 and line_pid == pid))
+        rc = proc.wait()
+        with self._lock:
+            ended = self._journal is proc
+            if ended:
+                self._journal = None
+        if ended:
+            self._append(f"FLE Studio: the log of {unit.name} ended (journalctl exited with code {rc})")
 
     def _wait_ready(self, proc: subprocess.Popen[bytes]) -> None:
         while proc.poll() is None:
@@ -344,11 +530,14 @@ class Engine:
             except (OSError, ValueError):
                 pass
 
-    def _on_line(self, line: str) -> None:
+    def _on_line(self, line: str, parse: bool = True) -> None:
         self._append(line)
+        if not parse:
+            return
         low = line.lower()
         with self._lock:
-            if self.state == "starting":
+            # A service can begin a run before the next look at its unit says so.
+            if self.state == "starting" or (self.unit is not None and self.state != "attached"):
                 for needle, phase in PHASES:
                     if needle in low:
                         self.phase = phase
@@ -364,7 +553,7 @@ class Engine:
             m = ACCEPT_RE.search(line)
             if m:
                 self.accept_logged = float(m.group(1))
-            if not self.hint:
+            if not self.hint and self.unit is None:  # the hints point to settings of engines FLE Studio starts
                 for rx, hint in HINTS:
                     if rx.search(line):
                         self.hint, self.error = hint, line.strip()[:400]
@@ -415,6 +604,8 @@ class Engine:
             if not model and props:
                 path = props.get("model_path") or ""
                 model = {"name": props.get("model_alias") or Path(path).name or "model", "path": path}
+            if not model and self.svc.get("model"):  # a service that does not run: its command names the model
+                model = {"name": self.svc.get("alias") or Path(self.svc["model"]).name, "path": self.svc["model"]}
             return {
                 "state": self.state,
                 "phase": self.phase,
@@ -422,9 +613,10 @@ class Engine:
                 "hint": self.hint,
                 "exit_code": self.exit_code,
                 "reachable": self.reachable,
-                "attached": self.state == "attached",
+                "attached": self.state == "attached" or self.unit is not None,
+                "service": dict(self.svc) if self.unit is not None else None,
                 "base_url": self.base_url if self.state in ("starting", "ready", "attached") else "",
-                "pid": self.proc.pid if self.proc else None,
+                "pid": self.proc.pid if self.proc else (self._svc_pid or None) if self.unit is not None else None,
                 "started": self.started,
                 "ready_at": self.ready_at,
                 "load": {"read": self.load_read, "total": self.load_total, "progress": progress,

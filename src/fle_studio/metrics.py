@@ -83,6 +83,9 @@ class Live:
             return 0, ""
 
     def _sample(self, tick: int) -> None:
+        bound = self.engine.bound()
+        if bound == "service" or (bound == "url" and tick % 5 == 0):
+            self.engine.refresh_attached()  # a service is read every second: it can start or stop at any time
         state, base, headers, proc = self.engine.target()
         s: dict[str, Any] = {"t": round(time.time(), 2), "state": state}
         mem = system.memory()
@@ -95,6 +98,8 @@ class Live:
             rss = procutil.read_and_memory(proc)[1]
             s["engine_mem"] = rss
             self.engine.note_memory(rss)
+        elif bound == "service":
+            s["engine_mem"] = self.engine.rss
         live = state in ("ready", "attached")
         if live and base:
             if base != self._prev_url:
@@ -112,8 +117,6 @@ class Live:
                                "decode_calls": cur.get(P + "n_decode_total", 0.0)}
             elif code in (404, 501):
                 self.metrics_available = False
-            if state == "attached" and tick % 5 == 0:
-                self.engine.refresh_attached()
             if tick % 2 == 0:
                 code, text = self._get(base, "/slots", headers)
                 if code == 200 and text.startswith("["):

@@ -73,6 +73,7 @@ Options of `fle-studio`:
 | `--host ADDRESS` | Address to listen on (default 127.0.0.1). `0.0.0.0` opens FLE Studio to your network; it then asks for an access key, which it creates and prints. |
 | `--no-browser` | Do not open the browser. |
 | `--attach URL` | Use a `llama-server` that is already running instead of starting one. |
+| `--service UNIT` | Linux: connect to a `llama-server` that systemd runs as a service, for example `rhea.service` (see below). |
 | `--home FOLDER` | Keep all data in this folder (portable installs, tests). |
 
 Your data (settings, chats, engines, models) lives in `~/Library/Application Support/FLE Studio` on macOS,
@@ -137,6 +138,7 @@ FLE Studio installs the engine that suits your machine. You can always choose an
 | Anything else | llama.cpp, CPU build (it works, but is slow for large models) |
 | Your own build | Engine page: set the path to your `llama-server` |
 | A server that is already running | Engine page, or `fle-studio --attach http://127.0.0.1:8080` |
+| A server that systemd runs as a service (Linux) | Engine page (Service field), or `fle-studio --service rhea.service` |
 
 The FLE engine is a llama.cpp fork that keeps a model's experts in RAM and caches the busy ones in GPU memory, so
 that a model larger than your GPU memory can still run on a single GPU. It also supports a separate MTP head for
@@ -144,6 +146,22 @@ drafting. FLE builds come from the
 [FastLocalExperts releases](https://github.com/sirfyyn/FastLocalExperts/releases), llama.cpp builds from the
 [llama.cpp releases](https://github.com/ggml-org/llama.cpp/releases) (FLE Studio is tested with tag b11540). Each
 download is checked against the SHA-256 digest that GitHub publishes for the file.
+
+### A server that runs as a systemd service
+
+On a machine where `llama-server` runs as a systemd unit, FLE Studio can work with the service instead of starting a
+second server next to it. It reads the unit's own command (model, port, alias), follows the unit's journal, shows how
+far the server has read the model while it loads, and offers Start, Stop and Restart for the unit. It never changes
+the unit: systemd starts the server with the unit's command, as before. Disconnect leaves the service as it is. The
+command shown on the Engine page hides `--api-key` and the Hugging Face token.
+
+Starting or stopping a system service needs privileges. FLE Studio first asks systemd (enough as root, for a user
+unit, or with a polkit rule), then tries `sudo -n`. It never asks for a password; when neither works, the Engine page
+says so and shows the line to add, for example with `sudo visudo -f /etc/sudoers.d/fle-studio`:
+
+```
+alice ALL=(root) NOPASSWD: /usr/bin/systemctl --no-block start rhea.service, /usr/bin/systemctl --no-block stop rhea.service, /usr/bin/systemctl --no-block restart rhea.service
+```
 
 Large models need a lot of memory. The FLE quants of Qwen3.8-Flash-Next are roughly 70 to 90 GB on disk. Speed depends
 on your hardware: the speed figures in the FLE report and in the model catalog were measured on one machine

@@ -136,20 +136,38 @@ def _win_counters(proc: subprocess.Popen[Any]) -> tuple[int, int] | None:
     return (int(io.ReadTransferCount) if ok_io else 0), (int(mem.WorkingSetSize) if ok_mem else 0)
 
 
+def _linux_counters(pid: int) -> tuple[int | None, int | None]:
+    # /proc/PID/io of another account's process is closed to us; its status (and so the memory) stays readable.
+    read = rss = None
+    try:
+        io = Path(f"/proc/{pid}/io").read_text()
+        vals = dict(line.split(": ", 1) for line in io.splitlines() if ": " in line)
+        read = max(int(vals.get("rchar", 0)), int(vals.get("read_bytes", 0)))
+    except (OSError, ValueError):
+        pass
+    try:
+        for line in Path(f"/proc/{pid}/status").read_text().splitlines():
+            if line.startswith("VmRSS:"):
+                rss = int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        pass
+    return read, rss
+
+
+def read_and_memory_pid(pid: int) -> tuple[int | None, int | None]:
+    """Like read_and_memory for a process FLE Studio did not start, such as the main process of a service (Linux)."""
+    if not IS_LINUX or pid <= 0:
+        return None, None
+    return _linux_counters(pid)
+
+
 def read_and_memory(proc: subprocess.Popen[Any] | None) -> tuple[int | None, int | None]:
     """(bytes the process has read so far, memory it holds) or None where this OS does not tell."""
     if proc is None or proc.poll() is not None:
         return None, None
     try:
         if IS_LINUX:
-            read = rss = None
-            io = Path(f"/proc/{proc.pid}/io").read_text()
-            vals = dict(line.split(": ") for line in io.splitlines() if ": " in line)
-            read = max(int(vals.get("rchar", 0)), int(vals.get("read_bytes", 0)))
-            for line in Path(f"/proc/{proc.pid}/status").read_text().splitlines():
-                if line.startswith("VmRSS:"):
-                    rss = int(line.split()[1]) * 1024
-            return read, rss
+            return _linux_counters(proc.pid)
         if IS_MAC:
             got = _mac_rusage(proc.pid)
             return got if got else (None, None)

@@ -33,6 +33,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-browser", action="store_true", help="do not open the browser")
     ap.add_argument("--home", help="data folder (settings, chats, engines, models); default: per-user app data")
     ap.add_argument("--attach", metavar="URL", help="use an already running llama.cpp / FLE server")
+    ap.add_argument("--service", metavar="UNIT", help="use a llama-server that runs as a systemd service (Linux): "
+                    "its log, loading progress, start, stop and restart; the address comes from the unit")
     ap.add_argument("--version", action="version", version=f"FLE Studio {__version__}")
     args = ap.parse_args(argv)
     if args.home:
@@ -66,11 +68,15 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Data folder: {studio.data_dir}")
     print("Press Ctrl+C to stop (this also stops a model FLE Studio started).")
 
-    if args.attach:
+    attach_url, attach_unit = args.attach or "", args.service or ""
+    if not (attach_url or attach_unit) and cfg.get("attach_auto"):  # connected when FLE Studio last ran
+        attach_url, attach_unit = cfg.get("attach_url"), cfg.get("attach_service")
+    if attach_url or attach_unit:
         try:
-            studio.engine.attach(args.attach, cfg.get("attach_key"))
+            studio.engine.attach(attach_url, cfg.get("attach_key"), attach_unit)
+            print(f"Connected to {attach_unit or attach_url}")
         except Exception as exc:  # startup must go on; the page shows the state
-            print(f"Could not attach to {args.attach}: {exc}", file=sys.stderr)
+            print(f"Could not connect to {attach_unit or attach_url}: {exc}", file=sys.stderr)
     elif cfg.get("launch.autostart") and cfg.get("last_model"):
         def autostart() -> None:
             try:

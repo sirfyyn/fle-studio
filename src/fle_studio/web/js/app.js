@@ -216,6 +216,8 @@ function renderEngineCard() {
   if (e.state === "starting") sub = `${e.phase || "Loading"}${e.load?.progress ? ` · ${Math.round(e.load.progress * 100)} %` : ""}`;
   else if (e.state === "crashed") sub = e.error || "The engine stopped";
   else if (e.state === "ready" || e.state === "attached") sub = e.n_ctx ? `Context ${fmt.ctx(e.n_ctx)} tokens` : "Ready";
+  else if (e.state === "stopping") sub = e.service ? `Stopping ${e.service.unit}` : "Stopping";
+  else if (e.service) sub = `${e.service.unit} is not running`;
   clear(card,
     h("div", { class: "row" }, stateBadge(e.state), h("span", { class: "grow" }), h("span", { class: "rate" }, rate)),
     h("div", { class: "model", title: name }, name || "No model loaded"),

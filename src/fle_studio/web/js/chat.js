@@ -146,6 +146,11 @@ export function mount(main, chatId) {
   }
 
   function modelMenu(anchor) {
+    const svc = store.engine?.service;
+    if (svc) { // the service loads its own model with its own command
+      openMenu(anchor, [{ head: svc.unit }, { label: "Start, stop and log: Engine page", icon: "engine", onclick: () => navigate("/engine") }]);
+      return;
+    }
     const models = (store.state?.models || []).filter((m) => m.kind === "model" && m.complete);
     const cur = store.engine?.model?.id;
     const items = [{ head: "Load a model" }];
@@ -195,6 +200,18 @@ export function mount(main, chatId) {
             h("span", null, e.load?.total ? `${fmt.bytes(e.load.read)} of ${fmt.bytes(e.load.total)} read` : "Preparing"),
             h("span", null, e.load?.elapsed ? fmt.dur(e.load.elapsed) : "")),
           e.hint ? h("div", { class: "callout info" }, icon("info"), h("div", null, e.hint)) : null)));
+      return box;
+    }
+    if (e.service) {
+      const svc = e.service;
+      box.append(
+        h("div", { style: { width: "44px", height: "44px" } }, mark(44)),
+        h("h2", null, h("span", { class: "grad" }, svc.unit), e.state === "stopping" ? " is stopping" : e.state === "crashed" ? " stopped with an error" : " is not running"),
+        h("p", { class: "lead" }, "FLE Studio is connected to this service. Starting it runs the service's own command, which loads its model."),
+        e.error ? h("div", { class: "callout bad" }, icon("alert"), h("div", null, e.error)) : null,
+        h("div", { class: "row wrap", style: { justifyContent: "center" } },
+          e.state === "stopping" ? null : h("button", { class: "btn primary", onclick: startService }, icon("play"), "Start the service"),
+          h("a", { class: "btn", href: "/engine", "data-link": true }, icon("engine"), "Engine page and log")));
       return box;
     }
     const hasModel = models.length > 0;
@@ -532,6 +549,16 @@ export function mount(main, chatId) {
     } catch (e) {
       toast(e.message, "bad", 8000);
       if (e.status === 400 || e.status === 409) navigate("/engine");
+    }
+  }
+
+  async function startService() {
+    try {
+      store.engine = await post("/api/engine/service/start");
+      emit("engine");
+      toast("Starting the service. Loading a large model takes a few minutes.");
+    } catch (e) {
+      toast(e.message, "bad", 15000);
     }
   }
 

@@ -19,6 +19,7 @@ import mimetypes
 import re
 import secrets
 import socket
+import sys
 import threading
 import time
 import traceback
@@ -28,7 +29,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from . import __version__, bench, catalog, hf, launch, net, paths, system
+from . import __version__, bench, catalog, hf, launch, net, paths, service, system
 from .chats import Chats
 from .config import Config
 from .downloads import Downloads
@@ -205,6 +206,7 @@ class Studio:
             "app": "fle-studio",
             "version": __version__,
             "platform": info["platform"],
+            "systemd": service.available(),
             "data_dir": str(self.data_dir),
             "lan": self.lan,
             "settings": self.config.public(),
@@ -247,6 +249,7 @@ ROUTES: list[tuple[str, re.Pattern[str], str]] = [(m, re.compile(p), n) for m, p
     ("POST", r"^/api/engine/start$", "engine_start"),
     ("POST", r"^/api/engine/stop$", "engine_stop"),
     ("POST", r"^/api/engine/attach$", "engine_attach"),
+    ("POST", r"^/api/engine/service/(?P<action>start|stop|restart)$", "engine_service"),
     ("GET", r"^/api/live$", "live"),
     ("GET", r"^/api/settings$", "settings"),
     ("POST", r"^/api/settings$", "settings_update"),
@@ -304,11 +307,27 @@ class Handler(BaseHTTPRequestHandler):
         self._send(status, json.dumps(data, ensure_ascii=False, default=str).encode("utf-8"),
                    "application/json; charset=utf-8")
 
-    def read_json(self) -> dict[str, Any]:
-        length = int(self.headers.get("Content-Length") or 0)
-        if length > MAX_JSON:
+    def _body(self, limit: int) -> bytes:
+        """The request body, read once. The page sends `{}` with every POST, also where the handler wants nothing."""
+        length = self._unread
+        if length > limit:
             raise ApiError(413, "Request too large")
-        raw = self.rfile.read(length) if length else b""
+        self._unread = 0
+        return self.rfile.read(length) if length else b""
+
+    def _drain(self) -> None:
+        """Read what the handler left of the body, or the next request on this connection would start with it."""
+        length, self._unread = self._unread, 0
+        if length > MAX_JSON:  # nobody wants a large upload here: end the connection instead of reading it
+            self.close_connection = True
+        elif length:
+            try:
+                self.rfile.read(length)
+            except OSError:
+                self.close_connection = True
+
+    def read_json(self) -> dict[str, Any]:
+        raw = self._body(MAX_JSON)
         if not raw:
             return {}
         try:
@@ -382,6 +401,10 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         path = url.path
         try:
+            self._unread = max(0, int(self.headers.get("Content-Length") or 0))
+        except ValueError:
+            self._unread, self.close_connection = 0, True
+        try:
             if not self._guard(path):
                 return
             if path.startswith("/v1/"):
@@ -413,6 +436,8 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as exc:  # last resort: report instead of dropping the connection
             traceback.print_exc()
             self.send_json(500, {"error": {"message": f"Internal error: {exc}"}})
+        finally:
+            self._drain()
 
     do_GET = do_POST = do_PUT = do_DELETE = do_HEAD = _dispatch
 
@@ -446,8 +471,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def login(self) -> None:
         if self.command == "POST":
-            length = min(int(self.headers.get("Content-Length") or 0), 4096)
-            form = parse_qs(self.rfile.read(length).decode("utf-8", "replace"))
+            form = parse_qs(self._body(4096).decode("utf-8", "replace"))
             key = (form.get("key") or [""])[-1]
             real = self.studio.config.get("access_key")
             if real and hmac.compare_digest(key, real):
@@ -470,10 +494,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(503, {"error": {"message": "No model is loaded. Load one in FLE Studio first.",
                                            "type": "unavailable_error", "code": 503}})
             return
-        length = int(self.headers.get("Content-Length") or 0)
-        if length > MAX_PROXY:
-            raise ApiError(413, "Request too large")
-        body = self.rfile.read(length) if length else None
+        body = self._body(MAX_PROXY) or None
         u = urlparse(base)
         if u.scheme == "https":
             conn: http.client.HTTPConnection = http.client.HTTPSConnection(
@@ -652,18 +673,26 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(200, self.studio.engine.status())
 
     def api_engine_stop(self, query: dict[str, str]) -> None:
+        if self.studio.engine.bound():  # Disconnect: do not connect again at the next start
+            self.studio.config.update({"attach_auto": False})
         self.studio.engine.stop()
         self.send_json(200, self.studio.engine.status())
 
     def api_engine_attach(self, query: dict[str, str]) -> None:
         body = self.read_json()
         url = str(body.get("url") or "")
+        unit = str(body.get("service") or "").strip()
         key = body.get("key")
-        patch: dict[str, Any] = {"attach_url": url}
+        patch: dict[str, Any] = {"attach_url": url, "attach_service": unit}
         if key is not None:
             patch["attach_key"] = str(key)
         self.studio.config.update(patch)
-        self.send_json(200, self.studio.engine.attach(url, self.studio.config.get("attach_key")))
+        status = self.studio.engine.attach(url, self.studio.config.get("attach_key"), unit)
+        self.studio.config.update({"attach_auto": True})
+        self.send_json(200, status)
+
+    def api_engine_service(self, query: dict[str, str], action: str) -> None:
+        self.send_json(200, self.studio.engine.service_action(action))
 
     def api_live(self, query: dict[str, str]) -> None:
         self.send_json(200, self.studio.live.snapshot(float(query.get("since") or 0)))
@@ -718,12 +747,14 @@ class Handler(BaseHTTPRequestHandler):
         st = self.studio.engine.status()
         info = self.studio.sysinfo()
         gpu = ", ".join(f"{g['name']} {g['memory_total'] / 2**30:.0f} GB" for g in info.get("gpus", []))
+        svc = st.get("service") or {}
         context = {"model": st["model"].get("name"), "profile": (st.get("plan") or {}).get("profile") or
-                   ("attached" if st["attached"] else ""), "engine": (st.get("plan") or {}).get("engine") or "",
+                   (f"service {svc['unit']}" if svc else "attached" if st["attached"] else ""),
+                   "engine": (st.get("plan") or {}).get("engine") or "",
                    "build": st.get("build"), "n_ctx": st.get("n_ctx"),
                    "machine": f"{info['cpu']['name']}, {info['memory']['total'] / 2**30:.0f} GB RAM" +
                               (f", {gpu}" if gpu else ""),
-                   "command": (st.get("plan") or {}).get("command")}
+                   "command": (st.get("plan") or {}).get("command") or svc.get("command")}
         try:
             self.send_json(200, self.studio.bench.start(runs=int(body.get("runs") or 1),
                                                        label=str(body.get("label") or ""), context=context))
@@ -742,6 +773,11 @@ class Handler(BaseHTTPRequestHandler):
 class Server(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False if paths.IS_WIN else True
+
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        if isinstance(sys.exc_info()[1], (ConnectionResetError, BrokenPipeError, ConnectionAbortedError)):
+            return  # a browser closed its connection; nothing to report
+        super().handle_error(request, client_address)
 
 
 def make_server(studio: Studio, host: str, port: int, tries: int = 20) -> Server:

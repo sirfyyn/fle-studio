@@ -108,10 +108,13 @@ export function mount(main) {
   function renderStatus() {
     const e = store.engine;
     if (!e) return;
+    const svc = e.service;
     const name = e.model?.name || "";
     const running = ["starting", "ready"].includes(e.state);
     const actions = [];
-    if (e.state === "attached") {
+    if (svc) {
+      actions.push(...serviceButtons(e));
+    } else if (e.state === "attached") {
       actions.push(h("button", { class: "btn", onclick: stop }, icon("x", "sm"), "Disconnect"));
     } else if (running) {
       actions.push(h("button", { class: "btn", onclick: restart, disabled: e.state !== "ready" }, icon("refresh", "sm"), "Restart"),
@@ -145,9 +148,19 @@ export function mount(main) {
         e.build ? kv("Build", e.build) : null,
         e.rss ? kv("Engine memory", fmt.mem(e.rss)) : null,
         e.ready_at && !e.attached ? kv("Up", `${fmt.dur(Date.now() / 1000 - e.ready_at)} · loaded in ${fmt.dur(e.ready_at - e.started)}`) : null);
+    } else if (e.state === "stopped" && svc) {
+      detail = e.error ? h("div", { class: "callout warn" }, icon("alert", "sm"), h("span", null, e.error))
+        : h("div", { class: "muted small" }, `${svc.unit} is not running. Start runs the service's own command; FLE Studio does not change it.`);
     } else if (e.state === "stopped") {
       detail = h("div", { class: "muted small" }, "Not running. Choose a model and how to start it below, then press Start.");
     }
+    const unitInfo = svc ? h("dl", { class: "kv" },
+      kv("Service", `${svc.unit}${svc.user ? " (user service)" : ""}${svc.description ? ` · ${svc.description}` : ""}`),
+      kv("systemd", serviceLine(svc)),
+      svc.pid ? kv("Main process", `PID ${svc.pid}${svc.runs_as ? ` · runs as ${svc.runs_as}` : ""}`) : null,
+      svc.command ? kv("Command", h("div", { class: "row", style: { alignItems: "flex-start", gap: "6px" } },
+        h("code", { class: "mono grow", style: { minWidth: 0 } }, svc.command), copyButton(svc.command, "Copy the command"))) : null)
+      : null;
 
     const endpoint = e.state === "ready" || e.state === "attached"
       ? h("div", { class: "callout info" }, icon("link", "sm"), h("div", { class: "stack tight", style: { minWidth: 0 } },
@@ -163,7 +176,51 @@ export function mount(main) {
         h("div", { style: { minWidth: 0 } }, h("div", { class: "big" }, stateBadge(e.state), h("span", null, name || "No model loaded"))),
         h("div", { class: "row wrap" }, actions)),
       detail ? h("div", { style: { marginTop: "14px" } }, detail) : null,
+      unitInfo ? h("div", { style: { marginTop: "14px" } }, unitInfo) : null,
       endpoint ? h("div", { style: { marginTop: "14px" } }, endpoint) : null);
+  }
+
+  // "active (running) for 2 h 5 min · enabled"
+  function serviceLine(svc) {
+    const ago = svc.since ? Math.max(0, Date.now() / 1000 - svc.since) : null;
+    const when = ago === null ? "" : svc.active === "active" || svc.active === "activating" ? ` for ${fmt.dur(ago)}` : ` since ${fmt.date(svc.since)}`;
+    return `${svc.active || "unknown"}${svc.sub ? ` (${svc.sub})` : ""}${when}${svc.enabled ? ` · ${svc.enabled}` : ""}`;
+  }
+
+  function serviceButtons(e) {
+    const svc = e.service;
+    const out = [];
+    if (e.state === "stopped" || e.state === "crashed") {
+      out.push(h("button", { class: "btn primary", onclick: () => serviceAct("start") }, icon("play", "sm"), "Start the service"));
+    } else {
+      const stopping = e.state === "stopping";
+      out.push(h("button", { class: "btn", onclick: () => serviceAct("restart"), disabled: stopping }, icon("refresh", "sm"), "Restart"),
+        h("button", { class: "btn danger", onclick: () => serviceAct("stop"), disabled: stopping }, icon("power", "sm"),
+          stopping ? "Stopping…" : "Stop the service"));
+    }
+    out.push(h("button", { class: "btn ghost", onclick: stop, title: `FLE Studio stops watching ${svc.unit}; the service is not touched` },
+      icon("x", "sm"), "Disconnect"));
+    return out;
+  }
+
+  async function serviceAct(action) {
+    const svc = store.engine?.service;
+    if (!svc) return;
+    if (action !== "start") {
+      const ok = await confirmDialog({
+        title: action === "stop" ? `Stop ${svc.unit}?` : `Restart ${svc.unit}?`,
+        body: action === "stop" ? "Every app that uses this server loses it until the service runs again."
+          : "The server is away while it loads its model again; apps that use it have to wait.",
+        ok: action === "stop" ? "Stop" : "Restart", danger: action === "stop" });
+      if (!ok) return;
+    }
+    try {
+      store.engine = await post(`/api/engine/service/${action}`);
+      emit("engine");
+      renderStatus();
+    } catch (err) {
+      toast(err.message, "bad", 15000);
+    }
   }
 
   function kv(k, v) {
@@ -230,10 +287,15 @@ export function mount(main) {
       ...nvidia.map((g) => [String(g.index), `GPU ${g.index} · ${g.name} · ${fmt.gib(g.memory_total, 0)}`])];
     if (!gpuOptions.some(([v]) => v === L.gpus)) gpuOptions.push([L.gpus, `GPUs ${L.gpus}`]);
     const coresHint = h("span", { class: "hint" }, maskHint(L.cpu_mask));
+    const eng = store.engine;
+    const boundTo = eng?.attached ? eng.service?.unit || "a running server" : "";
 
     clear(boxes.launch,
       h("div", { class: "card-head" }, icon("sliders"), h("div", null, h("h3", null, "Start settings"),
         h("p", null, "Saved right away. The command on the right updates as you change them."))),
+      boundTo ? h("div", { class: "callout", style: { marginBottom: "14px" } }, icon("info", "sm"), h("div", { class: "small" },
+        `FLE Studio is connected to ${boundTo}, which runs its own command. These settings are for engines FLE Studio `
+        + "starts itself; they apply once you disconnect.")) : null,
       h("div", { class: "stack" },
         field("Model", modelSel),
         field("How to start", profSel, auto ? "" : "The profile's command decides most things. Context, threads, GPUs and cores below fill its placeholders or apply when the command leaves them out."),
@@ -546,25 +608,35 @@ export function mount(main) {
     if (typingIn(boxes.attach)) return;
     const st = settings();
     const e = store.engine || {};
-    const url = h("input", { class: "input mono", value: st.attach_url || "", placeholder: "http://127.0.0.1:8080" });
+    const systemd = !!store.state?.systemd;
+    const unit = systemd ? h("input", { class: "input mono", value: st.attach_service || "", placeholder: "rhea.service",
+      spellcheck: false }) : null;
+    const url = h("input", { class: "input mono", value: st.attach_url || "",
+      placeholder: systemd ? "From the service, or http://127.0.0.1:8080" : "http://127.0.0.1:8080" });
     const key = h("input", { class: "input mono", type: "password", autocomplete: "off",
       placeholder: st.has_attach_key ? "Saved; leave empty to keep it" : "Only if the server wants one" });
     const connect = async () => {
       try {
-        store.engine = await post("/api/engine/attach", { url: url.value.trim(), ...(key.value ? { key: key.value } : {}) });
+        store.engine = await post("/api/engine/attach", { url: url.value.trim(), ...(unit ? { service: unit.value.trim() } : {}),
+          ...(key.value ? { key: key.value } : {}) });
         key.value = "";
         emit("engine");
         renderStatus();
-        toast(store.engine.reachable ? "Connected" : store.engine.error || "Connected, but the server does not answer yet",
-          store.engine.reachable ? "good" : "info");
+        const s = store.engine;
+        toast(s.service ? `Connected to ${s.service.unit}` : s.reachable ? "Connected" : s.error || "Connected, but the server does not answer yet",
+          s.service || s.reachable ? "good" : "info");
       } catch (err) {
         toast(err.message, "bad", 8000);
       }
     };
     clear(boxes.attach,
       h("div", { class: "card-head" }, icon("link"), h("div", null, h("h3", null, "Use a server that already runs"),
-        h("p", null, "Chat with any llama.cpp or FLE server and watch its numbers. FLE Studio does not start or stop it."))),
+        h("p", null, systemd
+          ? "Chat with any llama.cpp or FLE server and watch its numbers. Name its systemd service as well, and FLE Studio "
+            + "follows the service's log and loading progress and can start, stop and restart it."
+          : "Chat with any llama.cpp or FLE server and watch its numbers. FLE Studio does not start or stop it."))),
       h("div", { class: "stack" },
+        unit ? field("Service", unit, "Optional. A llama-server that runs as a systemd service; the address then comes from its command.") : null,
         field("Address", url),
         field("API key", key),
         h("div", { class: "row" },
@@ -629,12 +701,20 @@ export function mount(main) {
     logBusy = false;
   }
 
+  const logSub = h("p");
+  function renderLogSub() {
+    const svc = store.engine?.service;
+    logSub.textContent = svc
+      ? `The journal of ${svc.unit}, live. All of it: journalctl ${svc.user ? "--user-unit" : "-u"} ${svc.unit}`
+      : `Everything llama-server prints. Full logs: ${store.state?.data_dir || "the data folder"}/logs`;
+  }
+
   function renderLogCard() {
     const search = h("input", { class: "input", placeholder: "Filter lines", style: { maxWidth: "220px" },
       oninput: debounce((e) => { filter = e.target.value.trim().toLowerCase(); renderLogAll(); }, 150) });
+    renderLogSub();
     clear(boxes.log,
-      h("div", { class: "card-head" }, icon("terminal"), h("div", { class: "grow" }, h("h3", null, "Engine log"),
-        h("p", null, `Everything llama-server prints. Full logs: ${store.state?.data_dir || "the data folder"}/logs`)),
+      h("div", { class: "card-head" }, icon("terminal"), h("div", { class: "grow" }, h("h3", null, "Engine log"), logSub),
       search,
       h("button", { class: "btn ghost icon sm", title: "Copy the log", "aria-label": "Copy the log",
         onclick: (e) => copyText(logLines.map((l) => l.text).join("\n"), e.currentTarget) }, icon("copy", "sm")),
@@ -657,10 +737,17 @@ export function mount(main) {
 
   let lastState = store.engine?.state;
   unsub.push(on("state", renderAll));
+  let lastUnit = store.engine?.service?.unit;
   unsub.push(on("engine", () => {
     renderStatus();
     if (store.engine?.log_seq !== logSeq) fetchLog();
-    if (store.engine?.state !== lastState) { lastState = store.engine?.state; renderAttach(); }
+    if (store.engine?.state !== lastState || store.engine?.service?.unit !== lastUnit) {
+      lastState = store.engine?.state;
+      lastUnit = store.engine?.service?.unit;
+      renderLaunch();
+      renderAttach();
+      renderLogSub();
+    }
   }));
   unsub.push(on("downloads", () => { if (store.downloads.some((d) => d.kind === "engine")) renderEngines(); }));
   renderLogCard();
