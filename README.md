@@ -5,7 +5,7 @@ live numbers while the model answers, a model loader and launch profiles. It wor
 [FLE engine](https://github.com/sirfyyn/FastLocalExperts) and with plain
 [llama.cpp](https://github.com/ggml-org/llama.cpp) on macOS, Linux and Windows.
 
-<!-- screenshot: chat -->
+<a href="docs/media/fle-studio.mp4"><img alt="FLE Studio running Rhea: a question, the answer streaming, the live data (click for the full video)" src="docs/media/fle-studio.gif"></a>
 
 - No account, no telemetry, nothing runs in the cloud. Chats, settings and models stay on your machine.
 - Python standard library only, no runtime dependencies. The installer brings its own Python.
@@ -93,12 +93,18 @@ fle-studio
 **Chat.** An Open WebUI-style chat in the browser: Markdown and code blocks, a collapsible block for the model's
 reasoning, streaming answers, the speed of each answer, and a history that stays on your computer.
 
-<!-- screenshot: chat-reasoning -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/chat-reasoning-dark.png">
+  <img alt="A reply with its reasoning opened" src="docs/media/chat-reasoning-light.png">
+</picture>
 
 **Live inference data.** While a model works: generation and prompt speed, the share of drafted tokens that were
 accepted (when the engine uses a draft or MTP head), NVIDIA GPU use, and the expert-cache hit rate of the FLE engine.
 
-<!-- screenshot: live-data -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/live-data-dark.png">
+  <img alt="Live data while Rhea answers: speed, draft acceptance and expert-cache hits" src="docs/media/live-data-light.png">
+</picture>
 
 **Model loader.** The Models page lists the FLE quants of Qwen3.8-Flash-Next on Hugging Face
 ([FLE-GGUF](https://huggingface.co/sirfyyn/Qwen3.8-Flash-Next-FLE-GGUF),
@@ -107,18 +113,27 @@ one fits your machine before you download anything. It also loads any GGUF repo 
 `owner/name` or a link) and adds files you already have. Downloads can be paused and resumed, and each file is
 checked against the SHA-256 that the Hub lists for it.
 
-<!-- screenshot: models -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/models-dark.png">
+  <img alt="The model library" src="docs/media/models-light.png">
+</picture>
 
 **Launch profiles.** FLE Studio picks a sensible start command for your machine and shows it in full. You can save
 your own profiles as a complete command with its environment, change the context size, GPU, threads and cache
 budget, and see the exact command line before anything starts.
 
-<!-- screenshot: engine -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/engine-dark.png">
+  <img alt="The engine view of a systemd service" src="docs/media/engine-light.png">
+</picture>
 
 **Experiments.** A short, repeatable speed test (a short answer, a piece of code, a long prompt) that records prefill
 and decode speed with the profile and engine used, so you can compare settings side by side.
 
-<!-- screenshot: experiments -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/experiments-dark.png">
+  <img alt="A speed test on the Experiments page" src="docs/media/experiments-light.png">
+</picture>
 
 **Simple settings.** Theme, sampling (the model's recommended values or your own), the folder for models, the
 Hugging Face token for gated repos, and network access.
