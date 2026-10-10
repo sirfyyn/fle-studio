@@ -155,10 +155,16 @@ const NAV = [
   ["/lab", "lab", "Experiments"], ["/settings", "settings", "Settings"],
 ];
 
+let navKey = "";
 function renderNav() {
   const nav = document.getElementById("nav");
   const path = location.pathname;
   const activeDl = store.downloads.filter((d) => ACTIVE_DL.has(d.state)).length;
+  // The live poll calls this every few seconds on /models and /engine; rebuilding the links there
+  // replaced the link under a pressed mouse button and the click got lost.
+  const key = `${path} ${activeDl}`;
+  if (key === navKey && nav.childElementCount) return;
+  navKey = key;
   clear(nav, NAV.map(([href, ic, label]) => {
     const active = href === "/" ? path === "/" || path.startsWith("/c/") : path.startsWith(href);
     return h("a", { href, "data-link": true, class: active ? "active" : "" }, icon(ic), label,
