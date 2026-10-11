@@ -53,6 +53,10 @@ Options for the installers:
 
 On Windows, `& ([scriptblock]::Create((irm <url>))) -NoStart` runs the script with parameters without saving it.
 
+Both installers can also install from a folder or a wheel file on your disk instead of GitHub (no git needed, and
+nothing is fetched from PyPI): `FLE_STUDIO_SOURCE=/path/to/fle-studio sh install.sh`, or
+`.\install.ps1 -Source C:\path\to\fle-studio` on Windows. A wheel comes from `python -m build`.
+
 ### Start, update, uninstall
 
 ```sh
@@ -61,7 +65,7 @@ uv tool upgrade fle-studio          # update (stays on the release you installed
 uv tool uninstall fle-studio        # remove the program (your data stays)
 ```
 
-The installer pins the release it installs (v0.1.0 at the time of writing), and `uv tool upgrade` follows that pin. To
+The installer pins the release it installs (v0.1.1 at the time of writing), and `uv tool upgrade` follows that pin. To
 move to a newer release, run the installer again; it always installs the release named in its own script, or the one
 you set with `FLE_STUDIO_REF`.
 
@@ -174,6 +178,9 @@ Two options in the unit fill the live panel. `--metrics` gives the speeds second
 shows the speeds of each finished answer. `-lv 4` lets the FLE engine's expert-cache hit rate into the journal, where
 FLE Studio reads it. Both also work as variables, for example in a drop-in:
 `Environment=LLAMA_ARG_ENDPOINT_METRICS=1 LLAMA_ARG_LOG_VERBOSITY=4`.
+
+To run FLE Studio itself on the machine that hosts the service (a headless server, for example) and open it from
+your laptop, see [docs/SERVICE-MODE.md](docs/SERVICE-MODE.md).
 
 Starting or stopping a system service needs privileges. FLE Studio first asks systemd (enough as root, for a user
 unit, or with a polkit rule), then tries `sudo -n`. It never asks for a password; when neither works, the Engine page

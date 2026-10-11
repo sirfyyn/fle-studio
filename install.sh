@@ -20,13 +20,16 @@
 #   -h, --help    show this help
 #
 # Environment:
-#   FLE_STUDIO_REF   git tag, branch or commit to install (default: v0.1.0)
+#   FLE_STUDIO_REF     git tag, branch or commit to install (default: v0.1.1)
+#   FLE_STUDIO_SOURCE  install from this folder or wheel file instead of GitHub (offline installs, CI);
+#                      FLE_STUDIO_REF and git are not used then
 
 set -eu
 
 REPO_URL="https://github.com/sirfyyn/fle-studio"
 UV_INSTALLER_URL="https://astral.sh/uv/install.sh"
-REF="${FLE_STUDIO_REF:-v0.1.0}"
+REF="${FLE_STUDIO_REF:-v0.1.1}"
+SOURCE="${FLE_STUDIO_SOURCE:-}"
 START=1
 UV_TMP=""
 ORIG_PATH="$PATH"
@@ -59,7 +62,8 @@ Options:
   -h, --help    show this help
 
 Environment:
-  FLE_STUDIO_REF   git tag, branch or commit to install (default: v0.1.0)
+  FLE_STUDIO_REF     git tag, branch or commit to install (default: v0.1.1)
+  FLE_STUDIO_SOURCE  install from this folder or wheel file instead of GitHub (needs no git)
 EOF
 }
 
@@ -178,9 +182,18 @@ case "$OS" in
   *) die "unsupported operating system: $OS. FLE Studio runs on macOS, Linux and Windows." ;;
 esac
 
-say "FLE Studio installer (release: $REF)"
-
-need_git
+if [ -n "$SOURCE" ]; then
+  say "FLE Studio installer (source: $SOURCE)"
+  [ -e "$SOURCE" ] || die "FLE_STUDIO_SOURCE does not exist: $SOURCE"
+  # uv takes a relative path relative to the folder it runs in; the absolute path is the same everywhere.
+  case "$SOURCE" in
+    /*) ;;
+    *) SOURCE="$(pwd)/$SOURCE" ;;
+  esac
+else
+  say "FLE Studio installer (release: $REF)"
+  need_git
+fi
 
 if find_uv; then
   say "Found $(uv --version)."
@@ -192,9 +205,16 @@ else
   say "Installed $(uv --version)."
 fi
 
-say "Installing FLE Studio from GitHub (uv sets up Python 3.12 for it if needed) ..."
-if ! uv tool install --python 3.12 --force "git+${REPO_URL}@${REF}" </dev/null; then
-  die "installing FLE Studio failed (see the messages above). Common causes: no internet access, or the release '$REF' does not exist (try FLE_STUDIO_REF=main)."
+if [ -n "$SOURCE" ]; then
+  say "Installing FLE Studio from $SOURCE (uv sets up Python 3.12 for it if needed) ..."
+  if ! uv tool install --python 3.12 --force "$SOURCE" </dev/null; then
+    die "installing FLE Studio from $SOURCE failed (see the messages above)."
+  fi
+else
+  say "Installing FLE Studio from GitHub (uv sets up Python 3.12 for it if needed) ..."
+  if ! uv tool install --python 3.12 --force "git+${REPO_URL}@${REF}" </dev/null; then
+    die "installing FLE Studio failed (see the messages above). Common causes: no internet access, or the release '$REF' does not exist (try FLE_STUDIO_REF=main)."
+  fi
 fi
 
 BIN_DIR="$(uv tool dir --bin 2>/dev/null)" || BIN_DIR="$HOME/.local/bin"
@@ -217,8 +237,12 @@ say "$VERSION is installed."
 printf '\n'
 printf '  Start:      fle-studio\n'
 printf '  Update:     uv tool upgrade fle-studio\n'
-printf '              (this install follows "%s"; to move to another release, run the installer again\n' "$REF"
-printf '               with FLE_STUDIO_REF=<tag>)\n'
+if [ -n "$SOURCE" ]; then
+  printf '              (this install came from %s; run the installer again to update it)\n' "$SOURCE"
+else
+  printf '              (this install follows "%s"; to move to another release, run the installer again\n' "$REF"
+  printf '               with FLE_STUDIO_REF=<tag>)\n'
+fi
 printf '  Uninstall:  uv tool uninstall fle-studio\n'
 printf '\n'
 printf 'Settings, chats and downloaded models live in\n  %s\nand stay there when you uninstall. Delete that folder to remove them as well.\n' "$DATA_DIR"

@@ -15,7 +15,11 @@ Install only; do not start FLE Studio afterwards. With "irm | iex" you cannot pa
 $env:FLE_STUDIO_NO_START = '1' does the same.
 
 .PARAMETER Ref
-Git tag, branch or commit of FLE Studio to install. Default: $env:FLE_STUDIO_REF, else v0.1.0.
+Git tag, branch or commit of FLE Studio to install. Default: $env:FLE_STUDIO_REF, else v0.1.1.
+
+.PARAMETER Source
+Install from this folder or wheel file instead of GitHub (offline installs, CI); git is not needed then and -Ref is
+ignored. Default: $env:FLE_STUDIO_SOURCE.
 
 .EXAMPLE
 irm https://raw.githubusercontent.com/sirfyyn/fle-studio/main/install.ps1 | iex
@@ -25,7 +29,8 @@ irm https://raw.githubusercontent.com/sirfyyn/fle-studio/main/install.ps1 | iex
 #>
 param(
     [switch]$NoStart,
-    [string]$Ref = $(if ($env:FLE_STUDIO_REF) { $env:FLE_STUDIO_REF } else { 'v0.1.0' })
+    [string]$Ref = $(if ($env:FLE_STUDIO_REF) { $env:FLE_STUDIO_REF } else { 'v0.1.1' }),
+    [string]$Source = $env:FLE_STUDIO_SOURCE
 )
 
 # Everything runs inside one script block, so that "irm | iex" leaves no helper functions or variables behind
@@ -163,10 +168,19 @@ param(
         }
         $startApp = -not ([bool]$NoStart -or ($env:FLE_STUDIO_NO_START -eq '1'))
 
-        Write-Step ('FLE Studio installer (release: ' + $Ref + ')')
+        $fromSource = [bool]$Source
+        if ($fromSource) {
+            if (-not (Test-Path -LiteralPath $Source)) {
+                throw ('The source does not exist: ' + $Source)
+            }
+            $Source = (Resolve-Path -LiteralPath $Source).ProviderPath
+            Write-Step ('FLE Studio installer (source: ' + $Source + ')')
+        } else {
+            Write-Step ('FLE Studio installer (release: ' + $Ref + ')')
+        }
         Update-SessionPath
 
-        if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue)) {
+        if (-not $fromSource -and -not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue)) {
             throw "Git is needed, because uv fetches FLE Studio from GitHub with it. Install it with 'winget install --id Git.Git -e' or from https://git-scm.com/download/win, then open a new PowerShell window and run this installer again."
         }
 
@@ -183,8 +197,13 @@ param(
             Write-Step ('Installed ' + $uvVersion + '.')
         }
 
-        Write-Step 'Installing FLE Studio from GitHub (uv sets up Python 3.12 for it if needed) ...'
-        $spec = 'git+' + $repoUrl + '@' + $Ref
+        if ($fromSource) {
+            Write-Step ('Installing FLE Studio from ' + $Source + ' (uv sets up Python 3.12 for it if needed) ...')
+            $spec = $Source
+        } else {
+            Write-Step 'Installing FLE Studio from GitHub (uv sets up Python 3.12 for it if needed) ...'
+            $spec = 'git+' + $repoUrl + '@' + $Ref
+        }
         $code = Invoke-Live -File 'uv' -Arguments @('tool', 'install', '--python', '3.12', '--force', $spec)
         if ($code -ne 0) {
             throw ("Installing FLE Studio failed (see the messages above). Common causes: no internet access, the release '" + $Ref + "' does not exist (try -Ref main), or FLE Studio is running right now (close it and run this installer again).")
@@ -219,8 +238,12 @@ param(
             Write-Host '  Start:      fle-studio'
         }
         Write-Host '  Update:     uv tool upgrade fle-studio'
-        Write-Host ('              (this install follows ' + $Ref + '; to move to another release, run the installer again')
-        Write-Host '               with -Ref <tag>, or set $env:FLE_STUDIO_REF before "irm | iex")'
+        if ($fromSource) {
+            Write-Host ('              (this install came from ' + $Source + '; run the installer again to update it)')
+        } else {
+            Write-Host ('              (this install follows ' + $Ref + '; to move to another release, run the installer again')
+            Write-Host '               with -Ref <tag>, or set $env:FLE_STUDIO_REF before "irm | iex")'
+        }
         Write-Host '  Uninstall:  uv tool uninstall fle-studio'
         if ($shortcut) {
             Write-Host ('              and delete the Start Menu shortcut: ' + $shortcut)
