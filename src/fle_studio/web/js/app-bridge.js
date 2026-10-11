@@ -17,7 +17,7 @@
 // Not offered: fullscreen and picture-in-picture, resources/read from the app, permissions (camera, microphone, …),
 // streaming of partial tool input.
 
-import { post } from "./api.js";
+import { hostUrl, post } from "./api.js";
 import { confirmDialog, h, icon, toast } from "./ui.js";
 
 const PROTOCOL = "2026-01-26";
@@ -104,7 +104,7 @@ export function appPanel(call) {
 async function start(call, panel, status) {
   const prep = await post("/api/apps/prepare", { name: call.name });
   const frame = h("iframe", {
-    class: "mcp-app", src: prep.url, sandbox: "allow-scripts", title: `${call.name} (MCP app)`,
+    class: "mcp-app", src: hostUrl(prep.url), sandbox: "allow-scripts", title: `${call.name} (MCP app)`,
     referrerpolicy: "no-referrer", loading: "eager", style: { height: "120px" },
   });
   if (prep.prefers_border === false) frame.classList.add("borderless");

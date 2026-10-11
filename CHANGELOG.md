@@ -3,7 +3,7 @@
 ## [0.2.0] - unreleased
 
 Not released yet. Studio 0.2 adds Forge, a chat with attachments, tools, MCP and apps, tuning and quality
-measurements, an expert cache page and an update check.
+measurements, an expert cache page, an update check and host/client mode.
 
 ### Forge: build your own quant
 
@@ -87,6 +87,22 @@ Details in [docs/TUNING-AND-QUALITY.md](docs/TUNING-AND-QUALITY.md).
   same command line. A failed install keeps the old version running and shows the log. On Windows a helper script does
   the install after Studio has ended. Other installs get the fitting command to copy.
 - The same notice reports a newer FLE engine build for the engines you installed.
+
+### Host and client
+
+Details in [docs/REMOTE.md](docs/REMOTE.md).
+
+- Host and client mode ([docs/REMOTE.md](docs/REMOTE.md)). A host (`--host`) serves TLS with a self-made certificate
+  whose fingerprint is shown and pinned by clients; clients pair with a 10-minute single-use code and get a revocable
+  token of their own (list with Revoke in Settings → Remote access). `--pair-code`, `--pair`, `--tls`, `--no-tls`.
+- Client switcher at the top of the sidebar ("This machine / host / Add host…"). Hosts are added by address and code,
+  or by SSH target; Studio runs and watches `ssh -N -L` itself (keys only). All pages, streaming chat included, run
+  against the chosen host through a generic pass-through, so pages added later work too. The window shows the host's
+  name and colour and reports an unreachable host with Reconnect.
+- Rights per client: chat, look and measure by default; Admin for settings, installs and models; installs and updates
+  ask for a confirmation on the client. Pairing is rate limited; tokens are stored as hashes and never logged.
+- Optional read-only local copy of a host's chats for offline reading.
+- Everything that changes something on a host needs the Admin right for a paired client (tools and MCP servers, Forge jobs, tuning, quality runs, updates); chat, attachments and speed tests do not.
 
 ### Changed
 

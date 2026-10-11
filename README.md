@@ -11,7 +11,7 @@ live numbers while the model answers, a model loader and launch profiles. It wor
 - Python standard library only, no runtime dependencies. The installer brings its own Python.
 - MIT licensed.
 
-Status: early release (0.x). It is new, so expect rough edges, and please open an issue when you find one.
+Status: 0.2, still early (0.x). It is new, so expect rough edges, and please open an issue when you find one.
 
 ## Install
 
@@ -170,19 +170,37 @@ and decode speed with the profile and engine used, so you can compare settings s
   <img alt="A speed test on the Experiments page" src="docs/media/experiments-light.png">
 </picture>
 
-**Forge (in development, not in the current release).** Build your own quant with the FLE recipe: take whole expert
-layers from the quants you already have, quantize a full-precision model with `llama-quantize` and an importance
-matrix, optionally prune experts with REAP, and check the result against the original (KL divergence, top-1
-agreement). Recipes are small JSON files that can be shared. See [docs/FORGE.md](docs/FORGE.md).
+**Forge.** Build your own quant with the FLE recipe: take whole expert layers from the quants you already have,
+quantize a full-precision model with `llama-quantize` and an importance matrix, optionally prune experts with REAP,
+and check the result against the original (KL divergence, top-1 agreement, perplexity ratio). Jobs show progress and
+can be cancelled and resumed; recipes are small JSON files that can be shared; a finished quant is published to the
+library with a start profile. A small calibration text (public domain, CC0 or MIT, listed in
+`src/fle_studio/forge/corpus/SOURCES.md`) ships with Studio. See [docs/FORGE.md](docs/FORGE.md).
+
+<!-- Screenshots of Forge, the expert cache and the chat with an MCP app come with the release, made on the real
+     hardware (the test screenshots show temporary folders of the test run). -->
+
+**Tools and MCP.** The model can call a calculator, the clock, read files in one folder and search the web, and the
+tools of MCP servers: programs (stdio), web servers (Streamable HTTP, with a **Sign in** button when a server wants
+OAuth, and the older HTTP+SSE as a fallback) and MCP Apps, whose `ui://` pages show a tool's result in a sandboxed frame
+in the chat. Anything that writes or starts a program asks first. See [docs/MCP.md](docs/MCP.md) and
+[docs/CHAT.md](docs/CHAT.md).
+
+**Updates.** About once a day (and with **Check now**) Studio asks GitHub for the latest release and shows a quiet
+card in the sidebar; installs made with uv tool update with one click, others get the command to copy. It can be
+switched off in Settings → Updates.
 
 **Simple settings.** Theme, sampling (the model's recommended values or your own), the folder for models, the
 Hugging Face token for gated repos, and network access.
 
-**Best for my machine, measured.** On the Engine page the simple view has one button that tunes threads, the GPU expert
+**Tuning and quality.** On the Engine page the simple view has one button that tunes threads, the GPU expert
 cache or `--n-cpu-moe`, and batch size by measuring, and saves the winner as a profile. Experiments show the median with
 a 95 % interval over repeated runs, say "within noise" when a difference is not real, compare two settings A/B/A, and put
 quality (KL divergence, a knowledge probe) next to speed. See [docs/TUNING-AND-QUALITY.md](docs/TUNING-AND-QUALITY.md);
 the Expert cache page is described in [docs/EXPERT-CACHE-DATA.md](docs/EXPERT-CACHE-DATA.md).
+
+**Expert cache.** A page that reads the engine's log and shows how well the GPU expert cache works: hit rate over
+time, the budget, and (when the engine prints it) the hot experts per layer.
 
 ## Engines
 
@@ -237,6 +255,15 @@ on your hardware: the speed figures in the FLE report and in the model catalog w
 (RTX PRO 4500 32 GB, 120 GB DDR5, Ryzen 9 9950X3D), and yours will differ. Method and measurements are in the
 [FLE report](https://sirfyyn.github.io/FastLocalExperts/).
 
+## Host and client
+
+A Studio on your Mac can compute on another machine: start the machine with the GPU with `fle-studio --host 0.0.0.0`
+(TLS with a certificate it makes itself, pinned by fingerprint), pair with a short-lived code, or reach it through an
+SSH tunnel that Studio starts and watches itself (keys only, no passwords). The switcher at the top of the sidebar
+("This machine / host / Add host…") sends every page to the chosen host; the window shows its name and colour. Paired
+computers can chat, look and measure; **Admin** adds settings, installs and models, and installs still ask for a
+confirmation. Chats live on the host, with an optional read-only copy. Details: [docs/REMOTE.md](docs/REMOTE.md).
+
 ## Privacy
 
 - FLE Studio listens on `127.0.0.1` only, unless you ask for more with `--host`. The engine it starts listens on
@@ -250,19 +277,20 @@ on your hardware: the speed figures in the FLE report and in the model catalog w
 - Two chat features can reach the internet, and both are your choice: the web search tool (off by default; each search
   asks first) and MCP servers you add that use a web address. Programs you list as MCP servers run with your rights.
 
-## Roadmap
+## What is open
 
-**Studio Forge** is being built for 0.2 (see [docs/FORGE.md](docs/FORGE.md)). A small calibration text (public domain, CC0 and MIT
-sources, listed in `src/fle_studio/forge/corpus/SOURCES.md`) ships with Studio. What is still open: a run on a real
-model of the size of the FLE quants.
+Studio 0.2 is built and tested with stand-in engines. Still to come: runs on real hardware (see
+[docs/HARDWARE-TESTS.md](docs/HARDWARE-TESTS.md)), a Forge run on a model of the size of the FLE quants, and the
+Windows updater on a real Windows machine.
 
 Ideas and bug reports are welcome as GitHub issues.
 
 ## Development
 
 ```sh
-python -m pip install -e ".[pdf]" pytest ruff
+python -m pip install -e ".[pdf]" pytest ruff==0.17.0
 ruff check src tests
+ruff format --check src tests
 pytest -q
 ```
 

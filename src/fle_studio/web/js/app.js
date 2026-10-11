@@ -2,6 +2,7 @@
 
 import { del, get } from "./api.js";
 import { initChatSearch, searchActive } from "./chat-search.js";
+import { initHosts } from "./hosts.js";
 import { clear, confirmDialog, fmt, h, icon, stateBadge, toast } from "./ui.js";
 import { initUpdates } from "./update.js";
 
@@ -264,6 +265,7 @@ async function start() {
   store.engine = store.state.engine;
   renderEngineCard();
   initUpdates();
+  initHosts();
   refreshChats().catch(() => {});
   route();
   tick();

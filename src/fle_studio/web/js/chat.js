@@ -1,7 +1,7 @@
 // The chat page: conversation (a tree of messages with versions), composer with attachments, the tool loop,
 // and the live panel with the engine's numbers.
 
-import { get, post, put, streamChat, upload } from "./api.js";
+import { get, hostUrl, post, put, streamChat, upload } from "./api.js";
 import { emit, engineModelName, engineUp, navigate, on, refreshChats, store, topbar } from "./app.js";
 import { attachmentsEl, createAttach } from "./attach.js";
 import { buildRequest, estimateRequest, usedImages } from "./chat-request.js";
@@ -268,7 +268,7 @@ export function mount(main, chatId) {
   async function exportChat(format) {
     if (!chat.id) { toast("Nothing to export yet"); return; }
     await save();
-    const a = h("a", { href: `/api/chats/${chat.id}/export?format=${format}`, download: "" });
+    const a = h("a", { href: hostUrl(`/api/chats/${chat.id}/export?format=${format}`), download: "" });
     document.body.append(a);
     a.click();
     a.remove();

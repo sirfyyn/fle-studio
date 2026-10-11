@@ -8,6 +8,7 @@ import os
 import secrets
 import shutil
 import signal
+import socket
 import sys
 import threading
 import urllib.request
@@ -44,6 +45,25 @@ def main(argv: list[str] | None = None) -> int:
         help="use a llama-server that runs as a systemd service (Linux): "
         "its log, loading progress, start, stop and restart; the address comes from the unit",
     )
+    ap.add_argument(
+        "--no-tls",
+        action="store_true",
+        help="host mode: serve plain http instead of TLS with a self-made certificate "
+        "(for browsers only; paired clients should use TLS or an SSH tunnel)",
+    )
+    ap.add_argument(
+        "--tls",
+        action="store_true",
+        help="serve TLS also on this machine's own address (host mode does it by itself when it listens "
+        "beyond this machine)",
+    )
+    ap.add_argument("--pair", action="store_true", help="host mode: print a pairing code for a client at startup")
+    ap.add_argument(
+        "--pair-code",
+        action="store_true",
+        help="print a pairing code (valid 10 minutes) and the certificate fingerprint for the data folder, "
+        "then exit; works while the server is running",
+    )
     ap.add_argument("--version", action="version", version=f"FLE Studio {__version__}")
     args = ap.parse_args(argv)
     if args.home:
@@ -57,6 +77,9 @@ def main(argv: list[str] | None = None) -> int:
     host = args.host or cfg.get("server.host")
     port = args.port or int(cfg.get("server.port"))
     local_host = host in ("127.0.0.1", "localhost", "::1")
+    if args.pair_code:
+        _print_pairing(studio, host, port, local_host and not args.no_tls)
+        return 0
     if local_host and _running(port):
         url = f"http://127.0.0.1:{port}/"
         print(f"FLE Studio is already running: {url}")
@@ -68,14 +91,25 @@ def main(argv: list[str] | None = None) -> int:
         print("FLE Studio is open to the network. Access key for other machines (also in Settings → Network):")
         print(f"  {cfg.get('access_key')}")
     try:
-        server = make_server(studio, host, port)
+        server = make_server(studio, host, port, tls=False if args.no_tls else True if args.tls else None)
     except OSError as exc:
         print(f"FLE Studio could not start its web server: {exc}", file=sys.stderr)
         return 1
     shown = "127.0.0.1" if host in ("0.0.0.0", "::") or local_host else host
-    url = f"http://{shown}:{server.server_address[1]}/"
+    scheme = "https" if studio.listen.get("tls") else "http"
+    url = f"{scheme}://{shown}:{server.server_address[1]}/"
     print(f"FLE Studio {__version__} — {url}")
     print(f"Data folder: {studio.data_dir}")
+    if studio.listen.get("tls"):
+        from . import tlsgen  # noqa: PLC0415
+
+        print(f"Host mode: TLS, certificate fingerprint (SHA-256) {tlsgen.pretty(studio.tls_fingerprint)}")
+        print("Pair a client with a code from Settings → Remote access, or run: fle-studio --pair-code")
+    if args.pair:
+        from . import remote  # noqa: PLC0415
+
+        made = remote.service(studio).clients.new_code()
+        print(f"Pairing code (10 minutes, one use): {made['pretty']}")
     print("Press Ctrl+C to stop (this also stops a model FLE Studio started).")
 
     attach_url, attach_unit = args.attach or "", args.service or ""
@@ -126,6 +160,9 @@ def main(argv: list[str] | None = None) -> int:
         print("Stopping FLE Studio …")
         studio.engine.shutdown()
         server.server_close()
+        from . import remote  # noqa: PLC0415
+
+        remote.shutdown(studio)  # ends the ssh tunnels this Studio started
     if restart["wanted"] and restart["argv"]:
         return _run_again(restart["argv"])
     return 0
@@ -140,7 +177,18 @@ def _run_again(argv: list[str]) -> int:
     except OSError as exc:
         print(f"Could not start FLE Studio again ({exc}). Start it by hand: fle-studio", file=sys.stderr)
         return 1
-    return 0
+
+
+def _print_pairing(studio: Any, host: str, port: int, loopback: bool) -> None:
+    """`--pair-code`: a code for the data folder, written to its pairing file, which the running server reads."""
+    from . import remote, tlsgen  # noqa: PLC0415
+
+    made = remote.service(studio).clients.new_code()
+    print(f"Pairing code (10 minutes, one use): {made['pretty']}")
+    if studio.config.get("server.tls") and not loopback:
+        _, _, fp = tlsgen.ensure(studio.data_dir, remote.host_name(studio))
+        print(f"Certificate fingerprint (SHA-256): {tlsgen.pretty(fp)}")
+    print(f"In the client: Add host…, address {socket.gethostname()}:{port}, this code.")
 
 
 if __name__ == "__main__":

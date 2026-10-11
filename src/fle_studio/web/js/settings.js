@@ -3,6 +3,7 @@
 import { post } from "./api.js";
 import { applyTheme, on, refreshState, store, topbar } from "./app.js";
 import { toolsSection, stopToolsPolling } from "./settings-tools.js";
+import { remoteSections } from "./hosts.js";
 import { clear, fmt, h, icon, toast } from "./ui.js";
 import { updatesSection } from "./update.js";
 
@@ -31,7 +32,7 @@ export function mount(main) {
       h("div", { class: "page-head" }, h("div", null, h("h2", null, "Settings"),
         h("p", null, `Stored in ${store.state.data_dir}. Start settings for the engine live on the Engine page.`))),
       look(s), models(s), chat(s), toolsSection(s, { section, field, toggle, save, render: () => render(true) }),
-      hub(s), network(s), updatesSection({ section, toggle, save }), about());
+      hub(s), network(s), updatesSection({ section, toggle, save }), ...remoteSections({ section, toggle }), about());
   }
 
   // ------------------------------------------------------------------------------------------- sections

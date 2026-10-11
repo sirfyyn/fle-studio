@@ -30,6 +30,7 @@ import re
 import shutil
 import signal
 import socket
+import ssl
 import struct
 import subprocess
 import sys
@@ -193,7 +194,12 @@ def kill_pid(pid: int) -> None:
         os.kill(pid, getattr(signal, "SIGKILL", signal.SIGTERM))
 
 
-_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # never through a proxy: it is all loopback
+_UNVERIFIED = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)  # a host Studio shows a certificate of its own making
+_UNVERIFIED.check_hostname = False
+_UNVERIFIED.verify_mode = ssl.CERT_NONE
+_OPENER = urllib.request.build_opener(  # never through a proxy: it is all loopback
+    urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=_UNVERIFIED)
+)
 
 
 def http(
@@ -269,9 +275,12 @@ def gguf_stub() -> bytes:
 class StudioProcess:
     """FLE Studio as a child process, with its output in `studio.log` next to the screenshots."""
 
-    def __init__(self, work: Path, out: Path) -> None:
+    def __init__(self, work: Path, out: Path, name: str = "studio", extra: tuple[str, ...] = ()) -> None:
         self.work, self.home = work, work / "home"
-        self.log_path = out / "studio.log"
+        self.log_path = out / f"{name}.log"
+        self.extra = extra  # more command line, e.g. host mode
+        self.scheme = "https" if "--tls" in extra else "http"
+        self.sidekick: StudioProcess | None = None  # a second Studio (the host of the remote steps)
         self.proc: subprocess.Popen[bytes] | None = None
         self.port = 0
         self.base = ""
@@ -302,7 +311,7 @@ class StudioProcess:
         exits: list[str] = []
         for _ in range(3):  # a port can be taken between looking for a free one and the server binding it
             self.port = free_port()
-            self.base = f"http://127.0.0.1:{self.port}"
+            self.base = f"{self.scheme}://127.0.0.1:{self.port}"
             cmd = [
                 sys.executable,
                 "-m",
@@ -312,6 +321,7 @@ class StudioProcess:
                 "--port",
                 str(self.port),
                 "--no-browser",
+                *self.extra,
             ]
             with self.log_path.open("ab") as log:
                 log.write(f"$ {' '.join(cmd)}\n".encode())
@@ -386,6 +396,8 @@ class StudioProcess:
 
     def cleanup(self) -> None:
         """At the very end, also after a failure: no Studio and no engine may stay behind."""
+        if self.sidekick is not None:
+            self.sidekick.cleanup()
         if self.proc is not None and self.proc.poll() is None:
             with contextlib.suppress(Exception):
                 self.api("POST", "/api/engine/stop", timeout=10)
@@ -409,6 +421,7 @@ class PageWatch:
     def __init__(self, page: Page) -> None:
         self.errors: list[str] = []
         self.lines: list[str] = []
+        self.tolerated: list[str] = []  # console texts a step expects (a host that refuses or is away: 424, 502)
         page.on("console", self._console)
         page.on("pageerror", self._page_error)
 
@@ -416,7 +429,7 @@ class PageWatch:
         loc = msg.location or {}
         where = f" ({loc.get('url')}:{loc.get('lineNumber')})" if loc.get("url") else ""
         self.lines.append(f"{msg.type}: {msg.text}{where}")
-        if msg.type == "error":
+        if msg.type == "error" and not any(t in msg.text for t in self.tolerated):
             self.errors.append(f"console error: {msg.text}{where}")
 
     def _page_error(self, exc: Any) -> None:
@@ -1550,6 +1563,128 @@ class Session:
                 raise E2EError("the update check sent identifying headers")
             step.note = f"{len(gh.requests)} request(s) to the fake GitHub, no identifiers; " + shots
 
+    def remote(self) -> None:
+        """A second Studio is the host (TLS, its own engine); this page adds it, works on it and comes back."""
+        page, studio = self.page, self.studio
+        host = StudioProcess(studio.work / "host", self.out, name="host", extra=("--host", "127.0.0.1", "--tls"))
+        studio.sidekick = host
+        host.work.mkdir(parents=True, exist_ok=True)
+        label = page.locator("#host-name")
+
+        def pairing_code() -> str:
+            return str(host.api("POST", "/api/remote/code", {})["pretty"])
+
+        with self.step("Remote: start a host Studio (TLS) with its own engine") as step:
+            host.start()
+            stub = host.work / "elsewhere" / "e2e-stub-Q4_K_M.gguf"
+            stub.parent.mkdir(parents=True, exist_ok=True)
+            stub.write_bytes(gguf_stub())
+            host.api("POST", "/api/engines/check", {"path": str(FAKE_ENGINE)})
+            host.api("POST", "/api/settings", {"engine": {"choice": "custom", "custom_path": str(FAKE_ENGINE)}})
+            model = host.api("POST", "/api/models/add", {"path": str(stub)})
+            host.api("POST", "/api/engine/start", {"model": model["id"], "profile": "auto"})
+            ready = host.wait_engine("ready", 90)
+            host.engine_pid = int(ready["pid"])
+            host.engine_port = urlparse(ready["base_url"]).port or 0
+            info = host.api("GET", "/api/remote")
+            if not info["listening"]["tls"] or len(info["fingerprint"]) != 64:
+                raise E2EError(f"the host does not show a certificate fingerprint: {info}")
+            step.note = f"host on {host.base}, fingerprint {info['fingerprint_pretty'][:23]}…"
+
+        with self.step("Remote: add the host with its pairing code and switch to it") as step:
+            self.expect(label).to_have_text("This machine", timeout=WAIT_MS)
+            page.locator("#host-switch").click()
+            page.locator(".menu").get_by_role("menuitem", name="Add host…").click()
+            page.locator("#host-address").fill(f"127.0.0.1:{host.port}")
+            page.locator("#host-name-in").fill("Titan (e2e)")
+            page.locator("#host-code").fill(pairing_code())
+            shots = self.shoot("host-add")
+            page.locator("#host-add-go").click()
+            self.expect(label).to_have_text("Titan (e2e)", timeout=WAIT_MS)
+            self.expect(page.locator("body")).to_have_class(re.compile(r"host-remote"), timeout=WAIT_MS)
+            self.expect(page).to_have_title("Titan (e2e) · FLE Studio", timeout=WAIT_MS)
+            data_dir = page.evaluate("async () => (await (await fetch('/api/state')).json()).data_dir")
+            if data_dir != str(host.home) and Path(data_dir).resolve() != host.home.resolve():
+                raise E2EError(f"the page still talks to this machine: data folder {data_dir}")
+            self.expect(page.locator("#engine-card .pill")).to_have_text("Ready", timeout=WAIT_MS)
+            step.note = f"the page shows the host's data folder, the badge and the colour; {shots}"
+
+        with self.step("Remote: chat on the host, the answer streams, the chat stays on the host") as step:
+            before = len(studio.api("GET", "/api/chats")["chats"])
+            page.locator("textarea[aria-label='Message']").fill("Hello host")
+            page.locator("button.send").click()
+            self.expect(page.locator(".msg.assistant .stats")).to_be_visible(timeout=60_000)
+            reply = page.locator(".msg.assistant .body > .md")
+            self.expect(reply).to_contain_text('Fake reply to "Hello host"', timeout=WAIT_MS)
+            page.wait_for_function("() => /^\\/c\\/[0-9a-f]{16}$/.test(location.pathname)", timeout=WAIT_MS)
+            chat_id = page.evaluate("() => location.pathname.split('/').pop()")
+            stored = wait_until(lambda: self._chat_on(host, chat_id), 15, "the chat to be saved on the host")
+            if studio.api("GET", "/api/chats")["chats"] and len(studio.api("GET", "/api/chats")["chats"]) != before:
+                raise E2EError("a chat was saved on this machine while working on the host")
+            step.note = f"{len(stored['messages'])} messages stored on the host only; " + self.shoot("host-chat")
+
+        host_page = page.context.new_page()
+        self.page = host_page
+        try:
+            with self.step("Remote: the host's own Settings lists the paired computer and makes codes") as step:
+                host_page.goto(host.base + "/settings", wait_until="domcontentloaded")
+                heading = host_page.get_by_role("heading", name="Remote access", exact=True)
+                card = host_page.locator(".card", has=heading)
+                self.expect(card).to_contain_text("Certificate fingerprint", timeout=WAIT_MS)
+                self.expect(card.locator("#host-fp")).to_have_text(
+                    re.compile(r"^([0-9A-F]{2}:){31}[0-9A-F]{2}$"), timeout=WAIT_MS
+                )
+                self.expect(card.locator("[data-client]")).to_have_count(1, timeout=WAIT_MS)
+                card.locator("#pair-new").click()
+                code_re = re.compile(r"^[A-Z2-9]{4}-[A-Z2-9]{4}$")
+                self.expect(card.locator("#pair-code")).to_have_text(code_re, timeout=WAIT_MS)
+                step.note = self.shoot("host-access")
+
+            with self.step("Remote: revoking on the host is noticed on the client, pairing again fixes it") as step:
+                self.watch.tolerated = ["status of 424"]  # the host refuses a revoked client: expected, and shown
+                card.locator("[data-client]").get_by_role("button", name="Revoke").click()
+                host_page.locator(".modal").get_by_role("button", name="Revoke").click()
+                self.expect(card.locator("[data-client]")).to_have_count(0, timeout=WAIT_MS)
+                self.page = page
+                banner = page.locator("#host-banner")
+                page.evaluate("() => fetch('/api/state')")  # the next request the page makes finds out
+                self.expect(banner).to_contain_text("no longer accepts this computer", timeout=WAIT_MS)
+                shots = self.shoot("host-revoked")
+                banner.get_by_role("button", name="Pair again…").click()
+                page.locator("#repair-code").fill(pairing_code())
+                page.locator(".host-modal").get_by_role("button", name="Pair again").click()
+                self.expect(label).to_have_text("Titan (e2e)", timeout=WAIT_MS)
+                self.expect(page.locator("#host-banner")).to_have_count(0, timeout=WAIT_MS)
+                self.expect(page.locator("#engine-card .pill")).to_have_text("Ready", timeout=WAIT_MS)
+                step.note = f"banner and re-pairing work; {shots}"
+        finally:
+            self.page = page
+            self.watch.tolerated = []
+            host_page.close()
+
+        with self.step("Remote: the host goes away, the page says so and goes back to this machine") as step:
+            self.watch.tolerated = ["status of 502", "status of 424"]
+            code = host.terminate()
+            page.evaluate("() => fetch('/api/state')")
+            banner = page.locator("#host-banner")
+            self.expect(banner).to_contain_text("is not reachable", timeout=WAIT_MS)
+            shots = self.shoot("host-away")
+            banner.get_by_role("button", name="Use this machine").click()
+            self.expect(label).to_have_text("This machine", timeout=WAIT_MS)
+            self.expect(page.locator("body")).not_to_have_class(re.compile(r"host-remote"), timeout=WAIT_MS)
+            self.expect(page).to_have_title("FLE Studio", timeout=WAIT_MS)
+            local_dir = page.evaluate("async () => (await (await fetch('/api/state')).json()).data_dir")
+            if Path(local_dir).resolve() != studio.home.resolve():
+                raise E2EError(f"back on this machine the page shows {local_dir}")
+            step.note = f"host ended with code {code}; {shots}"
+        self.watch.tolerated = []
+
+    @staticmethod
+    def _chat_on(host: StudioProcess, chat_id: str) -> dict[str, Any] | None:
+        chat = host.api("GET", f"/api/chats/{chat_id}")
+        messages = chat.get("messages") or []
+        return chat if len(messages) == 2 and messages[1].get("content") else None
+
 
 # ------------------------------------------------------------------------------------------------ the run
 
@@ -1574,7 +1709,12 @@ def run_browser(
         watch = None
         try:
             context = browser.new_context(
-                viewport=VIEWPORT, device_scale_factor=1, locale="en-US", color_scheme="light", reduced_motion="reduce"
+                viewport=VIEWPORT,
+                device_scale_factor=1,
+                locale="en-US",
+                color_scheme="light",
+                reduced_motion="reduce",
+                ignore_https_errors=True,
             )
             context.set_default_timeout(WAIT_MS)
             page = context.new_page()
@@ -1601,6 +1741,7 @@ def run_browser(
             session.forge()
             session.settings()
             session.updates()
+            session.remote()
             with report.step("No uncaught page errors or console errors in the whole run") as step:
                 watch.check("the whole run")
                 step.note = f"{len(watch.lines)} console message(s) in browser-console.log"
@@ -1711,7 +1852,7 @@ def main(argv: list[str] | None = None) -> int:
         signal.signal(signal.SIGTERM, interrupt)
     out = Path(args.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
-    for stale in ("failure.png", "studio.log", "browser-console.log"):  # what an earlier run left behind
+    for stale in ("failure.png", "studio.log", "host.log", "browser-console.log"):  # what an earlier run left behind
         (out / stale).unlink(missing_ok=True)
     shutil.rmtree(out / "engine-logs", ignore_errors=True)
     work = Path(tempfile.mkdtemp(prefix="fle-studio-e2e-"))
