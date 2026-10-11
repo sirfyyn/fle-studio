@@ -24,6 +24,10 @@ classifiers = [
 ]
 dependencies = []
 
+[project.optional-dependencies]
+# Text of PDF attachments in the chat. Pure Python; without it a PDF is refused with a message that says how to install it.
+pdf = ["pypdf>=4"]
+
 [project.urls]
 Homepage = "https://github.com/sirfyyn/fle-studio"
 Engine = "https://github.com/sirfyyn/FastLocalExperts"
