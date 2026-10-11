@@ -59,6 +59,11 @@ VIEWPORT = {"width": 1440, "height": 900}  # wide enough for the live panel to b
 WAIT_MS = 30_000  # how long the browser waits for one thing to show up
 MAX_SHOT_HEIGHT = 6000
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+# Makes the stand-in engine fast and gives the settings a sweet spot, so the tuner and the A/B/A test have something to
+# find within a few seconds. Passed to the engine through the start settings ("Extra environment"), not to Studio.
+FAST_ENV = "\n".join(["FAKE_SPEED_MODEL=1", "FAKE_TOK_PER_SEC=3000", "FAKE_PROMPT_TOK_PER_SEC=200000",
+                      "FAKE_JITTER=0", "FAKE_RUN_NOISE=0.01", "FAKE_LOAD_SECONDS=0.3"])
+FLE_ENV = "\n".join([FAST_ENV, "FLE_MOE_CACHE_BUDGET_MIB=1024", "FAKE_ANSWER_TOKENS=1300"])
 
 # Settings that would change how the stand-in or Studio behave must not leak in from the caller's shell.
 SCRUBBED_PREFIXES = ("FAKE_", "FLE_", "LLAMA_ARG_")
@@ -489,7 +494,7 @@ class Session:
             self.page.goto(self.studio.base + "/", wait_until="domcontentloaded")
             self.expect(self.page).to_have_title("FLE Studio", timeout=WAIT_MS)
             self.expect(self.page.locator("#brand-ver")).to_have_text(f"v{self.studio.version}", timeout=WAIT_MS)
-            self.expect(self.page.locator("#nav a")).to_have_count(6, timeout=WAIT_MS)
+            self.expect(self.page.locator("#nav a")).to_have_count(7, timeout=WAIT_MS)
             self.expect(self.page.locator("#engine-card .pill")).to_have_text("Ready", timeout=WAIT_MS)
             self.expect(self.page.locator(".welcome h2")).to_contain_text(f"What should {self.model['name']} work on?",
                                                                           timeout=WAIT_MS)
@@ -1012,7 +1017,8 @@ class Session:
         with self.step("Experiments page: run the speed test once") as step:
             self.go("Experiments", "/lab", "Experiments")
             label = "e2e run"
-            page.locator("select.select").select_option("1")
+            speed_card = page.locator(".card", has=page.get_by_role("heading", name="Speed test", exact=True))
+            speed_card.locator("select.select").select_option("1")
             page.get_by_label("Label", exact=True).fill(label)
             page.get_by_role("button", name="Run the test").click()
 
@@ -1127,6 +1133,214 @@ class Session:
                 raise E2EError(f"the result or its recipe is missing in {built.parent}")
             step.note = "hybrid + 4 of 8 experts + check, published; " + self.shoot("forge")
 
+    # ---- 0.2: simple mode, quality, A/B/A, tuner, expert cache
+
+    def restart_engine(self, extra_env: str, profile: str = "auto", *, start: bool = True) -> None:
+        """Stop the engine, set the 'Extra environment' of the start settings, and (by default) start it again."""
+        studio = self.studio
+        studio.api("POST", "/api/engine/stop")
+        studio.wait_engine("stopped", 30)
+        wait_until(lambda: not pid_alive(studio.engine_pid), 15, f"engine process {studio.engine_pid} to exit")
+        studio.api("POST", "/api/settings", {"launch": {"extra_env": extra_env}})
+        if not start:
+            return
+        started = studio.api("POST", "/api/engine/start", {"model": self.model["id"], "profile": profile})
+        if started["state"] not in ("starting", "ready"):
+            raise E2EError(f"the engine did not start: {started}")
+        ready = studio.wait_engine("ready", 90)
+        studio.engine_pid = int(ready["pid"])
+        studio.engine_port = urlparse(ready["base_url"]).port or 0
+
+    def engine_modes(self) -> None:
+        page = self.page
+        with self.step("Engine page: simple view, Best for my machine, what each flag does") as step:
+            self.go("Engine", "/engine", "Engine")
+            self.expect(page.locator(".mode-switch button.on")).to_have_text("Simple", timeout=WAIT_MS)
+            heading = page.get_by_role("heading", name="Best for my machine", exact=True)
+            self.expect(heading).to_be_visible(timeout=WAIT_MS)
+            self.expect(page.get_by_role("heading", name="Launch profiles", exact=True)).to_be_hidden(timeout=WAIT_MS)
+            rows = page.locator(".explain-row")
+            self.expect(rows.first).to_be_visible(timeout=WAIT_MS)
+            known = page.locator(".explain-row:not(.unknown)")
+            if known.count() < 3:
+                raise E2EError(f"only {known.count()} flags of the command are explained")
+            command = page.locator(".card", has=page.get_by_role("heading", name="Command", exact=True)).locator(".cmd")
+            self.expect(command).to_contain_text(Path(self.model["path"]).name, timeout=WAIT_MS)
+            tips = page.locator(".cmd .flag[title]").count()
+            if not tips:
+                raise E2EError("no flag in the command has an explanation as a tooltip")
+            n_rows = rows.count()
+            shot = self.shoot("engine-simple")
+            page.locator(".mode-switch button", has_text="Advanced").click()
+            self.expect(page.get_by_role("heading", name="Launch profiles", exact=True)).to_be_visible(timeout=WAIT_MS)
+            self.expect(page.get_by_role("heading", name="Start settings", exact=True)).to_be_visible(timeout=WAIT_MS)
+            page.locator(".mode-switch button", has_text="Simple").click()
+            self.expect(page.get_by_role("heading", name="Launch profiles", exact=True)).to_be_hidden(timeout=WAIT_MS)
+            step.note = f"{n_rows} explained parts of the command, {tips} tooltips; " + shot
+
+    def quality(self) -> None:
+        page, studio = self.page, self.studio
+        with self.step("Experiments page: knowledge probe, KL divergence, speed with a score") as step:
+            self.restart_engine(FAST_ENV)
+            reference = Path(self.model["path"]).with_name("e2e-stub-Q8_0.gguf")
+            reference.write_bytes(Path(self.model["path"]).read_bytes())
+            ref = studio.api("POST", "/api/models/add", {"path": str(reference)})
+            page.reload(wait_until="domcontentloaded")  # the page learns about the new file
+            self.go("Experiments", "/lab", "Experiments")
+            card = page.locator(".card", has=page.get_by_role("heading", name="Quality", exact=True))
+            self.expect(card).to_be_visible(timeout=WAIT_MS)
+            card.locator("select").nth(0).select_option(value=ref["id"])
+            card.locator("select").nth(1).select_option(value=self.model["id"])
+            card.get_by_role("button", name="Measure KL divergence").click()
+
+            def kld_done() -> dict[str, Any] | None:
+                state = studio.api("GET", "/api/quality")
+                cur = state.get("current") or {}
+                if cur.get("state") in ("failed", "cancelled"):
+                    raise E2EError(f"the KL divergence run {cur.get('state')}: {cur.get('error')}")
+                done = [r for r in state["results"] if r.get("kind") == "kld" and r.get("state") == "done"]
+                return done[0] if done else None
+
+            kld = wait_until(kld_done, 120, "the KL divergence run to finish")
+            mean = kld["result"]["mean_kld"]
+            if not mean > 0:
+                raise E2EError(f"the mean KL divergence is {mean}")
+            card.get_by_role("button", name="Ask the running model").click()
+
+            def probe_done() -> dict[str, Any] | None:
+                state = studio.api("GET", "/api/quality")
+                cur = state.get("current") or {}
+                if cur.get("state") in ("failed", "cancelled"):
+                    raise E2EError(f"the knowledge probe {cur.get('state')}: {cur.get('error')}")
+                done = [r for r in state["results"] if r.get("kind") == "probe" and r.get("state") == "done"]
+                return done[0] if done else None
+
+            probe = wait_until(probe_done, 180, "the knowledge probe to finish")["result"]
+            if probe["n"] < 20 or not probe["ci_lo"] <= probe["accuracy"] <= probe["ci_hi"]:
+                raise E2EError(f"the knowledge probe looks wrong: {probe['n']} questions, accuracy {probe['accuracy']}")
+            self.expect(card.locator("tbody tr")).to_have_count(2, timeout=WAIT_MS)
+            self.expect(card).to_contain_text("Knowledge probe", timeout=WAIT_MS)
+            # the speed test with the knowledge questions: the score ends up next to the speed
+            speed = page.locator(".card", has=page.get_by_role("heading", name="Speed test", exact=True))
+            speed.locator("select.select").select_option("3")
+            page.get_by_label("Label", exact=True).fill("with knowledge")
+            speed.get_by_label("Also ask the knowledge questions").check()
+            speed.get_by_role("button", name="Run the test").click()
+
+            def speed_done() -> dict[str, Any] | None:
+                bench = studio.api("GET", "/api/bench")
+                cur = bench.get("current") or {}
+                if cur.get("state") in ("failed", "cancelled"):
+                    raise E2EError(f"the speed test {cur.get('state')}: {cur.get('error')}")
+                hit = [r for r in bench["results"] if r.get("label") == "with knowledge" and r.get("state") == "done"]
+                return hit[0] if hit else None
+
+            run = wait_until(speed_done, 240, "the speed test with questions to finish")
+            if not run.get("quality", {}).get("n"):
+                raise E2EError("the speed test result has no knowledge score")
+            ci = run["summary"]["decode_ci"]
+            if ci["n"] != 3 or ci["lo"] is None or not ci["lo"] <= ci["median"] <= ci["hi"]:
+                raise E2EError(f"three runs should give an interval around the median: {ci}")
+            row = page.locator("tr.click", has_text="with knowledge")
+            self.expect(row).to_contain_text("KLD", timeout=WAIT_MS)
+            self.expect(row.locator(".ci").first).to_be_visible(timeout=WAIT_MS)
+            step.note = (f"KL divergence {mean:.4f}, knowledge {probe['correct']} of {probe['n']}, decode "
+                         f"{ci['median']:g} tok/s [{ci['lo']:g} to {ci['hi']:g}]; " + self.shoot("experiments-quality"))
+
+    def cache_page(self) -> None:
+        page, studio = self.page, self.studio
+        with self.step("Expert cache page: before and after the engine reports its cache") as step:
+            self.go("Expert cache", "/cache", "Expert cache")
+            self.expect(page.get_by_text("What this engine does not tell us yet")).to_be_visible(timeout=WAIT_MS)
+            empty = self.shoot("cache-empty")
+            self.restart_engine(FLE_ENV)
+            base = studio.engine_state()["base_url"]
+            body = {"messages": [{"role": "user", "content": "Count slowly."}], "max_tokens": 1400, "stream": False}
+            status, raw = http("POST", base + "/v1/chat/completions", body=body, timeout=120)
+            if status != 200:
+                raise E2EError(f"the engine answered {status} to the long request: {raw[:200]!r}")
+            snap = wait_until(lambda: (lambda d: d if d["available"]["layers"] and d["available"]["hot"] else None)(
+                studio.api("GET", "/api/cache")), 30, "the cache lines to arrive")
+            if len(snap["layers"]) != 2 or len(snap["overall"]["series"]) < 2:
+                raise E2EError(f"unexpected cache data: {len(snap['layers'])} layers, "
+                               f"{len(snap['overall']['series'])} points")
+            self.expect(page.locator(".layer-cell")).to_have_count(2, timeout=WAIT_MS)
+            self.expect(page.get_by_text("What this engine does not tell us yet")).to_have_count(0, timeout=WAIT_MS)
+            page.locator(".layer-cell").first.click()
+            self.expect(page.locator(".hot-cell").first).to_be_visible(timeout=WAIT_MS)
+            self.expect(page.locator(".cache-top .fact").first).to_contain_text("%", timeout=WAIT_MS)
+            step.note = (f"hit rate {snap['overall']['hit_rate']} % over {len(snap['overall']['series'])} points, "
+                         f"{len(snap['layers'])} layers; " + empty + ", " + self.shoot("cache"))
+
+    def tuning(self) -> None:
+        page, studio = self.page, self.studio
+        with self.step("Engine page: Best for my machine finds settings and saves a profile") as step:
+            self.restart_engine(FAST_ENV, start=False)
+            self.go("Engine", "/engine", "Engine")
+            best = page.locator(".card", has=page.get_by_role("heading", name="Best for my machine", exact=True))
+            best.locator("summary").click()
+            best.get_by_label("Batch size").uncheck()
+            best.get_by_role("button", name="Find the best settings").click()
+
+            def finished() -> dict[str, Any] | None:
+                state = studio.api("GET", "/api/tuning")
+                cur = state.get("current") or {}
+                if cur.get("state") in ("failed", "cancelled"):
+                    raise E2EError(f"the tuner {cur.get('state')}: {cur.get('error')}")
+                return cur if cur.get("state") == "done" else None
+
+            run = wait_until(finished, 240, "the tuner to finish")
+            profile = run["profile"]["id"]
+            saved = [p for p in studio.api("GET", "/api/profiles")["profiles"] if p["id"] == profile]
+            if not saved or not saved[0].get("meta", {}).get("tuned"):
+                raise E2EError(f"the tuned profile {profile} was not saved with its measurements")
+            self.expect(best.get_by_role("button", name="Start with the tuned settings")).to_be_visible(timeout=WAIT_MS)
+            shot = self.shoot("engine-tuned")
+            tried = len(run["trials"])
+            best.get_by_role("button", name="Start with the tuned settings").click()
+            ready = studio.wait_engine("ready", 90)
+            if (ready.get("plan") or {}).get("profile") != profile:
+                started_with = (ready.get("plan") or {}).get("profile")
+                raise E2EError(f"the engine did not start with the tuned profile: {started_with}")
+            studio.engine_pid = int(ready["pid"])
+            studio.engine_port = urlparse(ready["base_url"]).port or 0
+            step.note = f"{tried} settings tried, profile {saved[0]['name']!r} saved and started; " + shot
+
+        with self.step("Experiments page: A/B/A comparison of two profiles") as step:
+            slow = dict(saved[0])
+            args = list(slow["args"])
+            if "-t" in args:
+                args[args.index("-t") + 1] = "1"
+            else:
+                args += ["-t", "1"]
+            studio.api("POST", "/api/profiles", {"name": "E2E one thread", "engine": slow["engine"],
+                                                 "binary": slow["binary"],
+                                                 "args": args, "env": slow["env"], "notes": "slow on purpose"})
+            studio.api("POST", "/api/engine/stop")
+            studio.wait_engine("stopped", 30)
+            page.reload(wait_until="domcontentloaded")  # the page learns about the new profile
+            self.go("Experiments", "/lab", "Experiments")
+            card = page.locator(".card", has=page.get_by_role("heading", name="A/B/A comparison", exact=True))
+            card.locator("select").nth(0).select_option(value="auto")
+            card.locator("select").nth(1).select_option(label="E2E one thread")
+            card.get_by_role("button", name="Compare").click()
+
+            def aba_done() -> dict[str, Any] | None:
+                cur = studio.api("GET", "/api/tuning").get("current") or {}
+                if cur.get("state") in ("failed", "cancelled"):
+                    raise E2EError(f"the comparison {cur.get('state')}: {cur.get('error')}")
+                return cur if cur.get("state") == "done" and cur.get("kind") == "aba" else None
+
+            aba = wait_until(aba_done, 240, "the A/B/A comparison to finish")
+            verdict = aba["result"]["decode"]["verdict"]
+            if verdict not in ("better", "worse", "within noise"):
+                raise E2EError(f"unexpected verdict {verdict!r}")
+            self.expect(card.locator(".verdict").first).to_be_visible(timeout=WAIT_MS)
+            self.expect(card.locator("tbody tr")).to_have_count(2, timeout=WAIT_MS)
+            pct = aba["result"]["decode"]["pct"]
+            step.note = f"B against A (generation): {verdict}, {pct} %; " + self.shoot("experiments-aba")
+            self.restart_engine("")  # the other steps and the final checks expect the automatic plan, running
+
     def settings(self) -> None:
         page, studio = self.page, self.studio
 
@@ -1204,6 +1418,10 @@ def run_browser(args: argparse.Namespace, report: Report, studio: StudioProcess,
             session.models()
             session.engine()
             session.experiments()
+            session.engine_modes()
+            session.quality()
+            session.cache_page()
+            session.tuning()
             session.forge()
             session.settings()
             with report.step("No uncaught page errors or console errors in the whole run") as step:

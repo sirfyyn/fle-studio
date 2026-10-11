@@ -3,6 +3,8 @@
 
 import { get, post } from "./api.js";
 import { emit, on, refreshState, store, topbar } from "./app.js";
+import { explainBlock, flagTitle, loadFlagTable } from "./flags.js";
+import { loadStyle, mountBest } from "./tuner.js";
 import { clear, confirmDialog, copyButton, copyText, debounce, fmt, h, icon, stateBadge, toast } from "./ui.js";
 
 const PLACEHOLDERS = [
@@ -20,10 +22,34 @@ const PLACEHOLDERS = [
 const CONTEXTS = [4096, 8192, 16384, 32768, 65536, 131072, 262144];
 const NEW_COMMAND = "{engine} -m {model} -c {context} -t {threads} --jinja";
 
+let savedMode = "simple";
+try { savedMode = localStorage.getItem("fle-engine-mode") === "advanced" ? "advanced" : "simple"; } catch { /* storage blocked */ }
+
 export function mount(main) {
   const unsub = [];
+  loadStyle();
+  loadFlagTable().then(() => { if (preview) renderPreview(); });
+  let mode = savedMode; // simple: model, Best for my machine, Start; advanced: every setting and profile
+  const modeSwitch = h("div", { class: "mode-switch", role: "group", "aria-label": "Settings view" });
+  function renderMode() {
+    clear(modeSwitch, [["simple", "Simple"], ["advanced", "Advanced"]].map(([m, label]) => h("button", {
+      class: mode === m ? "on" : "", "aria-pressed": String(mode === m), "data-mode": m, onclick: () => setMode(m) }, label)));
+  }
+  function setMode(m) {
+    mode = savedMode = m;
+    try { localStorage.setItem("fle-engine-mode", m); } catch { /* storage blocked */ }
+    renderMode();
+    applyMode();
+    renderLaunch(true);
+    if (preview) renderPreview();
+  }
+  function applyMode() {
+    const adv = mode === "advanced";
+    for (const k of ["profiles", "engines", "attach"]) boxes[k].hidden = !adv;
+  }
   const boxes = {
     status: h("div", { class: "card pad-lg" }),
+    best: h("div", { class: "card" }),
     launch: h("div", { class: "card" }),
     preview: h("div", { class: "card" }),
     profiles: h("div", { class: "card" }),
@@ -34,8 +60,9 @@ export function mount(main) {
   main.replaceChildren(topbar("Engine"), h("div", { class: "page" }, h("div", { class: "page-inner" },
     h("div", { class: "page-head" }, h("div", null, h("h2", null, "Engine"),
       h("p", null, "FLE Studio runs llama-server for you. Every start is a plain command that you can read, copy and change; "
-        + "a profile keeps a command of your own, placeholders and all."))),
+        + "a profile keeps a command of your own, placeholders and all.")), modeSwitch),
     boxes.status,
+    boxes.best,
     h("div", { class: "grid two" }, boxes.launch, boxes.preview),
     boxes.profiles,
     h("div", { class: "grid two" }, boxes.engines, boxes.attach),
@@ -269,6 +296,7 @@ export function mount(main) {
     const L = st.launch || {};
     const models = usableModels();
     const profiles = store.state?.profiles || [];
+    if (mode === "simple") { renderSimpleLaunch(L, models); return; }
     const nvidia = (store.state?.system?.gpus || []).filter((g) => g.vendor === "nvidia");
 
     const modelSel = h("select", { class: "select", disabled: !models.length,
@@ -337,6 +365,27 @@ export function mount(main) {
           h("span", null, "Load this model when FLE Studio starts"))));
   }
 
+  function renderSimpleLaunch(L, models) {
+    const modelSel = h("select", { class: "select", disabled: !models.length,
+      onchange: (e) => { sel.model = e.target.value; save({ last_model: sel.model }); renderStatus(); refreshPreview(); bestCard?.reload(); } },
+      models.length ? models.map((m) => h("option", { value: m.id, selected: m.id === sel.model }, `${m.name} · ${fmt.bytes(m.size)}`))
+        : h("option", { value: "" }, "No model yet"));
+    const ctxValue = Number(L.context) || 32768;
+    const ctxOptions = CONTEXTS.includes(ctxValue) ? CONTEXTS : [...CONTEXTS, ctxValue].sort((a, b) => a - b);
+    clear(boxes.launch,
+      h("div", { class: "card-head" }, icon("sliders"), h("div", null, h("h3", null, "Model"),
+        h("p", null, sel.profile === "auto" ? "Starts with automatic settings, sized for this machine."
+          : `Starts with the profile “${profileName(sel.profile)}”.`))),
+      h("div", { class: "stack" },
+        field("Model", modelSel),
+        field("Context", h("select", { class: "select", onchange: (e) => save({ launch: { context: Number(e.target.value) } }) },
+          ctxOptions.map((c) => h("option", { value: c, selected: c === ctxValue }, `${fmt.ctx(c)} tokens`))),
+        "Tokens the model can see at once; more needs more memory."),
+        sel.profile !== "auto" ? h("button", { class: "btn", onclick: () => { sel.profile = "auto"; save({ launch: { profile: "auto" } }); renderLaunch(true); refreshPreview(); } },
+          "Use automatic settings") : null,
+        h("p", { class: "small faint", style: { margin: 0 } }, "Switch to Advanced above for every setting, launch profiles, engines and servers that already run.")));
+  }
+
   function field(label, control, hint = "") {
     return h("label", { class: "field" }, h("span", null, label), control,
       hint instanceof Node ? hint : hint ? h("span", { class: "hint" }, hint) : null);
@@ -398,6 +447,7 @@ export function mount(main) {
     }
     clear(boxes.preview, head,
       h("div", { class: "cmd" }, highlightCommand(preview.command)),
+      explainBlock(preview, { open: mode === "simple" }),
       preview.notes?.length ? h("ul", { class: "small muted", style: { margin: "12px 0 0", paddingLeft: "1.2em", display: "grid", gap: "4px" } },
         preview.notes.map((n) => h("li", null, n))) : null,
       h("div", { class: "row small faint wrap", style: { marginTop: "10px" } },
@@ -728,6 +778,7 @@ export function mount(main) {
 
   function renderAll() {
     syncSelection();
+    applyMode();
     renderStatus();
     renderLaunch();
     renderProfiles();
@@ -751,12 +802,27 @@ export function mount(main) {
     }
   }));
   unsub.push(on("downloads", () => { if (store.downloads.some((d) => d.kind === "engine")) renderEngines(); }));
+  renderMode();
+  applyMode();
+  const bestCard = mountBest(boxes.best, {
+    model: () => sel.model,
+    profile: () => sel.profile,
+    engineRunning: () => !["stopped", "crashed"].includes(store.engine?.state) || !!store.engine?.service,
+    onUse: async (profileId) => {
+      sel.profile = profileId;
+      save({ launch: { profile: profileId } });
+      await start();
+      renderLaunch(true);
+      refreshPreview();
+    },
+  });
+  unsub.push(on("engine", () => bestCard.reload()));
   renderLogCard();
   if (store.state) renderAll();
   fetchLog();
   refreshState().catch(() => {});
 
-  return { unmount() { unsub.forEach((u) => u()); } };
+  return { unmount() { unsub.forEach((u) => u()); bestCard.unmount(); } };
 }
 
 // --------------------------------------------------------------------------------------------- helpers
@@ -781,8 +847,8 @@ function highlightCommand(text) {
     if (/^\s+$/.test(part)) out.push(part);
     else if (/^[A-Z_][A-Z0-9_]*=/.test(part)) {
       const i = part.indexOf("=");
-      out.push(h("span", { class: "env" }, part.slice(0, i)), part.slice(i));
-    } else if (/^--?[A-Za-z]/.test(part)) out.push(h("span", { class: "flag" }, part));
+      out.push(h("span", { class: "env", title: flagTitle(part) || null }, part.slice(0, i)), part.slice(i));
+    } else if (/^--?[A-Za-z]/.test(part)) out.push(h("span", { class: "flag", title: flagTitle(part) || null }, part));
     else if (/\{[a-z_]+\}/.test(part)) out.push(h("span", { class: "ph" }, part));
     else out.push(part);
   }

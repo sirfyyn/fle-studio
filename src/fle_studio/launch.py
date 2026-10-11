@@ -377,6 +377,9 @@ class Profile:
     env: dict[str, str] = field(default_factory=dict)
     notes: str = ""
     builtin: bool = False
+    # What a profile that FLE Studio made knows about itself, e.g. {"tuned": {...}} (see tuner.py); empty for the
+    # profiles people write. Kept when the profile is saved again from the editor.
+    meta: dict[str, Any] = field(default_factory=dict)
 
     def command_text(self) -> str:
         env = " ".join(f"{k}={shell_quote(v)}" for k, v in self.env.items())
@@ -444,8 +447,10 @@ class Profiles:
         if not ident or any(b.id == ident for b in BUILTIN):
             ident = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:40] or "profile"
             ident = f"{ident}-{int(time.time()) % 100000}"
+        old = self.get(ident)
+        meta = data["meta"] if isinstance(data.get("meta"), dict) else (old.meta if old else {})
         prof = Profile(id=ident, name=name, engine=engine, binary=binary, args=args, env=env,
-                       notes=str(data.get("notes") or ""))
+                       notes=str(data.get("notes") or ""), meta=dict(meta))
         with self._lock:
             self.items = [p for p in self.items if p.id != ident] + [prof]
             self._write()

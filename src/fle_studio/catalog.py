@@ -68,6 +68,18 @@ def _qwen(id_: str, name: str, repo: str, files: tuple[FileRef, ...], **kw: Any)
                  sampling=QWEN_THINKING, license=QWEN_LICENSE, **kw)
 
 
+GPT_OSS_20B_REPO = "ggml-org/gpt-oss-20b-GGUF"
+GPT_OSS_120B_REPO = "ggml-org/gpt-oss-120b-GGUF"
+GPT_OSS_SAMPLING = {"temperature": 1.0, "top_p": 1.0, "top_k": 0}
+
+
+def _gpt_oss(id_: str, name: str, repo: str, filename: str, size: int, *, summary: str) -> Model:
+    return Model(id=id_, name=name, family="gpt-oss", repo=repo, files=(FileRef(repo, filename, size, ""),),
+                 summary=summary, sampling=GPT_OSS_SAMPLING, license="Apache-2.0",
+                 notes=("Not measured by FLE Studio: no speed or KL numbers yet. Run the tuner to find the best "
+                        "settings for your machine.",))
+
+
 MTP_HEAD = FileRef(FLE_REPO, "mtp/mtp-Qwen3.8-Flash-Next-FLE-IQ4_NL.gguf", 1528277056,
                    "25217613e5e4659186db0b81ce2be77ab5955d01817732e4597b8f2bf0e292fa")
 MTP_VOCAB = FileRef(FLE_REPO, "mtp/fle-mtp-vocab-32k.txt", 281159,
@@ -128,6 +140,20 @@ CATALOG: tuple[Model, ...] = (
         speed="measured with the FLE engine and the MTP head on the reference machine: 91 tokens/s decode over six "
               "tasks, about 100 tokens/s on 24 greedy prompts",
         measured={"ram_gib": 54.3, "pinned_gib": 52.2, "gpu_mib": 31315, "load_s": 167},
+    ),
+    # A second mixture-of-experts family, so the tuner and the expert cache view have something to be tried on besides
+    # Qwen3.8. File sizes are the Hub's own values (state 2026-10-11). The Hub listing gives no SHA-256 for these files,
+    # so the download is checked by size only. Nothing is measured on the reference machine, and whether the FLE engine
+    # runs the gpt-oss architecture is not verified: the stock llama.cpp engine does (see docs/HARDWARE-TESTS.md).
+    _gpt_oss(
+        "gpt-oss-20b", "gpt-oss-20b (MXFP4)", GPT_OSS_20B_REPO, "gpt-oss-20b-MXFP4.gguf", 12109566624,
+        summary="OpenAI's open 21B-parameter mixture-of-experts model (3.6B active, 32 experts per layer) in its "
+                "native MXFP4 format. Small enough to try the tuner and the expert cache view on a 16 GB GPU.",
+    ),
+    _gpt_oss(
+        "gpt-oss-120b", "gpt-oss-120b (MXFP4)", GPT_OSS_120B_REPO, "gpt-oss-120b-MXFP4.gguf", 63387346208,
+        summary="OpenAI's open 117B-parameter mixture-of-experts model (5.1B active, 128 experts per layer) in its "
+                "native MXFP4 format. Needs about 64 GB of RAM plus a GPU for the attention layers.",
     ),
 )
 

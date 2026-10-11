@@ -71,6 +71,25 @@ Chat 0.2: attachments, tools and MCP, and the comforts of a daily chat. See [doc
   by the proxy with HTTP 400, and the page never sends both: the model would not call the tools and would answer
   with substitute JSON. A test keeps this.
 
+Start, tuning and measuring (branch `feature/tuning-0.2`).
+
+### Added
+
+- **Simple and advanced Engine page.** Simple (the default) shows the model, "Best for my machine" and Start; Advanced
+  shows everything as before. Under the command, every flag and environment variable has a one-line explanation (also as a
+  tooltip); the full command stays.
+- **Best for my machine:** an auto-tuner that tries threads, expert cache or `--n-cpu-moe`, batch and context, measures
+  each several times, keeps only what is clearly faster, and saves the winner as a launch profile. Probe run first,
+  adjustable time budget, optional `llama-bench` screening for stock llama.cpp.
+- **Repeats with median and 95 % interval** in Experiments, a comparison that says "within noise" when it is, and an
+  **A/B/A comparison** of two profiles.
+- **Quality next to speed:** KL divergence via `llama-perplexity`, and a knowledge probe with original CC0 questions
+  (optional MKQA download). The speed test can ask the questions too.
+- **Expert cache page** from the engine's log lines; [docs/EXPERT-CACHE-DATA.md](docs/EXPERT-CACHE-DATA.md) says what the
+  engine would have to print for the per-layer view.
+- Catalog: gpt-oss-20b and gpt-oss-120b (a second mixture-of-experts family, unmeasured).
+- [docs/HARDWARE-TESTS.md](docs/HARDWARE-TESTS.md), [docs/TUNING-AND-QUALITY.md](docs/TUNING-AND-QUALITY.md).
+
 ## [0.1.1] - 2026-10-11
 
 Installers, CI and docs. The app itself does not change in this release.
