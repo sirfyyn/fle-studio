@@ -28,7 +28,8 @@ from urllib.parse import parse_qs, quote, urlparse
 
 from . import net
 from .config import Config
-from .mcp import McpError, McpManager, parse_servers
+from .mcp import McpError, McpManager, parse_servers, result_text
+from .oauth import OAuthError, OAuthManager
 from .paths import IS_WIN
 
 MAX_FILE_CHARS = 100_000
@@ -53,6 +54,7 @@ class Tool:
     server: str = ""
     remote_name: str = ""  # the tool's own name at its MCP server
     confirm: bool = False
+    ui: str = ""  # the ui:// resource of an MCP App that shows this tool's result
     run: Callable[[dict[str, Any]], str] | None = field(default=None, repr=False)
 
     def openai(self) -> dict[str, Any]:
@@ -69,6 +71,7 @@ class Tool:
             "source": self.source,
             "server": self.server,
             "confirm": self.confirm,
+            "ui": self.ui,
             "schema": self.openai(),
         }
 
@@ -377,12 +380,42 @@ def _wire_name(server: str, tool: str, taken: set[str]) -> str:
     return name
 
 
+def tool_visibility(t: dict[str, Any]) -> list[str]:
+    """Who may call a tool (MCP Apps, `_meta.ui.visibility`): the model, the app, or both (the default)."""
+    meta = t.get("_meta") if isinstance(t.get("_meta"), dict) else {}
+    ui = meta.get("ui") if isinstance(meta.get("ui"), dict) else {}
+    vis = ui.get("visibility")
+    if isinstance(vis, list) and vis:
+        return [str(v) for v in vis if v in ("model", "app")]
+    return ["model", "app"]
+
+
+def tool_ui_uri(t: dict[str, Any]) -> str:
+    """The ui:// resource that shows a tool's result: `_meta.ui.resourceUri`, the older flat `ui/resourceUri`, or
+    the ChatGPT Apps SDK's `openai/outputTemplate`. Anything that is not a ui:// address is ignored."""
+    meta = t.get("_meta") if isinstance(t.get("_meta"), dict) else {}
+    ui = meta.get("ui") if isinstance(meta.get("ui"), dict) else {}
+    for value in (ui.get("resourceUri"), meta.get("ui/resourceUri"), meta.get("openai/outputTemplate")):
+        if isinstance(value, str) and value.startswith("ui://"):
+            return value
+    return ""
+
+
+def _app_result(raw: dict[str, Any]) -> dict[str, Any]:
+    """A CallToolResult for an app, kept to a size the page can handle."""
+    text = json.dumps(raw, ensure_ascii=False, default=str)
+    if len(text) <= 2_000_000:
+        return raw
+    return {"content": [{"type": "text", "text": "[the result was too large to hand to the app]"}], "isError": True}
+
+
 class ToolBox:
     """The tools that are on right now, read from the settings every time."""
 
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Config, data_dir: Path | None = None) -> None:
         self.config = config
-        self.mcp = McpManager()
+        self.oauth = OAuthManager(data_dir) if data_dir is not None else None
+        self.mcp = McpManager(self.oauth)
         self._synced = ""
 
     # ---- settings
@@ -520,6 +553,8 @@ class ToolBox:
                 if server.status != "ready":
                     continue
                 for t in server.tools:
+                    if "model" not in tool_visibility(t):  # a tool only the app may call
+                        continue
                     name = _wire_name(server.name, str(t["name"]), taken)
                     taken.add(name)
                     desc = str(t.get("description") or t.get("title") or t["name"])
@@ -533,6 +568,7 @@ class ToolBox:
                             server=server.name,
                             remote_name=str(t["name"]),
                             confirm=server.name not in trusted,
+                            ui=tool_ui_uri(t),
                         )
                     )
         return out
@@ -553,6 +589,8 @@ class ToolBox:
                 "transport": sv.spec["transport"],
                 "trusted": sv.name in trusted,
                 "info": (sv.info.get("name") or "") if isinstance(sv.info, dict) else "",
+                "auth": self.auth_state(sv),
+                "legacy_sse": sv.fallback,
             }
             for sv in self.mcp.servers()
         ]
@@ -566,6 +604,8 @@ class ToolBox:
                     "transport": "",
                     "trusted": False,
                     "info": "",
+                    "auth": {"remote": False},
+                    "legacy_sse": False,
                 }
             )
         return {
@@ -594,15 +634,19 @@ class ToolBox:
         if not isinstance(arguments, dict):
             return {"content": "The arguments must be a JSON object.", "is_error": True, "ms": 0}
         started = time.monotonic()
+        app_result: dict[str, Any] | None = None
         try:
             if tool.source == "mcp":
                 server = self.mcp.get(tool.server)
                 if server is None:
                     raise ToolError(f"The server '{tool.server}' is not connected")
                 try:
-                    content, is_error = server.call(tool.remote_name, arguments)
+                    raw = server.call_raw(tool.remote_name, arguments)
                 except McpError as exc:
                     raise ToolError(str(exc)) from None
+                content, is_error = result_text(raw)
+                if tool.ui:  # the app gets the whole result (structuredContent, _meta), not the model's text
+                    app_result = _app_result(raw)
             else:
                 assert tool.run is not None
                 content, is_error = tool.run(arguments), False
@@ -610,7 +654,74 @@ class ToolBox:
             content, is_error = str(exc), True
         except Exception as exc:  # a bug in a tool must not take the request down; the model gets the message
             content, is_error = f"The tool failed: {type(exc).__name__}: {exc}", True
-        return {"content": content, "is_error": is_error, "ms": int((time.monotonic() - started) * 1000)}
+        out = {"content": content, "is_error": is_error, "ms": int((time.monotonic() - started) * 1000)}
+        if app_result is not None:
+            out["app"] = {"server": tool.server, "uri": tool.ui, "tool": tool.remote_name, "result": app_result}
+        return out
+
+    # ---- MCP: sign-in and apps
+
+    def auth_state(self, server: Any) -> dict[str, Any]:
+        """What the settings page shows about a server's sign-in. Never contains a token."""
+        if server.spec["transport"] == "stdio":
+            return {"remote": False}
+        info: dict[str, Any] = {"remote": True, "required": server.status == "auth_required"}
+        if self.oauth is not None:
+            info.update(self.oauth.status(server.name, server.spec["url"]))
+        info["client_id_set"] = bool((server.spec.get("oauth") or {}).get("client_id"))
+        return info
+
+    def server_for_signin(self, name: str) -> Any:
+        server = self.mcp.get(name)
+        if server is None or server.spec["transport"] == "stdio":
+            raise KeyError(name)
+        if self.oauth is None:
+            raise OAuthError("Signing in is not available here.")
+        return server
+
+    def begin_sign_in(self, name: str, redirect_uri: str) -> dict[str, Any]:
+        server = self.server_for_signin(name)
+        assert self.oauth is not None
+        preset = server.spec.get("oauth") or {}
+        return self.oauth.begin(name, server.spec["url"], redirect_uri, challenge=server.challenge, preset=preset)
+
+    def finish_sign_in(self, state: str, code: str, error: str, description: str) -> str:
+        assert self.oauth is not None
+        name = self.oauth.complete(state, code, error, description)
+        self.mcp.reconnect(name)
+        return name
+
+    def sign_out(self, name: str) -> bool:
+        server = self.server_for_signin(name)
+        assert self.oauth is not None
+        removed = self.oauth.sign_out(name, server.spec["url"])
+        self.mcp.reconnect(name)
+        return removed
+
+    def app_tool(self, server_name: str, remote_name: str) -> dict[str, Any]:
+        """The server's tool description when an app may call it (visibility holds "app")."""
+        server = self.mcp.get(server_name)
+        if server is None or server.status != "ready":
+            raise KeyError(server_name)
+        for t in server.tools:
+            if t["name"] == remote_name and "app" in tool_visibility(t):
+                return t
+        raise KeyError(remote_name)
+
+    def app_call(self, server_name: str, remote_name: str, arguments: Any, approved: bool = False) -> dict[str, Any]:
+        """A tools/call made by an MCP App: only to its own server, only tools meant for apps, and with the same
+        confirmation as the model's calls (unless the server is trusted)."""
+        self.app_tool(server_name, remote_name)
+        if server_name not in self.trusted() and not approved:
+            raise NeedsApproval(remote_name)
+        if not isinstance(arguments, dict):
+            arguments = {}
+        server = self.mcp.get(server_name)
+        assert server is not None
+        try:
+            return _app_result(server.call_raw(remote_name, arguments))
+        except McpError as exc:
+            return {"content": [{"type": "text", "text": str(exc)}], "isError": True}
 
     def close(self) -> None:
         self.mcp.close_all()

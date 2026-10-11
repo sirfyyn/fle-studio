@@ -36,7 +36,7 @@ def _fail(status: int, message: str) -> Exception:
 def toolbox(studio: Any) -> tools.ToolBox:
     box = studio.__dict__.get("toolbox")
     if box is None:
-        box = studio.__dict__["toolbox"] = tools.ToolBox(studio.config)
+        box = studio.__dict__["toolbox"] = tools.ToolBox(studio.config, studio.data_dir)
     return box  # type: ignore[no-any-return]
 
 
