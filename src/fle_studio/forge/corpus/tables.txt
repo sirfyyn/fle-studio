@@ -1,0 +1,1526 @@
+# Measurements and tables
+
+## Table 1: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Ghent | 06 | 12.3 | 45 | 40 | 252525 |
+| Hamburg | 12 | -5.5 | 138 | 205 | 114761 |
+| Brno | 09 | 25.8 | 76 | 37 | 121591 |
+| Bremen | 03 | 1.2 | 143 | 215 | 320706 |
+| Bonn | 01 | -0.8 | 158 | 210 | 405712 |
+| Essen | 05 | 2.2 | 57 | 58 | 86136 |
+| Utrecht | 02 | 30.5 | 76 | 119 | 152149 |
+| Lyon | 08 | 26.4 | 129 | 87 | 62460 |
+| Seville | 04 | -4.8 | 80 | 135 | 94881 |
+| Porto | 05 | 30.2 | 42 | 114 | 114323 |
+| Graz | 12 | 7.6 | 95 | 265 | 54107 |
+| Munich | 10 | 6.9 | 12 | 229 | 464095 |
+| Brno | 06 | 13.3 | 149 | 222 | 379158 |
+| Seville | 05 | 19.5 | 29 | 149 | 389150 |
+
+## Table 2: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Brno | 07 | 16.8 | 146 | 229 | 280366 |
+| Berlin | 07 | 25.6 | 19 | 253 | 434408 |
+| Lyon | 08 | 22.1 | 2 | 134 | 102780 |
+| Utrecht | 05 | 5.5 | 82 | 171 | 414446 |
+| Hamburg | 08 | 11.5 | 72 | 160 | 266621 |
+| Porto | 04 | -2.2 | 82 | 219 | 311712 |
+| Hanover | 01 | 18.3 | 98 | 274 | 163724 |
+| Bonn | 11 | 3.4 | 151 | 201 | 259394 |
+| Porto | 01 | 30.2 | 50 | 244 | 30788 |
+| Seville | 06 | 25.8 | 90 | 139 | 370849 |
+| Leipzig | 10 | 22.4 | 61 | 225 | 328448 |
+| Porto | 03 | 18.3 | 158 | 260 | 293485 |
+| Leipzig | 10 | 20.2 | 40 | 230 | 40298 |
+| Ghent | 09 | 17.8 | 125 | 134 | 265078 |
+
+## Table 3: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Ghent | 08 | 6.3 | 26 | 148 | 71233 |
+| Seville | 10 | 13.2 | 140 | 92 | 392424 |
+| Turin | 10 | 24.3 | 135 | 74 | 326885 |
+| Brno | 03 | 21.2 | 131 | 175 | 44527 |
+| Bonn | 03 | 4.0 | 29 | 178 | 263491 |
+| Brno | 10 | -2.1 | 90 | 216 | 113984 |
+| Munich | 01 | 4.3 | 30 | 116 | 254462 |
+| Bremen | 01 | 28.6 | 110 | 116 | 333533 |
+| Utrecht | 06 | 25.5 | 86 | 288 | 209306 |
+| Munich | 09 | 16.0 | 57 | 93 | 408795 |
+| Basel | 11 | 29.5 | 85 | 260 | 457565 |
+| Basel | 12 | 24.6 | 51 | 152 | 113392 |
+| Hanover | 11 | 9.1 | 31 | 180 | 245606 |
+| Graz | 03 | 0.7 | 119 | 283 | 163658 |
+
+## Table 4: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Seville | 05 | 9.7 | 135 | 279 | 325203 |
+| Bonn | 05 | 27.6 | 67 | 147 | 223608 |
+| Porto | 10 | 2.4 | 158 | 182 | 337487 |
+| Berlin | 03 | 5.6 | 97 | 39 | 98110 |
+| Ghent | 01 | 17.5 | 109 | 94 | 254863 |
+| Berlin | 09 | 15.3 | 14 | 217 | 439415 |
+| Seville | 04 | 22.2 | 41 | 43 | 434039 |
+| Dresden | 06 | 24.5 | 154 | 258 | 74087 |
+| Graz | 10 | 14.7 | 47 | 110 | 68830 |
+| Ghent | 11 | 15.4 | 156 | 211 | 194036 |
+| Ghent | 01 | 15.0 | 40 | 121 | 464138 |
+| Seville | 01 | -3.7 | 52 | 178 | 463069 |
+| Munich | 03 | 5.8 | 29 | 286 | 86679 |
+| Bonn | 04 | 26.8 | 103 | 253 | 394850 |
+
+## Table 5: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Turin | 01 | -2.5 | 148 | 49 | 479836 |
+| Seville | 09 | 8.4 | 63 | 265 | 409182 |
+| Turin | 03 | 24.3 | 158 | 238 | 70730 |
+| Munich | 08 | -2.5 | 80 | 212 | 142173 |
+| Lyon | 06 | 9.0 | 153 | 112 | 57878 |
+| Cologne | 02 | 7.3 | 29 | 286 | 145003 |
+| Bonn | 07 | -4.9 | 126 | 84 | 312234 |
+| Leipzig | 10 | 8.0 | 149 | 153 | 312398 |
+| Graz | 05 | 29.4 | 65 | 161 | 212252 |
+| Cologne | 11 | -5.5 | 75 | 182 | 390532 |
+| Leipzig | 07 | 13.8 | 11 | 87 | 412120 |
+| Ghent | 10 | 2.4 | 39 | 147 | 442757 |
+| Ghent | 09 | 12.4 | 68 | 264 | 21581 |
+| Munich | 05 | 27.6 | 142 | 117 | 287204 |
+
+## Table 6: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Munich | 07 | 24.1 | 114 | 61 | 258977 |
+| Hanover | 09 | -5.6 | 122 | 122 | 186358 |
+| Dresden | 08 | -5.2 | 54 | 105 | 21954 |
+| Bremen | 10 | 17.5 | 9 | 49 | 477268 |
+| Turin | 10 | -0.4 | 53 | 261 | 379833 |
+| Bonn | 02 | 14.2 | 73 | 30 | 178761 |
+| Essen | 05 | 4.4 | 84 | 120 | 158398 |
+| Graz | 02 | 28.5 | 15 | 134 | 41295 |
+| Gdansk | 02 | 19.0 | 52 | 41 | 222733 |
+| Brno | 09 | 0.2 | 27 | 268 | 289699 |
+| Lyon | 12 | 4.9 | 107 | 256 | 340108 |
+| Brno | 11 | 11.4 | 101 | 40 | 47152 |
+| Seville | 01 | 13.2 | 104 | 259 | 83804 |
+| Brno | 01 | 30.4 | 152 | 287 | 234827 |
+
+## Table 7: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Essen | 10 | -0.5 | 115 | 138 | 138112 |
+| Bonn | 07 | 0.3 | 68 | 172 | 241573 |
+| Dresden | 02 | 0.5 | 111 | 286 | 186669 |
+| Munich | 11 | -2.4 | 66 | 278 | 460769 |
+| Cologne | 04 | 15.3 | 8 | 55 | 319260 |
+| Leipzig | 06 | 5.9 | 138 | 69 | 376673 |
+| Hanover | 09 | -6.0 | 80 | 249 | 343297 |
+| Basel | 12 | -1.8 | 71 | 66 | 462653 |
+| Bremen | 01 | -3.7 | 44 | 283 | 437917 |
+| Seville | 07 | 25.1 | 46 | 157 | 230517 |
+| Basel | 01 | 21.3 | 86 | 180 | 61539 |
+| Ghent | 08 | 16.6 | 70 | 138 | 181075 |
+| Dresden | 11 | 21.8 | 70 | 151 | 136878 |
+| Bremen | 05 | 11.1 | 45 | 174 | 57903 |
+
+## Table 8: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Leipzig | 10 | 4.3 | 10 | 79 | 311165 |
+| Bremen | 12 | 6.0 | 41 | 247 | 454708 |
+| Hamburg | 02 | -3.8 | 109 | 137 | 123448 |
+| Gdansk | 08 | -4.5 | 25 | 56 | 55638 |
+| Turin | 04 | 0.2 | 90 | 141 | 231320 |
+| Brno | 03 | -0.3 | 12 | 150 | 281455 |
+| Bremen | 02 | 0.7 | 105 | 287 | 190606 |
+| Gdansk | 07 | 21.0 | 2 | 179 | 42984 |
+| Essen | 02 | 1.2 | 48 | 162 | 122047 |
+| Seville | 01 | -2.8 | 113 | 175 | 153426 |
+| Gdansk | 12 | 1.8 | 87 | 106 | 144545 |
+| Munich | 10 | 24.1 | 67 | 246 | 39145 |
+| Turin | 11 | 0.7 | 42 | 231 | 245622 |
+| Graz | 09 | 19.8 | 134 | 38 | 260879 |
+
+## Table 9: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Basel | 11 | -4.4 | 144 | 63 | 85058 |
+| Hanover | 07 | 12.6 | 95 | 96 | 343187 |
+| Porto | 08 | 2.2 | 68 | 236 | 212091 |
+| Porto | 11 | 1.8 | 41 | 232 | 357315 |
+| Dresden | 09 | 21.5 | 5 | 239 | 351656 |
+| Lyon | 09 | 6.1 | 148 | 160 | 36687 |
+| Seville | 11 | 23.2 | 58 | 82 | 364937 |
+| Hanover | 06 | 20.7 | 61 | 110 | 360578 |
+| Cologne | 06 | -3.8 | 143 | 208 | 312936 |
+| Utrecht | 07 | 20.1 | 86 | 252 | 206840 |
+| Essen | 07 | 29.2 | 79 | 165 | 44619 |
+| Brno | 02 | 9.8 | 124 | 279 | 271123 |
+| Cologne | 06 | 25.1 | 107 | 58 | 447895 |
+| Graz | 11 | 3.0 | 80 | 222 | 152918 |
+
+## Table 10: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Essen | 02 | 15.4 | 108 | 288 | 304381 |
+| Essen | 04 | 19.8 | 2 | 171 | 100057 |
+| Hamburg | 12 | 14.7 | 157 | 58 | 201354 |
+| Bremen | 07 | 12.1 | 35 | 135 | 54000 |
+| Lyon | 11 | 13.3 | 152 | 94 | 129411 |
+| Utrecht | 01 | 15.3 | 75 | 207 | 425260 |
+| Berlin | 09 | 22.5 | 114 | 119 | 74714 |
+| Turin | 01 | 3.6 | 6 | 220 | 62337 |
+| Bremen | 02 | -3.0 | 32 | 271 | 295849 |
+| Porto | 12 | 29.6 | 62 | 267 | 355291 |
+| Brno | 06 | 12.5 | 142 | 34 | 360770 |
+| Hamburg | 07 | 15.2 | 111 | 73 | 458477 |
+| Graz | 12 | 18.6 | 1 | 186 | 334733 |
+| Bonn | 09 | 18.7 | 5 | 236 | 53837 |
+
+## Table 11: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Porto | 03 | 6.3 | 3 | 161 | 471744 |
+| Basel | 02 | 30.8 | 157 | 156 | 133398 |
+| Graz | 08 | 0.8 | 88 | 88 | 282256 |
+| Hanover | 02 | 27.8 | 143 | 177 | 347064 |
+| Munich | 03 | 1.5 | 21 | 162 | 352970 |
+| Gdansk | 09 | 21.5 | 90 | 129 | 445331 |
+| Utrecht | 05 | 24.0 | 140 | 290 | 359008 |
+| Brno | 04 | 17.6 | 9 | 213 | 372088 |
+| Porto | 10 | 26.1 | 85 | 250 | 137180 |
+| Gdansk | 12 | -4.3 | 65 | 51 | 66815 |
+| Seville | 12 | 28.3 | 61 | 195 | 314529 |
+| Bonn | 03 | 6.3 | 5 | 151 | 41051 |
+| Hanover | 11 | 12.2 | 8 | 161 | 226950 |
+| Leipzig | 05 | 26.5 | 141 | 59 | 308679 |
+
+## Table 12: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Hanover | 06 | 4.4 | 54 | 271 | 318857 |
+| Porto | 10 | 21.3 | 148 | 48 | 465987 |
+| Gdansk | 04 | 8.2 | 91 | 284 | 391739 |
+| Bonn | 06 | 24.9 | 126 | 181 | 241116 |
+| Hamburg | 12 | -3.9 | 43 | 127 | 126511 |
+| Turin | 06 | 24.9 | 64 | 157 | 292874 |
+| Graz | 01 | 2.7 | 13 | 94 | 98561 |
+| Munich | 09 | 24.1 | 5 | 132 | 474352 |
+| Dresden | 05 | -0.9 | 23 | 284 | 37714 |
+| Seville | 11 | 10.8 | 74 | 227 | 269649 |
+| Hanover | 03 | 29.6 | 90 | 249 | 37806 |
+| Hamburg | 12 | 13.9 | 97 | 224 | 249800 |
+| Essen | 06 | -2.4 | 116 | 263 | 199841 |
+| Berlin | 03 | -4.3 | 60 | 196 | 338329 |
+
+## Table 13: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Dresden | 11 | 21.1 | 64 | 47 | 256636 |
+| Dresden | 07 | -0.1 | 84 | 58 | 137709 |
+| Porto | 05 | 23.3 | 148 | 249 | 82990 |
+| Leipzig | 03 | 26.8 | 49 | 88 | 284283 |
+| Gdansk | 12 | 1.2 | 80 | 121 | 368784 |
+| Hanover | 03 | -2.0 | 83 | 241 | 42521 |
+| Brno | 06 | 26.1 | 91 | 199 | 441617 |
+| Leipzig | 12 | 30.4 | 37 | 123 | 362580 |
+| Utrecht | 02 | -4.3 | 75 | 233 | 62282 |
+| Ghent | 12 | 11.7 | 141 | 51 | 218073 |
+| Lyon | 10 | 22.8 | 85 | 42 | 462561 |
+| Gdansk | 06 | -2.6 | 20 | 102 | 2717 |
+| Essen | 01 | 18.4 | 67 | 187 | 158813 |
+| Bonn | 11 | 6.0 | 80 | 209 | 348267 |
+
+## Table 14: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Graz | 05 | 11.3 | 2 | 279 | 268994 |
+| Ghent | 05 | 11.9 | 72 | 187 | 324247 |
+| Bonn | 03 | 4.7 | 107 | 115 | 150781 |
+| Porto | 07 | 1.5 | 1 | 249 | 278269 |
+| Brno | 01 | -5.6 | 145 | 66 | 5265 |
+| Hanover | 09 | 5.6 | 66 | 191 | 397169 |
+| Cologne | 07 | 7.6 | 3 | 264 | 409309 |
+| Basel | 06 | 22.8 | 52 | 161 | 85399 |
+| Berlin | 08 | -2.9 | 44 | 91 | 182987 |
+| Utrecht | 01 | 10.2 | 104 | 259 | 407156 |
+| Basel | 12 | 16.1 | 129 | 85 | 217844 |
+| Brno | 07 | 14.0 | 118 | 86 | 171924 |
+| Turin | 08 | 19.6 | 61 | 152 | 93363 |
+| Graz | 05 | 10.2 | 155 | 57 | 274670 |
+
+## Table 15: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Graz | 05 | 24.5 | 130 | 213 | 84831 |
+| Basel | 01 | 10.1 | 138 | 166 | 392478 |
+| Essen | 09 | 12.3 | 92 | 262 | 92896 |
+| Berlin | 11 | 2.7 | 141 | 224 | 74314 |
+| Seville | 01 | 20.7 | 127 | 288 | 135412 |
+| Porto | 08 | 29.3 | 126 | 201 | 133153 |
+| Seville | 06 | 29.5 | 37 | 128 | 457122 |
+| Brno | 11 | -4.5 | 135 | 273 | 184026 |
+| Graz | 04 | 10.0 | 113 | 177 | 410018 |
+| Utrecht | 05 | 4.6 | 127 | 122 | 456626 |
+| Gdansk | 05 | 16.1 | 30 | 61 | 147426 |
+| Brno | 07 | 12.2 | 94 | 52 | 268480 |
+| Hamburg | 03 | 19.1 | 128 | 193 | 214058 |
+| Bremen | 02 | 29.6 | 89 | 61 | 391378 |
+
+## Table 16: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Bonn | 06 | 2.4 | 30 | 164 | 134334 |
+| Hanover | 09 | -2.2 | 9 | 173 | 359493 |
+| Dresden | 04 | 21.3 | 96 | 283 | 257039 |
+| Bremen | 07 | 6.0 | 27 | 186 | 68585 |
+| Leipzig | 12 | 23.3 | 149 | 161 | 241617 |
+| Seville | 03 | 28.4 | 51 | 76 | 42655 |
+| Bonn | 09 | -1.2 | 91 | 224 | 295142 |
+| Essen | 04 | 23.3 | 149 | 210 | 458623 |
+| Hanover | 01 | 3.4 | 87 | 100 | 152802 |
+| Hamburg | 11 | 8.5 | 89 | 224 | 457359 |
+| Basel | 10 | -2.4 | 142 | 62 | 11919 |
+| Basel | 01 | -2.7 | 49 | 197 | 326740 |
+| Graz | 06 | 25.5 | 18 | 277 | 247908 |
+| Essen | 12 | 22.6 | 19 | 249 | 290842 |
+
+## Table 17: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Hanover | 11 | 23.7 | 106 | 258 | 9733 |
+| Seville | 05 | 24.5 | 83 | 172 | 2781 |
+| Berlin | 12 | 10.0 | 18 | 252 | 84783 |
+| Graz | 12 | 13.7 | 52 | 34 | 97218 |
+| Graz | 01 | -0.7 | 130 | 267 | 353420 |
+| Lyon | 12 | 2.8 | 26 | 148 | 128277 |
+| Berlin | 11 | 25.6 | 100 | 202 | 108594 |
+| Turin | 12 | 8.2 | 50 | 161 | 121966 |
+| Hamburg | 12 | 9.8 | 12 | 177 | 316569 |
+| Seville | 08 | 1.8 | 17 | 287 | 44994 |
+| Utrecht | 01 | 22.6 | 136 | 164 | 51174 |
+| Utrecht | 11 | 26.5 | 4 | 192 | 2605 |
+| Turin | 10 | 20.0 | 46 | 211 | 115904 |
+| Hanover | 01 | 27.5 | 135 | 114 | 16456 |
+
+## Table 18: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Hamburg | 02 | 10.7 | 131 | 79 | 294112 |
+| Porto | 10 | 11.1 | 89 | 116 | 135556 |
+| Ghent | 02 | 10.2 | 62 | 113 | 333173 |
+| Utrecht | 09 | 26.4 | 151 | 118 | 176619 |
+| Munich | 02 | 10.9 | 111 | 138 | 171904 |
+| Utrecht | 02 | 14.8 | 31 | 146 | 312285 |
+| Seville | 08 | 25.3 | 47 | 257 | 136000 |
+| Hamburg | 06 | 20.4 | 155 | 274 | 339604 |
+| Dresden | 04 | 17.5 | 71 | 122 | 296317 |
+| Turin | 11 | 20.4 | 144 | 244 | 260100 |
+| Bremen | 03 | 4.2 | 122 | 260 | 273622 |
+| Porto | 12 | 16.0 | 86 | 136 | 310556 |
+| Gdansk | 10 | 4.5 | 114 | 85 | 469538 |
+| Porto | 03 | 4.3 | 90 | 129 | 325287 |
+
+## Table 19: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Graz | 06 | -1.6 | 116 | 193 | 294801 |
+| Seville | 12 | 21.8 | 38 | 142 | 164317 |
+| Bonn | 08 | 3.0 | 99 | 251 | 61082 |
+| Berlin | 02 | 21.5 | 135 | 134 | 186298 |
+| Bremen | 07 | 16.4 | 16 | 231 | 379609 |
+| Graz | 04 | 18.4 | 17 | 247 | 274034 |
+| Basel | 06 | 21.4 | 131 | 201 | 347942 |
+| Seville | 12 | 3.8 | 155 | 255 | 4620 |
+| Hamburg | 01 | 0.1 | 12 | 186 | 105425 |
+| Bremen | 02 | 12.9 | 7 | 105 | 23839 |
+| Essen | 02 | 6.1 | 59 | 192 | 468951 |
+| Cologne | 07 | 3.8 | 42 | 95 | 389708 |
+| Hamburg | 10 | 19.7 | 76 | 77 | 17329 |
+| Munich | 10 | 23.8 | 142 | 194 | 385097 |
+
+## Table 20: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Berlin | 03 | -1.9 | 95 | 98 | 160914 |
+| Brno | 01 | 9.9 | 151 | 65 | 163016 |
+| Ghent | 07 | 27.5 | 112 | 219 | 172670 |
+| Leipzig | 09 | -4.8 | 124 | 270 | 91211 |
+| Berlin | 08 | 21.9 | 47 | 240 | 230213 |
+| Gdansk | 02 | 11.2 | 33 | 175 | 395330 |
+| Leipzig | 11 | -3.4 | 122 | 50 | 401334 |
+| Bremen | 06 | 30.7 | 107 | 99 | 310009 |
+| Brno | 03 | 22.8 | 154 | 106 | 386210 |
+| Hanover | 02 | -5.8 | 118 | 58 | 288433 |
+| Bonn | 11 | 25.7 | 157 | 35 | 371750 |
+| Porto | 03 | -2.6 | 158 | 85 | 41811 |
+| Dresden | 04 | -3.0 | 114 | 85 | 88468 |
+| Hamburg | 12 | 8.5 | 44 | 187 | 290054 |
+
+## Table 21: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Graz | 07 | 6.8 | 60 | 34 | 182388 |
+| Munich | 11 | 27.9 | 120 | 272 | 148752 |
+| Basel | 07 | 14.6 | 117 | 165 | 420235 |
+| Graz | 09 | 9.0 | 60 | 54 | 239099 |
+| Bonn | 03 | 10.3 | 118 | 218 | 320588 |
+| Dresden | 04 | 2.0 | 90 | 249 | 205182 |
+| Brno | 02 | 31.0 | 28 | 149 | 177539 |
+| Hanover | 01 | 30.9 | 124 | 93 | 313695 |
+| Graz | 01 | 15.0 | 2 | 91 | 164310 |
+| Leipzig | 03 | -2.4 | 8 | 210 | 323066 |
+| Ghent | 04 | 8.4 | 53 | 75 | 363674 |
+| Hanover | 12 | 20.7 | 22 | 50 | 104660 |
+| Gdansk | 01 | -0.6 | 54 | 289 | 457347 |
+| Leipzig | 03 | -3.7 | 141 | 260 | 333546 |
+
+## Table 22: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Graz | 09 | 27.2 | 114 | 120 | 444977 |
+| Berlin | 06 | 13.2 | 80 | 190 | 30672 |
+| Graz | 11 | -1.8 | 91 | 105 | 231216 |
+| Essen | 01 | 17.0 | 106 | 212 | 187408 |
+| Cologne | 02 | 25.1 | 100 | 278 | 275891 |
+| Essen | 07 | 6.5 | 51 | 214 | 428915 |
+| Utrecht | 09 | 14.8 | 97 | 256 | 296492 |
+| Utrecht | 04 | -0.2 | 54 | 141 | 419241 |
+| Essen | 03 | 11.8 | 51 | 106 | 350944 |
+| Bonn | 09 | 17.9 | 155 | 150 | 205737 |
+| Essen | 06 | -3.9 | 109 | 169 | 327622 |
+| Seville | 02 | -4.6 | 128 | 53 | 78612 |
+| Cologne | 10 | 16.7 | 43 | 218 | 369123 |
+| Graz | 07 | -2.6 | 39 | 111 | 345514 |
+
+## Table 23: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Turin | 05 | 3.8 | 8 | 100 | 162956 |
+| Porto | 02 | 26.6 | 159 | 113 | 179562 |
+| Porto | 12 | 4.6 | 95 | 49 | 190300 |
+| Hanover | 11 | 1.5 | 99 | 42 | 219424 |
+| Leipzig | 01 | -4.7 | 15 | 92 | 177036 |
+| Bremen | 11 | 1.1 | 118 | 122 | 350301 |
+| Munich | 02 | 13.9 | 99 | 92 | 232402 |
+| Utrecht | 07 | 9.6 | 120 | 137 | 292431 |
+| Basel | 02 | 28.3 | 40 | 138 | 141641 |
+| Cologne | 12 | 27.7 | 38 | 133 | 354423 |
+| Essen | 10 | -1.1 | 2 | 283 | 2478 |
+| Hamburg | 10 | 1.3 | 156 | 283 | 402861 |
+| Bonn | 08 | 30.7 | 123 | 184 | 392820 |
+| Seville | 06 | 4.4 | 134 | 65 | 96756 |
+
+## Table 24: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Essen | 11 | 8.7 | 138 | 46 | 337521 |
+| Hanover | 03 | -1.2 | 46 | 212 | 264598 |
+| Dresden | 12 | 12.4 | 142 | 206 | 94656 |
+| Munich | 07 | -0.3 | 69 | 167 | 165962 |
+| Cologne | 02 | 13.8 | 132 | 222 | 145687 |
+| Porto | 10 | 22.2 | 74 | 38 | 321027 |
+| Ghent | 03 | 28.6 | 157 | 224 | 162623 |
+| Munich | 07 | 13.9 | 63 | 288 | 322035 |
+| Essen | 02 | 24.3 | 117 | 172 | 121022 |
+| Lyon | 11 | 9.0 | 132 | 254 | 194849 |
+| Graz | 01 | 2.2 | 15 | 76 | 303639 |
+| Seville | 07 | 8.0 | 72 | 120 | 410123 |
+| Bonn | 11 | -2.3 | 91 | 133 | 339611 |
+| Hanover | 09 | 24.3 | 107 | 189 | 271109 |
+
+## Table 25: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Bremen | 10 | -3.0 | 137 | 147 | 45394 |
+| Seville | 05 | 16.6 | 111 | 144 | 10698 |
+| Leipzig | 08 | 24.0 | 48 | 145 | 248265 |
+| Ghent | 05 | 25.8 | 155 | 189 | 334266 |
+| Leipzig | 10 | 28.3 | 122 | 142 | 331251 |
+| Brno | 06 | -3.1 | 61 | 213 | 122598 |
+| Porto | 11 | 11.2 | 143 | 147 | 62631 |
+| Ghent | 06 | 13.1 | 147 | 135 | 23552 |
+| Bremen | 04 | 14.8 | 119 | 244 | 4116 |
+| Hanover | 03 | 12.5 | 107 | 229 | 477474 |
+| Berlin | 07 | 16.8 | 27 | 77 | 266548 |
+| Berlin | 06 | -2.4 | 82 | 201 | 153266 |
+| Seville | 07 | 24.9 | 155 | 284 | 11696 |
+| Graz | 01 | -3.9 | 83 | 80 | 437688 |
+
+## Table 26: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Lyon | 09 | -5.7 | 100 | 252 | 472479 |
+| Seville | 02 | -5.1 | 51 | 248 | 247209 |
+| Ghent | 08 | 4.9 | 155 | 257 | 118901 |
+| Lyon | 08 | 5.3 | 9 | 101 | 401294 |
+| Ghent | 11 | 18.4 | 75 | 213 | 41306 |
+| Graz | 08 | -1.1 | 76 | 127 | 19424 |
+| Turin | 07 | -3.6 | 131 | 72 | 458180 |
+| Berlin | 04 | -2.0 | 74 | 166 | 186767 |
+| Brno | 12 | 14.3 | 117 | 275 | 32880 |
+| Turin | 11 | 8.7 | 49 | 140 | 57017 |
+| Berlin | 09 | 10.0 | 133 | 92 | 428112 |
+| Bonn | 01 | 19.2 | 56 | 175 | 461975 |
+| Bremen | 09 | 15.8 | 46 | 206 | 291814 |
+| Lyon | 05 | -3.7 | 156 | 244 | 140396 |
+
+## Table 27: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Turin | 02 | 3.3 | 141 | 136 | 135333 |
+| Cologne | 07 | 8.5 | 4 | 31 | 443300 |
+| Hanover | 04 | -2.9 | 91 | 71 | 228822 |
+| Dresden | 06 | 19.4 | 100 | 247 | 176703 |
+| Leipzig | 12 | 24.5 | 60 | 49 | 368616 |
+| Leipzig | 12 | 1.1 | 43 | 215 | 53833 |
+| Munich | 01 | 3.8 | 79 | 108 | 226540 |
+| Ghent | 08 | 9.7 | 93 | 33 | 432296 |
+| Ghent | 11 | 16.3 | 119 | 289 | 426096 |
+| Hamburg | 09 | 8.6 | 148 | 121 | 92079 |
+| Leipzig | 08 | 29.7 | 124 | 111 | 105245 |
+| Graz | 10 | 29.1 | 140 | 154 | 26049 |
+| Leipzig | 07 | 19.7 | 141 | 184 | 114909 |
+| Leipzig | 06 | 14.8 | 64 | 75 | 474582 |
+
+## Table 28: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Dresden | 03 | 19.3 | 51 | 195 | 91683 |
+| Bonn | 03 | 17.5 | 88 | 257 | 6285 |
+| Brno | 09 | 8.3 | 99 | 214 | 368045 |
+| Seville | 06 | 9.8 | 136 | 123 | 165459 |
+| Graz | 02 | -2.1 | 62 | 100 | 401936 |
+| Hamburg | 03 | 4.0 | 151 | 251 | 3104 |
+| Seville | 12 | 30.3 | 152 | 216 | 402745 |
+| Hamburg | 10 | 24.2 | 84 | 143 | 62459 |
+| Basel | 12 | 3.3 | 56 | 231 | 269603 |
+| Essen | 05 | 6.8 | 48 | 90 | 371011 |
+| Bonn | 12 | 18.4 | 17 | 114 | 270701 |
+| Berlin | 04 | 30.2 | 39 | 124 | 362604 |
+| Essen | 03 | 27.7 | 64 | 223 | 321151 |
+| Hanover | 10 | 6.2 | 120 | 210 | 358094 |
+
+## Table 29: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Dresden | 05 | 3.2 | 118 | 161 | 476974 |
+| Hamburg | 09 | 7.2 | 136 | 34 | 467502 |
+| Hanover | 05 | -4.1 | 156 | 251 | 87292 |
+| Ghent | 10 | 23.2 | 17 | 207 | 430722 |
+| Essen | 01 | 27.8 | 40 | 99 | 365161 |
+| Brno | 12 | 18.3 | 31 | 122 | 321654 |
+| Leipzig | 08 | 0.8 | 14 | 86 | 460935 |
+| Basel | 06 | -2.8 | 81 | 207 | 352998 |
+| Turin | 04 | 28.5 | 77 | 55 | 17803 |
+| Leipzig | 10 | 23.5 | 60 | 264 | 356097 |
+| Lyon | 08 | 30.8 | 152 | 172 | 117552 |
+| Hanover | 08 | 6.1 | 85 | 250 | 351817 |
+| Munich | 11 | -0.3 | 96 | 91 | 440175 |
+| Berlin | 05 | 14.7 | 5 | 162 | 164734 |
+
+## Table 30: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Dresden | 05 | 28.5 | 94 | 134 | 441591 |
+| Bonn | 07 | -1.0 | 54 | 111 | 380377 |
+| Cologne | 03 | 10.1 | 147 | 153 | 391316 |
+| Leipzig | 05 | 4.5 | 125 | 113 | 40089 |
+| Hamburg | 10 | 6.4 | 152 | 125 | 258720 |
+| Brno | 03 | -4.3 | 4 | 121 | 25011 |
+| Seville | 02 | 11.9 | 64 | 74 | 472398 |
+| Dresden | 09 | 7.4 | 81 | 220 | 424137 |
+| Dresden | 12 | 14.3 | 4 | 272 | 295957 |
+| Cologne | 12 | -3.8 | 146 | 224 | 68154 |
+| Bremen | 08 | -5.7 | 66 | 247 | 318188 |
+| Utrecht | 12 | -4.2 | 81 | 228 | 463412 |
+| Graz | 07 | 13.0 | 103 | 82 | 47696 |
+| Brno | 02 | 12.0 | 84 | 182 | 209253 |
+
+## Table 31: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Brno | 09 | 21.1 | 115 | 207 | 94246 |
+| Seville | 02 | 6.9 | 159 | 265 | 317132 |
+| Gdansk | 05 | 23.8 | 18 | 78 | 91460 |
+| Turin | 03 | 11.4 | 119 | 283 | 399663 |
+| Essen | 02 | 28.3 | 106 | 152 | 284294 |
+| Bonn | 07 | 17.5 | 58 | 47 | 115101 |
+| Dresden | 01 | 12.0 | 42 | 173 | 296502 |
+| Leipzig | 02 | 26.4 | 38 | 152 | 282112 |
+| Hamburg | 06 | 12.5 | 83 | 281 | 116214 |
+| Munich | 01 | 5.5 | 77 | 236 | 104065 |
+| Porto | 12 | 4.7 | 21 | 196 | 211969 |
+| Hanover | 01 | 0.1 | 94 | 114 | 20850 |
+| Munich | 07 | 24.1 | 150 | 230 | 263771 |
+| Graz | 11 | 16.8 | 67 | 31 | 252739 |
+
+## Table 32: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Turin | 10 | 22.3 | 129 | 56 | 131624 |
+| Bremen | 07 | 12.3 | 158 | 136 | 24277 |
+| Munich | 10 | 8.9 | 98 | 75 | 243175 |
+| Brno | 09 | -2.5 | 106 | 257 | 112018 |
+| Bonn | 03 | 21.0 | 102 | 183 | 438383 |
+| Porto | 11 | 29.5 | 36 | 69 | 118873 |
+| Utrecht | 05 | 24.3 | 16 | 211 | 38956 |
+| Lyon | 04 | 3.0 | 36 | 72 | 10030 |
+| Berlin | 05 | 18.4 | 35 | 267 | 161173 |
+| Lyon | 07 | 30.6 | 70 | 218 | 315619 |
+| Gdansk | 03 | -4.4 | 15 | 278 | 361489 |
+| Lyon | 12 | 17.3 | 132 | 228 | 359075 |
+| Graz | 12 | 22.1 | 36 | 247 | 333919 |
+| Ghent | 11 | 5.2 | 25 | 255 | 175359 |
+
+## Table 33: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Hanover | 02 | 6.8 | 19 | 125 | 232148 |
+| Graz | 11 | 21.8 | 106 | 143 | 479126 |
+| Seville | 04 | 11.7 | 160 | 194 | 262239 |
+| Gdansk | 04 | 24.0 | 139 | 201 | 220634 |
+| Hanover | 11 | 26.9 | 89 | 246 | 23161 |
+| Hamburg | 01 | 6.0 | 46 | 277 | 296358 |
+| Utrecht | 01 | 26.1 | 89 | 160 | 297147 |
+| Leipzig | 01 | 29.5 | 81 | 136 | 312871 |
+| Essen | 08 | 4.3 | 96 | 42 | 373949 |
+| Basel | 01 | 20.2 | 18 | 177 | 70076 |
+| Utrecht | 12 | 9.9 | 20 | 235 | 84582 |
+| Dresden | 11 | 14.9 | 119 | 193 | 25505 |
+| Hamburg | 03 | 7.2 | 45 | 92 | 476628 |
+| Graz | 11 | 3.1 | 26 | 56 | 63051 |
+
+## Table 34: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Bonn | 05 | 10.7 | 88 | 110 | 102751 |
+| Bonn | 09 | 9.0 | 156 | 74 | 382750 |
+| Graz | 08 | 16.3 | 123 | 195 | 428948 |
+| Cologne | 07 | 15.3 | 49 | 282 | 167983 |
+| Ghent | 11 | 29.8 | 9 | 251 | 262395 |
+| Gdansk | 05 | 28.5 | 12 | 254 | 232782 |
+| Gdansk | 06 | 6.4 | 131 | 73 | 239371 |
+| Gdansk | 02 | 15.4 | 144 | 228 | 129805 |
+| Lyon | 12 | 4.0 | 32 | 45 | 386584 |
+| Munich | 08 | 1.4 | 56 | 47 | 375198 |
+| Dresden | 03 | 18.1 | 21 | 255 | 67824 |
+| Dresden | 04 | -4.2 | 106 | 99 | 453814 |
+| Brno | 10 | 20.2 | 61 | 144 | 176439 |
+| Munich | 02 | 20.9 | 6 | 216 | 383171 |
+
+## Table 35: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Hanover | 08 | 10.2 | 68 | 263 | 162468 |
+| Gdansk | 11 | 23.7 | 31 | 87 | 102169 |
+| Graz | 02 | 27.9 | 33 | 174 | 268161 |
+| Seville | 06 | 19.6 | 71 | 152 | 367893 |
+| Lyon | 04 | 3.3 | 93 | 80 | 308866 |
+| Utrecht | 07 | -5.8 | 115 | 90 | 274462 |
+| Ghent | 12 | 1.4 | 29 | 113 | 289076 |
+| Hanover | 06 | 10.6 | 23 | 245 | 66682 |
+| Leipzig | 01 | 2.0 | 157 | 143 | 196979 |
+| Lyon | 04 | -1.5 | 137 | 181 | 223897 |
+| Graz | 11 | -0.8 | 126 | 46 | 383388 |
+| Cologne | 03 | 4.3 | 111 | 57 | 223803 |
+| Utrecht | 01 | 3.7 | 52 | 194 | 93550 |
+| Seville | 05 | 18.9 | 114 | 166 | 100028 |
+
+## Table 36: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Munich | 04 | 25.0 | 26 | 182 | 417983 |
+| Graz | 08 | 7.5 | 47 | 82 | 150153 |
+| Cologne | 02 | -4.2 | 71 | 217 | 389591 |
+| Porto | 05 | 9.4 | 104 | 215 | 331797 |
+| Bremen | 09 | 30.3 | 50 | 115 | 258382 |
+| Dresden | 08 | 26.8 | 84 | 233 | 44774 |
+| Seville | 12 | 6.0 | 60 | 67 | 408403 |
+| Hamburg | 12 | 26.2 | 22 | 273 | 70276 |
+| Gdansk | 10 | -4.1 | 120 | 278 | 408572 |
+| Berlin | 05 | 29.6 | 138 | 155 | 8265 |
+| Porto | 01 | -0.4 | 21 | 135 | 245483 |
+| Seville | 09 | 27.8 | 152 | 241 | 153376 |
+| Seville | 01 | 6.8 | 149 | 275 | 84811 |
+| Bonn | 08 | 13.0 | 30 | 137 | 280681 |
+
+## Table 37: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Brno | 03 | 13.9 | 70 | 99 | 387864 |
+| Porto | 01 | -0.6 | 8 | 265 | 286721 |
+| Cologne | 11 | 0.6 | 124 | 168 | 131628 |
+| Utrecht | 02 | 21.3 | 128 | 259 | 118414 |
+| Graz | 06 | 22.0 | 128 | 131 | 110499 |
+| Dresden | 12 | 16.3 | 158 | 68 | 201091 |
+| Essen | 07 | 9.7 | 101 | 101 | 242128 |
+| Lyon | 04 | 25.3 | 35 | 261 | 16015 |
+| Seville | 04 | -3.4 | 148 | 101 | 80470 |
+| Porto | 10 | -4.1 | 31 | 107 | 151483 |
+| Ghent | 07 | 26.1 | 143 | 107 | 91069 |
+| Gdansk | 10 | 28.4 | 59 | 40 | 43747 |
+| Hanover | 04 | 6.2 | 42 | 206 | 258394 |
+| Bremen | 04 | 15.0 | 55 | 269 | 458644 |
+
+## Table 38: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Turin | 09 | 18.4 | 39 | 70 | 435668 |
+| Essen | 03 | -0.2 | 124 | 276 | 69613 |
+| Seville | 05 | 23.0 | 50 | 145 | 194292 |
+| Munich | 08 | 30.4 | 66 | 158 | 36266 |
+| Basel | 09 | -3.0 | 76 | 48 | 81811 |
+| Graz | 03 | 26.4 | 83 | 268 | 133167 |
+| Leipzig | 04 | 12.2 | 76 | 175 | 108461 |
+| Bonn | 04 | 4.1 | 27 | 103 | 316451 |
+| Berlin | 04 | 7.9 | 62 | 279 | 82442 |
+| Hanover | 03 | 30.1 | 6 | 91 | 467823 |
+| Dresden | 09 | 0.8 | 17 | 281 | 433493 |
+| Brno | 03 | 3.3 | 58 | 224 | 307027 |
+| Porto | 09 | 17.2 | 148 | 69 | 218091 |
+| Brno | 10 | -4.7 | 99 | 166 | 175876 |
+
+## Table 39: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Graz | 06 | 20.4 | 154 | 136 | 249059 |
+| Essen | 08 | -5.8 | 143 | 96 | 43532 |
+| Seville | 01 | 24.5 | 127 | 232 | 245836 |
+| Seville | 07 | 20.8 | 50 | 36 | 69352 |
+| Porto | 11 | -0.5 | 16 | 231 | 117797 |
+| Porto | 11 | 25.2 | 117 | 127 | 149738 |
+| Graz | 06 | 18.2 | 103 | 245 | 80407 |
+| Brno | 07 | 5.7 | 70 | 289 | 40354 |
+| Turin | 05 | -1.4 | 20 | 86 | 319774 |
+| Berlin | 10 | 19.2 | 25 | 42 | 245029 |
+| Basel | 01 | 1.4 | 79 | 46 | 409625 |
+| Graz | 08 | -5.2 | 85 | 102 | 225991 |
+| Brno | 07 | 15.8 | 140 | 190 | 122936 |
+| Graz | 08 | 26.8 | 106 | 59 | 198940 |
+
+## Table 40: monthly figures
+| city | month | temperature (C) | rain (mm) | sunshine (h) | visitors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Bonn | 05 | 21.5 | 69 | 242 | 222679 |
+| Dresden | 11 | 3.7 | 23 | 276 | 28783 |
+| Dresden | 12 | 4.6 | 36 | 259 | 227089 |
+| Bremen | 10 | -0.1 | 38 | 96 | 57597 |
+| Berlin | 11 | 1.0 | 135 | 232 | 473456 |
+| Munich | 12 | 14.1 | 99 | 288 | 142404 |
+| Gdansk | 06 | 15.3 | 130 | 235 | 138566 |
+| Hanover | 06 | -3.3 | 111 | 274 | 459488 |
+| Seville | 02 | 17.1 | 159 | 160 | 208236 |
+| Basel | 10 | 19.1 | 41 | 86 | 34031 |
+| Brno | 11 | -1.6 | 141 | 65 | 69018 |
+| Hamburg | 04 | 23.3 | 98 | 32 | 313150 |
+| Leipzig | 03 | -2.7 | 11 | 201 | 127318 |
+| Bonn | 11 | 3.9 | 135 | 32 | 127353 |
+
+## Sensor log
+2026-03-08T23:19:46Z sensor-19 value=26.289 unit=C status=retry seq=0
+2026-03-27T13:25:45Z sensor-24 value=19.119 unit=C status=ok seq=1
+2026-03-24T14:06:57Z sensor-22 value=14.108 unit=C status=ok seq=2
+2026-03-04T11:04:12Z sensor-16 value=21.106 unit=C status=retry seq=3
+2026-03-19T01:06:44Z sensor-08 value=29.711 unit=C status=warn seq=4
+2026-03-27T20:59:47Z sensor-06 value=15.929 unit=C status=retry seq=5
+2026-03-16T01:56:10Z sensor-27 value=19.055 unit=C status=warn seq=6
+2026-03-17T15:57:30Z sensor-27 value=15.705 unit=C status=ok seq=7
+2026-03-11T12:55:40Z sensor-08 value=19.177 unit=C status=retry seq=8
+2026-03-10T00:24:56Z sensor-28 value=34.986 unit=C status=ok seq=9
+2026-03-20T14:03:01Z sensor-15 value=25.737 unit=C status=warn seq=10
+2026-03-01T19:47:12Z sensor-29 value=30.280 unit=C status=ok seq=11
+2026-03-04T12:00:21Z sensor-36 value=28.340 unit=C status=ok seq=12
+2026-03-19T01:10:16Z sensor-24 value=23.892 unit=C status=ok seq=13
+2026-03-04T07:28:50Z sensor-16 value=17.657 unit=C status=warn seq=14
+2026-03-22T18:52:54Z sensor-19 value=16.978 unit=C status=ok seq=15
+2026-03-02T18:21:44Z sensor-21 value=17.561 unit=C status=warn seq=16
+2026-03-02T12:53:01Z sensor-28 value=12.835 unit=C status=ok seq=17
+2026-03-02T11:03:19Z sensor-07 value=19.039 unit=C status=ok seq=18
+2026-03-05T11:20:44Z sensor-25 value=15.507 unit=C status=ok seq=19
+2026-03-16T14:59:32Z sensor-01 value=15.315 unit=C status=ok seq=20
+2026-03-06T16:01:40Z sensor-02 value=21.365 unit=C status=ok seq=21
+2026-03-09T14:18:13Z sensor-11 value=15.287 unit=C status=ok seq=22
+2026-03-23T14:41:26Z sensor-09 value=24.576 unit=C status=ok seq=23
+2026-03-20T05:02:28Z sensor-03 value=17.523 unit=C status=ok seq=24
+2026-03-16T09:17:20Z sensor-33 value=13.957 unit=C status=ok seq=25
+2026-03-17T22:56:27Z sensor-34 value=17.081 unit=C status=warn seq=26
+2026-03-14T22:00:06Z sensor-26 value=18.504 unit=C status=warn seq=27
+2026-03-06T16:32:09Z sensor-15 value=14.701 unit=C status=retry seq=28
+2026-03-20T06:35:46Z sensor-03 value=24.435 unit=C status=ok seq=29
+2026-03-21T20:44:14Z sensor-13 value=17.453 unit=C status=ok seq=30
+2026-03-03T13:47:42Z sensor-22 value=26.225 unit=C status=ok seq=31
+2026-03-04T19:51:04Z sensor-04 value=12.797 unit=C status=ok seq=32
+2026-03-09T12:45:20Z sensor-12 value=24.272 unit=C status=ok seq=33
+2026-03-11T04:21:02Z sensor-06 value=22.861 unit=C status=ok seq=34
+2026-03-18T20:34:49Z sensor-12 value=17.197 unit=C status=ok seq=35
+2026-03-04T09:00:01Z sensor-28 value=24.841 unit=C status=ok seq=36
+2026-03-20T15:23:40Z sensor-10 value=18.454 unit=C status=retry seq=37
+2026-03-07T20:10:15Z sensor-24 value=27.488 unit=C status=warn seq=38
+2026-03-20T23:54:33Z sensor-35 value=18.401 unit=C status=warn seq=39
+2026-03-27T13:50:18Z sensor-17 value=13.266 unit=C status=ok seq=40
+2026-03-24T10:21:09Z sensor-30 value=11.913 unit=C status=ok seq=41
+2026-03-22T01:58:38Z sensor-22 value=21.951 unit=C status=warn seq=42
+2026-03-21T13:35:33Z sensor-36 value=23.759 unit=C status=ok seq=43
+2026-03-08T16:31:18Z sensor-07 value=13.135 unit=C status=ok seq=44
+2026-03-05T06:49:26Z sensor-02 value=15.206 unit=C status=ok seq=45
+2026-03-14T18:38:24Z sensor-03 value=17.798 unit=C status=ok seq=46
+2026-03-09T15:36:09Z sensor-24 value=31.265 unit=C status=retry seq=47
+2026-03-04T01:16:39Z sensor-24 value=23.684 unit=C status=ok seq=48
+2026-03-25T15:15:35Z sensor-23 value=13.789 unit=C status=ok seq=49
+2026-03-25T20:33:44Z sensor-33 value=27.995 unit=C status=retry seq=50
+2026-03-26T07:18:01Z sensor-32 value=14.143 unit=C status=ok seq=51
+2026-03-21T11:51:47Z sensor-36 value=30.102 unit=C status=ok seq=52
+2026-03-10T11:01:52Z sensor-11 value=20.932 unit=C status=ok seq=53
+2026-03-13T15:03:18Z sensor-01 value=30.285 unit=C status=retry seq=54
+2026-03-14T06:33:35Z sensor-12 value=28.179 unit=C status=warn seq=55
+2026-03-20T03:48:51Z sensor-19 value=16.109 unit=C status=warn seq=56
+2026-03-02T07:34:34Z sensor-19 value=18.242 unit=C status=warn seq=57
+2026-03-16T08:01:05Z sensor-26 value=18.591 unit=C status=ok seq=58
+2026-03-08T14:04:48Z sensor-23 value=24.954 unit=C status=ok seq=59
+2026-03-02T12:27:39Z sensor-04 value=18.809 unit=C status=warn seq=60
+2026-03-01T17:54:01Z sensor-32 value=17.412 unit=C status=ok seq=61
+2026-03-27T08:28:02Z sensor-27 value=16.829 unit=C status=ok seq=62
+2026-03-01T13:54:54Z sensor-04 value=13.180 unit=C status=ok seq=63
+2026-03-13T14:37:10Z sensor-27 value=10.467 unit=C status=ok seq=64
+2026-03-20T11:28:00Z sensor-17 value=22.604 unit=C status=ok seq=65
+2026-03-28T12:59:47Z sensor-37 value=12.465 unit=C status=retry seq=66
+2026-03-10T09:56:08Z sensor-15 value=26.468 unit=C status=warn seq=67
+2026-03-05T03:03:09Z sensor-34 value=15.659 unit=C status=warn seq=68
+2026-03-06T18:19:15Z sensor-30 value=33.265 unit=C status=retry seq=69
+2026-03-20T09:11:48Z sensor-08 value=13.431 unit=C status=retry seq=70
+2026-03-13T13:34:17Z sensor-34 value=26.981 unit=C status=ok seq=71
+2026-03-18T06:59:06Z sensor-03 value=16.186 unit=C status=ok seq=72
+2026-03-05T17:08:30Z sensor-35 value=23.460 unit=C status=warn seq=73
+2026-03-24T12:24:17Z sensor-36 value=22.974 unit=C status=warn seq=74
+2026-03-05T15:30:35Z sensor-20 value=29.384 unit=C status=ok seq=75
+2026-03-04T14:08:03Z sensor-38 value=20.365 unit=C status=retry seq=76
+2026-03-24T11:48:31Z sensor-40 value=22.260 unit=C status=ok seq=77
+2026-03-01T23:29:42Z sensor-22 value=19.155 unit=C status=ok seq=78
+2026-03-12T04:48:25Z sensor-38 value=20.074 unit=C status=ok seq=79
+2026-03-10T07:10:32Z sensor-14 value=15.905 unit=C status=warn seq=80
+2026-03-22T16:44:48Z sensor-23 value=15.087 unit=C status=warn seq=81
+2026-03-13T23:58:00Z sensor-33 value=15.144 unit=C status=ok seq=82
+2026-03-05T17:20:25Z sensor-24 value=18.008 unit=C status=ok seq=83
+2026-03-21T18:34:51Z sensor-19 value=33.590 unit=C status=warn seq=84
+2026-03-04T14:01:53Z sensor-08 value=29.511 unit=C status=ok seq=85
+2026-03-15T21:49:11Z sensor-26 value=12.108 unit=C status=retry seq=86
+2026-03-06T22:29:22Z sensor-34 value=16.855 unit=C status=ok seq=87
+2026-03-25T09:58:27Z sensor-18 value=27.316 unit=C status=ok seq=88
+2026-03-08T15:26:03Z sensor-24 value=23.638 unit=C status=ok seq=89
+2026-03-24T16:30:49Z sensor-31 value=28.852 unit=C status=ok seq=90
+2026-03-11T01:38:05Z sensor-04 value=17.042 unit=C status=ok seq=91
+2026-03-02T06:40:02Z sensor-32 value=22.030 unit=C status=ok seq=92
+2026-03-21T14:10:47Z sensor-03 value=18.410 unit=C status=retry seq=93
+2026-03-11T03:22:17Z sensor-11 value=16.333 unit=C status=retry seq=94
+2026-03-27T00:29:57Z sensor-11 value=21.582 unit=C status=ok seq=95
+2026-03-14T04:10:58Z sensor-19 value=31.322 unit=C status=ok seq=96
+2026-03-20T03:24:27Z sensor-39 value=12.508 unit=C status=ok seq=97
+2026-03-14T03:13:31Z sensor-23 value=30.006 unit=C status=warn seq=98
+2026-03-03T01:09:17Z sensor-09 value=20.644 unit=C status=retry seq=99
+2026-03-01T08:04:49Z sensor-03 value=18.621 unit=C status=ok seq=100
+2026-03-25T21:58:50Z sensor-29 value=15.772 unit=C status=warn seq=101
+2026-03-28T06:06:29Z sensor-35 value=16.895 unit=C status=ok seq=102
+2026-03-18T18:51:36Z sensor-36 value=19.743 unit=C status=ok seq=103
+2026-03-27T17:28:35Z sensor-30 value=12.810 unit=C status=ok seq=104
+2026-03-04T12:08:34Z sensor-09 value=11.552 unit=C status=ok seq=105
+2026-03-22T21:41:32Z sensor-18 value=18.439 unit=C status=retry seq=106
+2026-03-12T03:55:21Z sensor-04 value=25.202 unit=C status=ok seq=107
+2026-03-26T14:06:52Z sensor-04 value=13.484 unit=C status=retry seq=108
+2026-03-13T18:19:15Z sensor-22 value=12.517 unit=C status=warn seq=109
+2026-03-03T00:00:05Z sensor-22 value=16.942 unit=C status=retry seq=110
+2026-03-20T07:29:06Z sensor-36 value=27.467 unit=C status=ok seq=111
+2026-03-18T16:21:32Z sensor-22 value=29.483 unit=C status=retry seq=112
+2026-03-23T10:15:02Z sensor-15 value=16.857 unit=C status=ok seq=113
+2026-03-02T03:59:36Z sensor-24 value=22.173 unit=C status=warn seq=114
+2026-03-20T01:16:12Z sensor-14 value=23.971 unit=C status=ok seq=115
+2026-03-03T03:20:11Z sensor-40 value=32.586 unit=C status=warn seq=116
+2026-03-28T18:53:05Z sensor-36 value=24.205 unit=C status=ok seq=117
+2026-03-24T14:53:01Z sensor-39 value=15.410 unit=C status=retry seq=118
+2026-03-10T16:42:53Z sensor-25 value=16.933 unit=C status=retry seq=119
+2026-03-24T13:39:35Z sensor-34 value=29.997 unit=C status=ok seq=120
+2026-03-17T22:06:10Z sensor-15 value=14.856 unit=C status=retry seq=121
+2026-03-12T17:14:54Z sensor-38 value=19.914 unit=C status=ok seq=122
+2026-03-27T11:57:53Z sensor-03 value=8.623 unit=C status=warn seq=123
+2026-03-19T20:05:02Z sensor-21 value=15.632 unit=C status=ok seq=124
+2026-03-21T22:12:48Z sensor-30 value=3.121 unit=C status=warn seq=125
+2026-03-18T14:14:43Z sensor-14 value=21.472 unit=C status=ok seq=126
+2026-03-06T01:03:36Z sensor-09 value=22.343 unit=C status=warn seq=127
+2026-03-07T16:58:26Z sensor-22 value=28.526 unit=C status=retry seq=128
+2026-03-24T05:07:46Z sensor-30 value=20.498 unit=C status=ok seq=129
+2026-03-18T15:06:05Z sensor-26 value=29.477 unit=C status=ok seq=130
+2026-03-25T00:54:47Z sensor-22 value=16.302 unit=C status=retry seq=131
+2026-03-11T07:28:08Z sensor-08 value=22.238 unit=C status=ok seq=132
+2026-03-11T07:36:42Z sensor-20 value=20.122 unit=C status=warn seq=133
+2026-03-07T10:06:27Z sensor-30 value=16.543 unit=C status=retry seq=134
+2026-03-08T02:29:06Z sensor-20 value=22.737 unit=C status=ok seq=135
+2026-03-07T11:36:15Z sensor-40 value=25.451 unit=C status=ok seq=136
+2026-03-10T22:59:47Z sensor-01 value=16.632 unit=C status=warn seq=137
+2026-03-10T11:54:17Z sensor-14 value=22.989 unit=C status=ok seq=138
+2026-03-09T18:42:04Z sensor-26 value=20.804 unit=C status=ok seq=139
+2026-03-11T21:34:13Z sensor-14 value=17.680 unit=C status=retry seq=140
+2026-03-25T11:05:53Z sensor-36 value=22.786 unit=C status=ok seq=141
+2026-03-28T03:44:55Z sensor-22 value=15.755 unit=C status=ok seq=142
+2026-03-15T02:25:59Z sensor-36 value=19.353 unit=C status=ok seq=143
+2026-03-05T13:46:59Z sensor-18 value=13.627 unit=C status=retry seq=144
+2026-03-02T16:44:41Z sensor-19 value=24.917 unit=C status=ok seq=145
+2026-03-01T14:06:53Z sensor-03 value=18.076 unit=C status=ok seq=146
+2026-03-11T09:32:38Z sensor-22 value=14.306 unit=C status=ok seq=147
+2026-03-17T00:07:17Z sensor-23 value=19.323 unit=C status=retry seq=148
+2026-03-22T06:20:54Z sensor-17 value=20.853 unit=C status=warn seq=149
+2026-03-13T01:28:34Z sensor-39 value=23.094 unit=C status=ok seq=150
+2026-03-24T05:54:30Z sensor-12 value=22.240 unit=C status=warn seq=151
+2026-03-20T08:05:18Z sensor-16 value=20.271 unit=C status=ok seq=152
+2026-03-16T04:07:52Z sensor-29 value=33.998 unit=C status=ok seq=153
+2026-03-21T19:23:28Z sensor-20 value=9.407 unit=C status=warn seq=154
+2026-03-22T17:27:57Z sensor-13 value=16.519 unit=C status=ok seq=155
+2026-03-12T22:58:45Z sensor-01 value=13.764 unit=C status=ok seq=156
+2026-03-18T07:27:41Z sensor-01 value=12.704 unit=C status=ok seq=157
+2026-03-05T23:50:40Z sensor-38 value=21.442 unit=C status=ok seq=158
+2026-03-24T23:58:09Z sensor-11 value=25.436 unit=C status=warn seq=159
+2026-03-25T07:14:32Z sensor-32 value=26.037 unit=C status=ok seq=160
+2026-03-07T00:09:02Z sensor-37 value=17.610 unit=C status=retry seq=161
+2026-03-14T18:21:10Z sensor-03 value=21.010 unit=C status=retry seq=162
+2026-03-22T05:18:01Z sensor-24 value=14.426 unit=C status=warn seq=163
+2026-03-19T06:23:13Z sensor-15 value=23.607 unit=C status=retry seq=164
+2026-03-16T23:10:30Z sensor-10 value=25.933 unit=C status=warn seq=165
+2026-03-12T21:16:00Z sensor-36 value=20.153 unit=C status=warn seq=166
+2026-03-17T23:41:00Z sensor-04 value=13.107 unit=C status=warn seq=167
+2026-03-02T09:23:56Z sensor-13 value=17.714 unit=C status=ok seq=168
+2026-03-14T15:04:16Z sensor-19 value=31.198 unit=C status=warn seq=169
+2026-03-08T16:59:43Z sensor-18 value=15.328 unit=C status=warn seq=170
+2026-03-10T18:52:13Z sensor-32 value=28.108 unit=C status=ok seq=171
+2026-03-15T10:53:25Z sensor-40 value=11.475 unit=C status=retry seq=172
+2026-03-08T19:25:36Z sensor-19 value=19.686 unit=C status=ok seq=173
+2026-03-27T12:29:05Z sensor-32 value=18.796 unit=C status=ok seq=174
+2026-03-24T22:00:33Z sensor-23 value=10.617 unit=C status=warn seq=175
+2026-03-13T19:27:00Z sensor-31 value=13.135 unit=C status=warn seq=176
+2026-03-03T07:03:24Z sensor-22 value=20.376 unit=C status=ok seq=177
+2026-03-16T20:26:26Z sensor-26 value=20.359 unit=C status=ok seq=178
+2026-03-26T01:29:53Z sensor-34 value=18.321 unit=C status=retry seq=179
+2026-03-15T14:16:29Z sensor-04 value=10.179 unit=C status=ok seq=180
+2026-03-23T05:03:22Z sensor-27 value=10.247 unit=C status=warn seq=181
+2026-03-24T16:47:25Z sensor-15 value=24.987 unit=C status=ok seq=182
+2026-03-01T17:27:50Z sensor-33 value=18.998 unit=C status=ok seq=183
+2026-03-13T08:52:52Z sensor-07 value=22.506 unit=C status=ok seq=184
+2026-03-07T10:37:05Z sensor-40 value=24.883 unit=C status=warn seq=185
+2026-03-16T11:57:30Z sensor-20 value=15.017 unit=C status=ok seq=186
+2026-03-03T19:24:30Z sensor-32 value=24.467 unit=C status=ok seq=187
+2026-03-06T12:47:14Z sensor-04 value=31.941 unit=C status=ok seq=188
+2026-03-22T16:31:23Z sensor-03 value=25.060 unit=C status=ok seq=189
+2026-03-15T18:23:54Z sensor-03 value=20.073 unit=C status=retry seq=190
+2026-03-19T13:19:21Z sensor-22 value=22.446 unit=C status=retry seq=191
+2026-03-11T06:50:52Z sensor-32 value=15.269 unit=C status=ok seq=192
+2026-03-20T03:01:55Z sensor-05 value=20.889 unit=C status=ok seq=193
+2026-03-03T11:55:26Z sensor-22 value=21.498 unit=C status=ok seq=194
+2026-03-25T16:00:48Z sensor-15 value=21.008 unit=C status=ok seq=195
+2026-03-15T16:32:15Z sensor-06 value=14.453 unit=C status=ok seq=196
+2026-03-22T17:56:07Z sensor-17 value=24.032 unit=C status=warn seq=197
+2026-03-17T07:21:19Z sensor-04 value=19.461 unit=C status=ok seq=198
+2026-03-12T00:54:48Z sensor-11 value=14.003 unit=C status=ok seq=199
+2026-03-18T18:39:10Z sensor-33 value=14.549 unit=C status=retry seq=200
+2026-03-07T14:48:21Z sensor-32 value=20.618 unit=C status=ok seq=201
+2026-03-04T02:39:09Z sensor-02 value=19.230 unit=C status=ok seq=202
+2026-03-21T06:11:47Z sensor-38 value=20.720 unit=C status=warn seq=203
+2026-03-07T19:44:22Z sensor-03 value=33.814 unit=C status=ok seq=204
+2026-03-01T06:24:19Z sensor-06 value=22.176 unit=C status=ok seq=205
+2026-03-07T22:43:41Z sensor-01 value=32.328 unit=C status=ok seq=206
+2026-03-04T05:09:50Z sensor-40 value=32.331 unit=C status=ok seq=207
+2026-03-02T20:54:57Z sensor-09 value=24.415 unit=C status=retry seq=208
+2026-03-20T01:31:49Z sensor-35 value=17.926 unit=C status=ok seq=209
+2026-03-22T18:48:43Z sensor-15 value=13.195 unit=C status=ok seq=210
+2026-03-08T05:42:31Z sensor-24 value=20.941 unit=C status=retry seq=211
+2026-03-22T12:42:02Z sensor-11 value=13.554 unit=C status=ok seq=212
+2026-03-17T01:52:30Z sensor-20 value=29.136 unit=C status=ok seq=213
+2026-03-04T16:04:00Z sensor-39 value=12.581 unit=C status=ok seq=214
+2026-03-04T11:37:50Z sensor-35 value=17.221 unit=C status=warn seq=215
+2026-03-04T23:05:53Z sensor-01 value=25.596 unit=C status=ok seq=216
+2026-03-04T02:04:44Z sensor-40 value=14.966 unit=C status=ok seq=217
+2026-03-05T06:52:18Z sensor-29 value=17.679 unit=C status=warn seq=218
+2026-03-06T11:02:42Z sensor-19 value=33.335 unit=C status=ok seq=219
+2026-03-05T16:16:04Z sensor-18 value=15.567 unit=C status=warn seq=220
+2026-03-25T21:06:27Z sensor-09 value=26.825 unit=C status=ok seq=221
+2026-03-14T18:53:45Z sensor-06 value=22.722 unit=C status=retry seq=222
+2026-03-20T22:22:01Z sensor-36 value=27.759 unit=C status=ok seq=223
+2026-03-04T00:56:30Z sensor-15 value=14.811 unit=C status=ok seq=224
+2026-03-08T00:27:57Z sensor-08 value=27.817 unit=C status=retry seq=225
+2026-03-22T22:12:37Z sensor-16 value=26.604 unit=C status=retry seq=226
+2026-03-28T03:47:57Z sensor-14 value=25.233 unit=C status=warn seq=227
+2026-03-21T20:50:22Z sensor-25 value=30.567 unit=C status=ok seq=228
+2026-03-23T22:01:25Z sensor-19 value=22.581 unit=C status=ok seq=229
+2026-03-27T18:42:26Z sensor-28 value=35.382 unit=C status=ok seq=230
+2026-03-24T06:59:02Z sensor-05 value=17.290 unit=C status=ok seq=231
+2026-03-08T06:30:48Z sensor-05 value=27.423 unit=C status=warn seq=232
+2026-03-01T06:32:51Z sensor-17 value=17.028 unit=C status=retry seq=233
+2026-03-27T22:54:31Z sensor-08 value=29.520 unit=C status=ok seq=234
+2026-03-12T08:00:39Z sensor-04 value=15.469 unit=C status=ok seq=235
+2026-03-09T19:14:53Z sensor-09 value=20.977 unit=C status=warn seq=236
+2026-03-25T13:53:27Z sensor-06 value=25.893 unit=C status=ok seq=237
+2026-03-26T22:28:09Z sensor-09 value=-1.865 unit=C status=ok seq=238
+2026-03-21T17:49:15Z sensor-15 value=19.636 unit=C status=ok seq=239
+2026-03-18T10:45:36Z sensor-11 value=13.981 unit=C status=ok seq=240
+2026-03-26T21:58:41Z sensor-18 value=15.505 unit=C status=retry seq=241
+2026-03-13T12:04:27Z sensor-19 value=27.251 unit=C status=retry seq=242
+2026-03-04T20:47:56Z sensor-40 value=22.641 unit=C status=warn seq=243
+2026-03-07T19:00:05Z sensor-02 value=29.616 unit=C status=ok seq=244
+2026-03-27T14:41:23Z sensor-16 value=26.373 unit=C status=retry seq=245
+2026-03-13T03:34:01Z sensor-24 value=12.218 unit=C status=ok seq=246
+2026-03-09T07:24:43Z sensor-10 value=20.650 unit=C status=ok seq=247
+2026-03-11T05:54:06Z sensor-31 value=22.996 unit=C status=warn seq=248
+2026-03-05T14:17:16Z sensor-27 value=20.300 unit=C status=ok seq=249
+2026-03-05T20:33:59Z sensor-08 value=35.511 unit=C status=warn seq=250
+2026-03-23T21:54:57Z sensor-29 value=9.659 unit=C status=ok seq=251
+2026-03-02T15:39:42Z sensor-01 value=20.513 unit=C status=ok seq=252
+2026-03-04T03:34:27Z sensor-33 value=20.812 unit=C status=ok seq=253
+2026-03-15T02:44:29Z sensor-34 value=20.930 unit=C status=retry seq=254
+2026-03-20T23:18:57Z sensor-36 value=31.662 unit=C status=warn seq=255
+2026-03-10T02:43:26Z sensor-22 value=26.552 unit=C status=warn seq=256
+2026-03-13T10:39:38Z sensor-18 value=27.250 unit=C status=retry seq=257
+2026-03-21T22:10:34Z sensor-21 value=28.757 unit=C status=ok seq=258
+2026-03-16T20:46:29Z sensor-33 value=19.406 unit=C status=warn seq=259
+2026-03-07T02:27:02Z sensor-20 value=16.985 unit=C status=ok seq=260
+2026-03-20T06:00:44Z sensor-33 value=15.676 unit=C status=ok seq=261
+2026-03-15T10:02:40Z sensor-08 value=23.006 unit=C status=warn seq=262
+2026-03-26T05:18:55Z sensor-24 value=22.201 unit=C status=warn seq=263
+2026-03-25T20:29:30Z sensor-12 value=18.017 unit=C status=warn seq=264
+2026-03-27T16:58:00Z sensor-11 value=15.904 unit=C status=warn seq=265
+2026-03-18T17:30:45Z sensor-18 value=9.381 unit=C status=warn seq=266
+2026-03-23T02:01:42Z sensor-18 value=14.941 unit=C status=ok seq=267
+2026-03-13T15:51:47Z sensor-32 value=11.598 unit=C status=warn seq=268
+2026-03-16T13:13:50Z sensor-30 value=18.161 unit=C status=ok seq=269
+2026-03-19T20:45:25Z sensor-16 value=21.522 unit=C status=ok seq=270
+2026-03-09T06:28:49Z sensor-06 value=19.691 unit=C status=ok seq=271
+2026-03-18T13:17:21Z sensor-16 value=20.947 unit=C status=ok seq=272
+2026-03-26T13:11:24Z sensor-20 value=23.129 unit=C status=ok seq=273
+2026-03-10T15:26:01Z sensor-35 value=16.357 unit=C status=ok seq=274
+2026-03-23T00:53:57Z sensor-33 value=8.673 unit=C status=retry seq=275
+2026-03-13T23:22:34Z sensor-03 value=25.136 unit=C status=ok seq=276
+2026-03-08T04:25:30Z sensor-12 value=23.729 unit=C status=ok seq=277
+2026-03-21T18:19:43Z sensor-15 value=14.334 unit=C status=ok seq=278
+2026-03-17T01:02:36Z sensor-36 value=14.567 unit=C status=retry seq=279
+2026-03-05T18:17:31Z sensor-10 value=20.486 unit=C status=ok seq=280
+2026-03-07T21:42:50Z sensor-26 value=21.342 unit=C status=ok seq=281
+2026-03-14T12:58:13Z sensor-26 value=16.170 unit=C status=ok seq=282
+2026-03-16T03:52:00Z sensor-37 value=27.241 unit=C status=ok seq=283
+2026-03-19T12:14:42Z sensor-29 value=29.003 unit=C status=ok seq=284
+2026-03-25T01:28:46Z sensor-07 value=13.424 unit=C status=ok seq=285
+2026-03-10T04:53:59Z sensor-01 value=23.274 unit=C status=retry seq=286
+2026-03-27T09:49:14Z sensor-20 value=12.560 unit=C status=ok seq=287
+2026-03-12T14:14:29Z sensor-33 value=23.290 unit=C status=warn seq=288
+2026-03-18T14:18:19Z sensor-35 value=14.113 unit=C status=warn seq=289
+2026-03-09T10:38:58Z sensor-39 value=14.769 unit=C status=ok seq=290
+2026-03-10T14:26:28Z sensor-07 value=27.282 unit=C status=ok seq=291
+2026-03-23T23:49:42Z sensor-28 value=20.339 unit=C status=ok seq=292
+2026-03-02T01:05:18Z sensor-25 value=12.661 unit=C status=ok seq=293
+2026-03-05T05:39:46Z sensor-24 value=9.530 unit=C status=ok seq=294
+2026-03-01T19:07:25Z sensor-40 value=20.114 unit=C status=retry seq=295
+2026-03-27T23:47:23Z sensor-23 value=14.576 unit=C status=ok seq=296
+2026-03-11T16:43:13Z sensor-06 value=20.571 unit=C status=ok seq=297
+2026-03-06T04:55:02Z sensor-06 value=19.614 unit=C status=ok seq=298
+2026-03-02T08:21:41Z sensor-01 value=24.156 unit=C status=ok seq=299
+2026-03-10T09:38:40Z sensor-09 value=19.191 unit=C status=ok seq=300
+2026-03-22T08:19:22Z sensor-36 value=16.231 unit=C status=ok seq=301
+2026-03-07T17:05:56Z sensor-26 value=19.396 unit=C status=ok seq=302
+2026-03-27T11:08:25Z sensor-08 value=7.967 unit=C status=ok seq=303
+2026-03-06T09:36:16Z sensor-02 value=11.881 unit=C status=retry seq=304
+2026-03-22T17:06:45Z sensor-32 value=20.256 unit=C status=warn seq=305
+2026-03-25T19:47:22Z sensor-24 value=16.218 unit=C status=ok seq=306
+2026-03-08T05:31:26Z sensor-04 value=19.656 unit=C status=retry seq=307
+2026-03-28T00:43:32Z sensor-13 value=23.555 unit=C status=ok seq=308
+2026-03-25T21:24:54Z sensor-37 value=13.516 unit=C status=ok seq=309
+2026-03-03T03:37:59Z sensor-17 value=24.848 unit=C status=ok seq=310
+2026-03-12T21:02:24Z sensor-09 value=25.237 unit=C status=warn seq=311
+2026-03-16T01:45:23Z sensor-15 value=28.944 unit=C status=retry seq=312
+2026-03-15T13:15:59Z sensor-22 value=27.197 unit=C status=retry seq=313
+2026-03-28T13:13:59Z sensor-37 value=22.342 unit=C status=ok seq=314
+2026-03-25T05:04:18Z sensor-40 value=23.031 unit=C status=ok seq=315
+2026-03-22T01:20:59Z sensor-01 value=10.420 unit=C status=warn seq=316
+2026-03-21T05:35:00Z sensor-28 value=33.478 unit=C status=warn seq=317
+2026-03-10T03:37:31Z sensor-34 value=8.486 unit=C status=ok seq=318
+2026-03-20T00:26:00Z sensor-07 value=23.619 unit=C status=ok seq=319
+2026-03-09T11:28:37Z sensor-16 value=19.003 unit=C status=ok seq=320
+2026-03-27T04:04:25Z sensor-28 value=22.023 unit=C status=ok seq=321
+2026-03-01T22:51:35Z sensor-05 value=19.682 unit=C status=ok seq=322
+2026-03-27T05:49:34Z sensor-29 value=17.391 unit=C status=ok seq=323
+2026-03-15T21:21:29Z sensor-13 value=12.385 unit=C status=warn seq=324
+2026-03-12T15:21:51Z sensor-13 value=15.675 unit=C status=ok seq=325
+2026-03-19T18:26:27Z sensor-25 value=17.234 unit=C status=ok seq=326
+2026-03-15T04:01:54Z sensor-36 value=26.062 unit=C status=warn seq=327
+2026-03-08T08:43:57Z sensor-31 value=16.937 unit=C status=ok seq=328
+2026-03-18T03:50:19Z sensor-22 value=19.228 unit=C status=ok seq=329
+2026-03-24T16:53:44Z sensor-38 value=8.862 unit=C status=retry seq=330
+2026-03-11T08:43:53Z sensor-08 value=24.338 unit=C status=retry seq=331
+2026-03-18T00:57:45Z sensor-35 value=21.985 unit=C status=ok seq=332
+2026-03-19T08:36:50Z sensor-19 value=13.009 unit=C status=ok seq=333
+2026-03-18T07:39:54Z sensor-07 value=7.306 unit=C status=ok seq=334
+2026-03-10T15:47:33Z sensor-28 value=22.905 unit=C status=ok seq=335
+2026-03-02T23:03:15Z sensor-11 value=16.081 unit=C status=ok seq=336
+2026-03-12T12:39:09Z sensor-12 value=22.313 unit=C status=retry seq=337
+2026-03-17T20:24:37Z sensor-11 value=17.553 unit=C status=ok seq=338
+2026-03-27T08:24:29Z sensor-14 value=24.579 unit=C status=retry seq=339
+2026-03-20T15:43:24Z sensor-30 value=17.523 unit=C status=warn seq=340
+2026-03-13T05:54:15Z sensor-29 value=18.259 unit=C status=retry seq=341
+2026-03-03T03:17:29Z sensor-16 value=13.902 unit=C status=ok seq=342
+2026-03-14T18:30:57Z sensor-22 value=8.516 unit=C status=ok seq=343
+2026-03-22T04:00:20Z sensor-24 value=29.709 unit=C status=ok seq=344
+2026-03-23T16:58:10Z sensor-28 value=9.483 unit=C status=ok seq=345
+2026-03-19T04:05:31Z sensor-10 value=15.924 unit=C status=retry seq=346
+2026-03-13T15:40:47Z sensor-29 value=18.846 unit=C status=ok seq=347
+2026-03-17T04:54:12Z sensor-20 value=20.598 unit=C status=retry seq=348
+2026-03-22T06:01:49Z sensor-29 value=30.825 unit=C status=ok seq=349
+2026-03-04T06:56:23Z sensor-21 value=19.630 unit=C status=retry seq=350
+2026-03-16T18:34:16Z sensor-29 value=25.207 unit=C status=warn seq=351
+2026-03-14T12:08:14Z sensor-02 value=23.975 unit=C status=retry seq=352
+2026-03-07T11:09:36Z sensor-29 value=22.119 unit=C status=ok seq=353
+2026-03-25T13:07:21Z sensor-05 value=24.470 unit=C status=retry seq=354
+2026-03-01T19:59:18Z sensor-21 value=7.129 unit=C status=warn seq=355
+2026-03-12T13:35:43Z sensor-40 value=26.611 unit=C status=ok seq=356
+2026-03-09T03:01:01Z sensor-24 value=21.011 unit=C status=retry seq=357
+2026-03-19T21:54:34Z sensor-39 value=26.047 unit=C status=retry seq=358
+2026-03-11T13:56:18Z sensor-04 value=18.429 unit=C status=warn seq=359
+2026-03-13T22:52:04Z sensor-15 value=15.848 unit=C status=ok seq=360
+2026-03-27T13:43:19Z sensor-35 value=13.457 unit=C status=warn seq=361
+2026-03-10T19:21:29Z sensor-37 value=15.235 unit=C status=retry seq=362
+2026-03-16T17:36:15Z sensor-31 value=30.593 unit=C status=retry seq=363
+2026-03-15T19:03:33Z sensor-06 value=17.697 unit=C status=ok seq=364
+2026-03-09T15:31:41Z sensor-13 value=21.415 unit=C status=ok seq=365
+2026-03-24T14:39:38Z sensor-23 value=19.638 unit=C status=warn seq=366
+2026-03-04T00:09:04Z sensor-22 value=19.074 unit=C status=warn seq=367
+2026-03-17T00:32:59Z sensor-34 value=22.784 unit=C status=ok seq=368
+2026-03-22T17:53:47Z sensor-33 value=15.021 unit=C status=warn seq=369
+2026-03-28T14:04:58Z sensor-05 value=20.664 unit=C status=warn seq=370
+2026-03-15T07:50:41Z sensor-19 value=17.114 unit=C status=ok seq=371
+2026-03-18T08:11:40Z sensor-06 value=6.256 unit=C status=ok seq=372
+2026-03-26T09:31:36Z sensor-06 value=13.876 unit=C status=warn seq=373
+2026-03-09T14:46:08Z sensor-06 value=17.517 unit=C status=warn seq=374
+2026-03-08T12:40:21Z sensor-23 value=16.237 unit=C status=ok seq=375
+2026-03-12T06:35:37Z sensor-39 value=25.315 unit=C status=warn seq=376
+2026-03-18T18:21:50Z sensor-38 value=14.257 unit=C status=ok seq=377
+2026-03-24T04:39:43Z sensor-19 value=22.303 unit=C status=ok seq=378
+2026-03-22T15:24:57Z sensor-36 value=17.285 unit=C status=ok seq=379
+2026-03-23T15:30:41Z sensor-07 value=17.678 unit=C status=ok seq=380
+2026-03-12T06:29:00Z sensor-20 value=12.704 unit=C status=warn seq=381
+2026-03-08T09:06:02Z sensor-29 value=24.958 unit=C status=retry seq=382
+2026-03-04T04:58:56Z sensor-26 value=22.199 unit=C status=ok seq=383
+2026-03-18T15:36:39Z sensor-18 value=14.457 unit=C status=ok seq=384
+2026-03-13T22:00:29Z sensor-32 value=27.772 unit=C status=warn seq=385
+2026-03-28T05:53:52Z sensor-09 value=23.369 unit=C status=ok seq=386
+2026-03-08T06:13:56Z sensor-37 value=27.895 unit=C status=ok seq=387
+2026-03-19T22:50:16Z sensor-19 value=28.816 unit=C status=ok seq=388
+2026-03-22T19:57:42Z sensor-23 value=10.654 unit=C status=retry seq=389
+2026-03-17T04:33:51Z sensor-06 value=21.007 unit=C status=warn seq=390
+2026-03-03T16:15:33Z sensor-03 value=13.343 unit=C status=ok seq=391
+2026-03-07T06:50:19Z sensor-02 value=25.693 unit=C status=ok seq=392
+2026-03-04T07:57:24Z sensor-32 value=17.606 unit=C status=retry seq=393
+2026-03-09T02:39:42Z sensor-13 value=20.017 unit=C status=ok seq=394
+2026-03-16T22:24:41Z sensor-06 value=24.900 unit=C status=ok seq=395
+2026-03-12T01:01:50Z sensor-22 value=17.750 unit=C status=ok seq=396
+2026-03-21T09:07:03Z sensor-21 value=21.014 unit=C status=retry seq=397
+2026-03-09T09:32:43Z sensor-06 value=15.922 unit=C status=ok seq=398
+2026-03-23T09:50:44Z sensor-11 value=13.149 unit=C status=ok seq=399
+2026-03-27T10:49:18Z sensor-05 value=12.555 unit=C status=warn seq=400
+2026-03-11T02:09:38Z sensor-13 value=17.915 unit=C status=ok seq=401
+2026-03-22T17:11:11Z sensor-08 value=19.635 unit=C status=ok seq=402
+2026-03-23T09:09:11Z sensor-07 value=14.715 unit=C status=retry seq=403
+2026-03-18T05:55:13Z sensor-37 value=26.572 unit=C status=ok seq=404
+2026-03-09T08:14:16Z sensor-22 value=13.922 unit=C status=ok seq=405
+2026-03-01T10:07:55Z sensor-21 value=25.028 unit=C status=ok seq=406
+2026-03-16T15:52:22Z sensor-20 value=20.347 unit=C status=warn seq=407
+2026-03-15T17:21:28Z sensor-07 value=20.480 unit=C status=warn seq=408
+2026-03-17T21:55:42Z sensor-13 value=31.414 unit=C status=ok seq=409
+2026-03-10T01:06:59Z sensor-10 value=20.354 unit=C status=warn seq=410
+2026-03-22T03:42:13Z sensor-16 value=21.966 unit=C status=ok seq=411
+2026-03-16T06:28:58Z sensor-38 value=16.183 unit=C status=ok seq=412
+2026-03-08T11:12:26Z sensor-07 value=20.082 unit=C status=ok seq=413
+2026-03-21T12:11:31Z sensor-16 value=28.346 unit=C status=warn seq=414
+2026-03-08T04:46:29Z sensor-05 value=8.313 unit=C status=ok seq=415
+2026-03-20T04:38:36Z sensor-06 value=32.804 unit=C status=retry seq=416
+2026-03-04T13:00:10Z sensor-31 value=26.073 unit=C status=ok seq=417
+2026-03-06T11:44:34Z sensor-01 value=13.480 unit=C status=ok seq=418
+2026-03-15T19:21:37Z sensor-38 value=11.568 unit=C status=ok seq=419
+2026-03-03T21:40:58Z sensor-33 value=24.294 unit=C status=retry seq=420
+2026-03-04T06:20:18Z sensor-07 value=11.573 unit=C status=ok seq=421
+2026-03-27T02:25:30Z sensor-14 value=33.782 unit=C status=ok seq=422
+2026-03-25T02:54:59Z sensor-18 value=18.216 unit=C status=warn seq=423
+2026-03-14T02:38:12Z sensor-21 value=12.055 unit=C status=ok seq=424
+2026-03-10T07:05:50Z sensor-30 value=22.527 unit=C status=warn seq=425
+2026-03-14T23:55:16Z sensor-14 value=12.369 unit=C status=warn seq=426
+2026-03-21T09:32:53Z sensor-37 value=15.099 unit=C status=ok seq=427
+2026-03-20T07:19:12Z sensor-14 value=22.026 unit=C status=warn seq=428
+2026-03-26T03:07:44Z sensor-39 value=18.128 unit=C status=warn seq=429
+2026-03-01T01:02:10Z sensor-24 value=15.910 unit=C status=retry seq=430
+2026-03-06T22:29:31Z sensor-02 value=29.206 unit=C status=ok seq=431
+2026-03-06T10:53:14Z sensor-39 value=22.060 unit=C status=retry seq=432
+2026-03-19T17:49:32Z sensor-33 value=17.614 unit=C status=retry seq=433
+2026-03-18T22:50:36Z sensor-25 value=15.539 unit=C status=ok seq=434
+2026-03-24T08:56:12Z sensor-07 value=31.406 unit=C status=ok seq=435
+2026-03-04T18:47:49Z sensor-16 value=21.725 unit=C status=ok seq=436
+2026-03-22T06:14:06Z sensor-01 value=18.716 unit=C status=ok seq=437
+2026-03-14T21:09:32Z sensor-28 value=17.757 unit=C status=ok seq=438
+2026-03-08T13:21:26Z sensor-23 value=23.356 unit=C status=warn seq=439
+2026-03-12T09:04:32Z sensor-17 value=17.080 unit=C status=ok seq=440
+2026-03-09T11:22:21Z sensor-30 value=18.529 unit=C status=retry seq=441
+2026-03-05T12:30:54Z sensor-18 value=29.155 unit=C status=ok seq=442
+2026-03-21T06:15:49Z sensor-20 value=27.530 unit=C status=ok seq=443
+2026-03-28T00:19:16Z sensor-09 value=25.526 unit=C status=ok seq=444
+2026-03-10T03:38:23Z sensor-10 value=7.878 unit=C status=ok seq=445
+2026-03-02T06:45:09Z sensor-33 value=23.837 unit=C status=ok seq=446
+2026-03-22T05:32:22Z sensor-08 value=19.046 unit=C status=warn seq=447
+2026-03-28T13:46:21Z sensor-37 value=22.641 unit=C status=retry seq=448
+2026-03-09T02:46:31Z sensor-33 value=18.975 unit=C status=ok seq=449
+2026-03-02T06:35:17Z sensor-12 value=19.689 unit=C status=ok seq=450
+2026-03-20T16:29:52Z sensor-15 value=19.757 unit=C status=ok seq=451
+2026-03-24T20:34:22Z sensor-34 value=19.339 unit=C status=ok seq=452
+2026-03-19T23:19:29Z sensor-25 value=24.395 unit=C status=warn seq=453
+2026-03-19T14:25:19Z sensor-07 value=14.845 unit=C status=warn seq=454
+2026-03-15T23:33:10Z sensor-23 value=26.125 unit=C status=ok seq=455
+2026-03-11T13:55:17Z sensor-02 value=33.017 unit=C status=retry seq=456
+2026-03-28T08:25:36Z sensor-08 value=23.309 unit=C status=ok seq=457
+2026-03-28T23:54:05Z sensor-06 value=24.970 unit=C status=ok seq=458
+2026-03-24T22:03:42Z sensor-14 value=23.443 unit=C status=ok seq=459
+2026-03-25T04:34:40Z sensor-22 value=19.436 unit=C status=ok seq=460
+2026-03-15T11:08:30Z sensor-17 value=19.206 unit=C status=ok seq=461
+2026-03-28T14:01:54Z sensor-20 value=20.328 unit=C status=ok seq=462
+2026-03-28T22:42:45Z sensor-37 value=22.542 unit=C status=ok seq=463
+2026-03-22T05:33:57Z sensor-11 value=16.438 unit=C status=warn seq=464
+2026-03-06T23:08:08Z sensor-17 value=14.950 unit=C status=ok seq=465
+2026-03-18T18:05:30Z sensor-16 value=32.062 unit=C status=ok seq=466
+2026-03-11T16:10:54Z sensor-09 value=17.568 unit=C status=ok seq=467
+2026-03-20T04:19:57Z sensor-31 value=8.149 unit=C status=ok seq=468
+2026-03-08T08:24:56Z sensor-39 value=20.908 unit=C status=retry seq=469
+2026-03-22T00:12:24Z sensor-09 value=11.537 unit=C status=warn seq=470
+2026-03-24T16:50:07Z sensor-11 value=20.896 unit=C status=retry seq=471
+2026-03-28T01:19:21Z sensor-15 value=19.127 unit=C status=ok seq=472
+2026-03-02T05:36:09Z sensor-24 value=18.024 unit=C status=warn seq=473
+2026-03-08T20:07:05Z sensor-04 value=19.084 unit=C status=warn seq=474
+2026-03-26T06:07:54Z sensor-36 value=19.360 unit=C status=ok seq=475
+2026-03-08T23:24:01Z sensor-30 value=26.503 unit=C status=ok seq=476
+2026-03-25T07:29:05Z sensor-24 value=23.530 unit=C status=ok seq=477
+2026-03-12T12:02:48Z sensor-04 value=27.765 unit=C status=ok seq=478
+2026-03-19T16:41:29Z sensor-07 value=20.157 unit=C status=ok seq=479
+2026-03-24T12:40:57Z sensor-18 value=11.593 unit=C status=ok seq=480
+2026-03-24T00:28:56Z sensor-33 value=7.648 unit=C status=ok seq=481
+2026-03-14T09:02:59Z sensor-26 value=21.465 unit=C status=ok seq=482
+2026-03-17T07:03:02Z sensor-01 value=15.416 unit=C status=ok seq=483
+2026-03-20T11:23:54Z sensor-38 value=18.147 unit=C status=ok seq=484
+2026-03-28T19:23:56Z sensor-38 value=10.346 unit=C status=ok seq=485
+2026-03-14T16:41:48Z sensor-20 value=21.521 unit=C status=retry seq=486
+2026-03-26T21:03:55Z sensor-26 value=21.799 unit=C status=retry seq=487
+2026-03-26T12:09:42Z sensor-24 value=24.165 unit=C status=warn seq=488
+2026-03-15T12:23:23Z sensor-06 value=22.533 unit=C status=ok seq=489
+2026-03-07T14:20:36Z sensor-05 value=28.419 unit=C status=ok seq=490
+2026-03-15T19:47:57Z sensor-27 value=27.629 unit=C status=ok seq=491
+2026-03-14T08:00:16Z sensor-29 value=22.991 unit=C status=retry seq=492
+2026-03-28T17:21:57Z sensor-14 value=19.954 unit=C status=ok seq=493
+2026-03-04T19:28:30Z sensor-36 value=16.707 unit=C status=warn seq=494
+2026-03-20T23:49:27Z sensor-29 value=19.381 unit=C status=ok seq=495
+2026-03-12T13:42:45Z sensor-34 value=18.271 unit=C status=ok seq=496
+2026-03-15T23:21:23Z sensor-13 value=26.306 unit=C status=ok seq=497
+2026-03-06T00:26:21Z sensor-03 value=30.194 unit=C status=ok seq=498
+2026-03-02T10:59:20Z sensor-26 value=3.040 unit=C status=warn seq=499
+
+## Arithmetic
+3788 + 435 = 4223; 3788 - 435 = 3353; 3788 * 435 = 1647780; 3788 / 435 = 8.7080
+5061 + 500 = 5561; 5061 - 500 = 4561; 5061 * 500 = 2530500; 5061 / 500 = 10.1220
+4317 + 465 = 4782; 4317 - 465 = 3852; 4317 * 465 = 2007405; 4317 / 465 = 9.2839
+2807 + 976 = 3783; 2807 - 976 = 1831; 2807 * 976 = 2739632; 2807 / 976 = 2.8760
+6172 + 642 = 6814; 6172 - 642 = 5530; 6172 * 642 = 3962424; 6172 / 642 = 9.6137
+3369 + 228 = 3597; 3369 - 228 = 3141; 3369 * 228 = 768132; 3369 / 228 = 14.7763
+9443 + 361 = 9804; 9443 - 361 = 9082; 9443 * 361 = 3408923; 9443 / 361 = 26.1579
+2777 + 321 = 3098; 2777 - 321 = 2456; 2777 * 321 = 891417; 2777 / 321 = 8.6511
+3068 + 57 = 3125; 3068 - 57 = 3011; 3068 * 57 = 174876; 3068 / 57 = 53.8246
+2108 + 891 = 2999; 2108 - 891 = 1217; 2108 * 891 = 1878228; 2108 / 891 = 2.3659
+4581 + 42 = 4623; 4581 - 42 = 4539; 4581 * 42 = 192402; 4581 / 42 = 109.0714
+6556 + 146 = 6702; 6556 - 146 = 6410; 6556 * 146 = 957176; 6556 / 146 = 44.9041
+2501 + 181 = 2682; 2501 - 181 = 2320; 2501 * 181 = 452681; 2501 / 181 = 13.8177
+5849 + 211 = 6060; 5849 - 211 = 5638; 5849 * 211 = 1234139; 5849 / 211 = 27.7204
+5524 + 76 = 5600; 5524 - 76 = 5448; 5524 * 76 = 419824; 5524 / 76 = 72.6842
+6684 + 493 = 7177; 6684 - 493 = 6191; 6684 * 493 = 3295212; 6684 / 493 = 13.5578
+1576 + 129 = 1705; 1576 - 129 = 1447; 1576 * 129 = 203304; 1576 / 129 = 12.2171
+4211 + 143 = 4354; 4211 - 143 = 4068; 4211 * 143 = 602173; 4211 / 143 = 29.4476
+86 + 896 = 982; 86 - 896 = -810; 86 * 896 = 77056; 86 / 896 = 0.0960
+5731 + 517 = 6248; 5731 - 517 = 5214; 5731 * 517 = 2962927; 5731 / 517 = 11.0851
+8466 + 357 = 8823; 8466 - 357 = 8109; 8466 * 357 = 3022362; 8466 / 357 = 23.7143
+2368 + 488 = 2856; 2368 - 488 = 1880; 2368 * 488 = 1155584; 2368 / 488 = 4.8525
+8188 + 974 = 9162; 8188 - 974 = 7214; 8188 * 974 = 7975112; 8188 / 974 = 8.4066
+6758 + 719 = 7477; 6758 - 719 = 6039; 6758 * 719 = 4859002; 6758 / 719 = 9.3992
+9682 + 22 = 9704; 9682 - 22 = 9660; 9682 * 22 = 213004; 9682 / 22 = 440.0909
+797 + 349 = 1146; 797 - 349 = 448; 797 * 349 = 278153; 797 / 349 = 2.2837
+6907 + 202 = 7109; 6907 - 202 = 6705; 6907 * 202 = 1395214; 6907 / 202 = 34.1931
+7775 + 903 = 8678; 7775 - 903 = 6872; 7775 * 903 = 7020825; 7775 / 903 = 8.6102
+2738 + 185 = 2923; 2738 - 185 = 2553; 2738 * 185 = 506530; 2738 / 185 = 14.8000
+4407 + 430 = 4837; 4407 - 430 = 3977; 4407 * 430 = 1895010; 4407 / 430 = 10.2488
+5274 + 359 = 5633; 5274 - 359 = 4915; 5274 * 359 = 1893366; 5274 / 359 = 14.6908
+6296 + 176 = 6472; 6296 - 176 = 6120; 6296 * 176 = 1108096; 6296 / 176 = 35.7727
+3084 + 141 = 3225; 3084 - 141 = 2943; 3084 * 141 = 434844; 3084 / 141 = 21.8723
+2107 + 646 = 2753; 2107 - 646 = 1461; 2107 * 646 = 1361122; 2107 / 646 = 3.2616
+6901 + 689 = 7590; 6901 - 689 = 6212; 6901 * 689 = 4754789; 6901 / 689 = 10.0160
+5448 + 154 = 5602; 5448 - 154 = 5294; 5448 * 154 = 838992; 5448 / 154 = 35.3766
+261 + 497 = 758; 261 - 497 = -236; 261 * 497 = 129717; 261 / 497 = 0.5252
+9442 + 696 = 10138; 9442 - 696 = 8746; 9442 * 696 = 6571632; 9442 / 696 = 13.5661
+8926 + 763 = 9689; 8926 - 763 = 8163; 8926 * 763 = 6810538; 8926 / 763 = 11.6986
+2063 + 76 = 2139; 2063 - 76 = 1987; 2063 * 76 = 156788; 2063 / 76 = 27.1447
+1055 + 10 = 1065; 1055 - 10 = 1045; 1055 * 10 = 10550; 1055 / 10 = 105.5000
+7681 + 158 = 7839; 7681 - 158 = 7523; 7681 * 158 = 1213598; 7681 / 158 = 48.6139
+6266 + 344 = 6610; 6266 - 344 = 5922; 6266 * 344 = 2155504; 6266 / 344 = 18.2151
+848 + 120 = 968; 848 - 120 = 728; 848 * 120 = 101760; 848 / 120 = 7.0667
+4489 + 396 = 4885; 4489 - 396 = 4093; 4489 * 396 = 1777644; 4489 / 396 = 11.3359
+51 + 199 = 250; 51 - 199 = -148; 51 * 199 = 10149; 51 / 199 = 0.2563
+6701 + 689 = 7390; 6701 - 689 = 6012; 6701 * 689 = 4616989; 6701 / 689 = 9.7257
+3651 + 697 = 4348; 3651 - 697 = 2954; 3651 * 697 = 2544747; 3651 / 697 = 5.2382
+3411 + 577 = 3988; 3411 - 577 = 2834; 3411 * 577 = 1968147; 3411 / 577 = 5.9116
+7777 + 275 = 8052; 7777 - 275 = 7502; 7777 * 275 = 2138675; 7777 / 275 = 28.2800
+9718 + 629 = 10347; 9718 - 629 = 9089; 9718 * 629 = 6112622; 9718 / 629 = 15.4499
+8451 + 972 = 9423; 8451 - 972 = 7479; 8451 * 972 = 8214372; 8451 / 972 = 8.6944
+9873 + 74 = 9947; 9873 - 74 = 9799; 9873 * 74 = 730602; 9873 / 74 = 133.4189
+9802 + 950 = 10752; 9802 - 950 = 8852; 9802 * 950 = 9311900; 9802 / 950 = 10.3179
+6060 + 902 = 6962; 6060 - 902 = 5158; 6060 * 902 = 5466120; 6060 / 902 = 6.7184
+6685 + 700 = 7385; 6685 - 700 = 5985; 6685 * 700 = 4679500; 6685 / 700 = 9.5500
+5781 + 854 = 6635; 5781 - 854 = 4927; 5781 * 854 = 4936974; 5781 / 854 = 6.7693
+9479 + 472 = 9951; 9479 - 472 = 9007; 9479 * 472 = 4474088; 9479 / 472 = 20.0826
+6806 + 953 = 7759; 6806 - 953 = 5853; 6806 * 953 = 6486118; 6806 / 953 = 7.1417
+4710 + 148 = 4858; 4710 - 148 = 4562; 4710 * 148 = 697080; 4710 / 148 = 31.8243
+8515 + 778 = 9293; 8515 - 778 = 7737; 8515 * 778 = 6624670; 8515 / 778 = 10.9447
+7430 + 866 = 8296; 7430 - 866 = 6564; 7430 * 866 = 6434380; 7430 / 866 = 8.5797
+2123 + 45 = 2168; 2123 - 45 = 2078; 2123 * 45 = 95535; 2123 / 45 = 47.1778
+4305 + 797 = 5102; 4305 - 797 = 3508; 4305 * 797 = 3431085; 4305 / 797 = 5.4015
+9129 + 422 = 9551; 9129 - 422 = 8707; 9129 * 422 = 3852438; 9129 / 422 = 21.6327
+3805 + 45 = 3850; 3805 - 45 = 3760; 3805 * 45 = 171225; 3805 / 45 = 84.5556
+5644 + 922 = 6566; 5644 - 922 = 4722; 5644 * 922 = 5203768; 5644 / 922 = 6.1215
+3091 + 249 = 3340; 3091 - 249 = 2842; 3091 * 249 = 769659; 3091 / 249 = 12.4137
+5440 + 929 = 6369; 5440 - 929 = 4511; 5440 * 929 = 5053760; 5440 / 929 = 5.8558
+9077 + 727 = 9804; 9077 - 727 = 8350; 9077 * 727 = 6598979; 9077 / 727 = 12.4856
+2140 + 236 = 2376; 2140 - 236 = 1904; 2140 * 236 = 505040; 2140 / 236 = 9.0678
+5010 + 553 = 5563; 5010 - 553 = 4457; 5010 * 553 = 2770530; 5010 / 553 = 9.0597
+6339 + 707 = 7046; 6339 - 707 = 5632; 6339 * 707 = 4481673; 6339 / 707 = 8.9661
+9489 + 23 = 9512; 9489 - 23 = 9466; 9489 * 23 = 218247; 9489 / 23 = 412.5652
+2230 + 517 = 2747; 2230 - 517 = 1713; 2230 * 517 = 1152910; 2230 / 517 = 4.3133
+5495 + 571 = 6066; 5495 - 571 = 4924; 5495 * 571 = 3137645; 5495 / 571 = 9.6235
+7521 + 213 = 7734; 7521 - 213 = 7308; 7521 * 213 = 1601973; 7521 / 213 = 35.3099
+1300 + 589 = 1889; 1300 - 589 = 711; 1300 * 589 = 765700; 1300 / 589 = 2.2071
+1819 + 624 = 2443; 1819 - 624 = 1195; 1819 * 624 = 1135056; 1819 / 624 = 2.9151
+1366 + 482 = 1848; 1366 - 482 = 884; 1366 * 482 = 658412; 1366 / 482 = 2.8340
+7334 + 824 = 8158; 7334 - 824 = 6510; 7334 * 824 = 6043216; 7334 / 824 = 8.9005
+6335 + 546 = 6881; 6335 - 546 = 5789; 6335 * 546 = 3458910; 6335 / 546 = 11.6026
+5362 + 322 = 5684; 5362 - 322 = 5040; 5362 * 322 = 1726564; 5362 / 322 = 16.6522
+7939 + 175 = 8114; 7939 - 175 = 7764; 7939 * 175 = 1389325; 7939 / 175 = 45.3657
+2610 + 625 = 3235; 2610 - 625 = 1985; 2610 * 625 = 1631250; 2610 / 625 = 4.1760
+2958 + 229 = 3187; 2958 - 229 = 2729; 2958 * 229 = 677382; 2958 / 229 = 12.9170
+5049 + 668 = 5717; 5049 - 668 = 4381; 5049 * 668 = 3372732; 5049 / 668 = 7.5584
+5658 + 899 = 6557; 5658 - 899 = 4759; 5658 * 899 = 5086542; 5658 / 899 = 6.2937
+1439 + 907 = 2346; 1439 - 907 = 532; 1439 * 907 = 1305173; 1439 / 907 = 1.5865
+2744 + 335 = 3079; 2744 - 335 = 2409; 2744 * 335 = 919240; 2744 / 335 = 8.1910
+6066 + 201 = 6267; 6066 - 201 = 5865; 6066 * 201 = 1219266; 6066 / 201 = 30.1791
+3549 + 425 = 3974; 3549 - 425 = 3124; 3549 * 425 = 1508325; 3549 / 425 = 8.3506
+8201 + 820 = 9021; 8201 - 820 = 7381; 8201 * 820 = 6724820; 8201 / 820 = 10.0012
+1228 + 514 = 1742; 1228 - 514 = 714; 1228 * 514 = 631192; 1228 / 514 = 2.3891
+6650 + 439 = 7089; 6650 - 439 = 6211; 6650 * 439 = 2919350; 6650 / 439 = 15.1481
+8254 + 372 = 8626; 8254 - 372 = 7882; 8254 * 372 = 3070488; 8254 / 372 = 22.1882
+4375 + 930 = 5305; 4375 - 930 = 3445; 4375 * 930 = 4068750; 4375 / 930 = 4.7043
+6605 + 357 = 6962; 6605 - 357 = 6248; 6605 * 357 = 2357985; 6605 / 357 = 18.5014
+2492 + 438 = 2930; 2492 - 438 = 2054; 2492 * 438 = 1091496; 2492 / 438 = 5.6895
+1692 + 915 = 2607; 1692 - 915 = 777; 1692 * 915 = 1548180; 1692 / 915 = 1.8492
+8639 + 746 = 9385; 8639 - 746 = 7893; 8639 * 746 = 6444694; 8639 / 746 = 11.5804
+1237 + 846 = 2083; 1237 - 846 = 391; 1237 * 846 = 1046502; 1237 / 846 = 1.4622
+2086 + 28 = 2114; 2086 - 28 = 2058; 2086 * 28 = 58408; 2086 / 28 = 74.5000
+5553 + 160 = 5713; 5553 - 160 = 5393; 5553 * 160 = 888480; 5553 / 160 = 34.7062
+3001 + 234 = 3235; 3001 - 234 = 2767; 3001 * 234 = 702234; 3001 / 234 = 12.8248
+9359 + 556 = 9915; 9359 - 556 = 8803; 9359 * 556 = 5203604; 9359 / 556 = 16.8327
+8660 + 846 = 9506; 8660 - 846 = 7814; 8660 * 846 = 7326360; 8660 / 846 = 10.2364
+1718 + 282 = 2000; 1718 - 282 = 1436; 1718 * 282 = 484476; 1718 / 282 = 6.0922
+5350 + 161 = 5511; 5350 - 161 = 5189; 5350 * 161 = 861350; 5350 / 161 = 33.2298
+8805 + 551 = 9356; 8805 - 551 = 8254; 8805 * 551 = 4851555; 8805 / 551 = 15.9800
+1676 + 777 = 2453; 1676 - 777 = 899; 1676 * 777 = 1302252; 1676 / 777 = 2.1570
+8295 + 74 = 8369; 8295 - 74 = 8221; 8295 * 74 = 613830; 8295 / 74 = 112.0946
+3549 + 762 = 4311; 3549 - 762 = 2787; 3549 * 762 = 2704338; 3549 / 762 = 4.6575
+2237 + 124 = 2361; 2237 - 124 = 2113; 2237 * 124 = 277388; 2237 / 124 = 18.0403
+3081 + 371 = 3452; 3081 - 371 = 2710; 3081 * 371 = 1143051; 3081 / 371 = 8.3046
+3761 + 799 = 4560; 3761 - 799 = 2962; 3761 * 799 = 3005039; 3761 / 799 = 4.7071
+6351 + 45 = 6396; 6351 - 45 = 6306; 6351 * 45 = 285795; 6351 / 45 = 141.1333
+2883 + 215 = 3098; 2883 - 215 = 2668; 2883 * 215 = 619845; 2883 / 215 = 13.4093
+6927 + 32 = 6959; 6927 - 32 = 6895; 6927 * 32 = 221664; 6927 / 32 = 216.4688
+6318 + 467 = 6785; 6318 - 467 = 5851; 6318 * 467 = 2950506; 6318 / 467 = 13.5289
+3018 + 324 = 3342; 3018 - 324 = 2694; 3018 * 324 = 977832; 3018 / 324 = 9.3148
+6884 + 520 = 7404; 6884 - 520 = 6364; 6884 * 520 = 3579680; 6884 / 520 = 13.2385
+9228 + 452 = 9680; 9228 - 452 = 8776; 9228 * 452 = 4171056; 9228 / 452 = 20.4159
+4474 + 616 = 5090; 4474 - 616 = 3858; 4474 * 616 = 2755984; 4474 / 616 = 7.2630
+508 + 379 = 887; 508 - 379 = 129; 508 * 379 = 192532; 508 / 379 = 1.3404
+6211 + 180 = 6391; 6211 - 180 = 6031; 6211 * 180 = 1117980; 6211 / 180 = 34.5056
+9968 + 114 = 10082; 9968 - 114 = 9854; 9968 * 114 = 1136352; 9968 / 114 = 87.4386
+5940 + 471 = 6411; 5940 - 471 = 5469; 5940 * 471 = 2797740; 5940 / 471 = 12.6115
+7822 + 967 = 8789; 7822 - 967 = 6855; 7822 * 967 = 7563874; 7822 / 967 = 8.0889
+402 + 555 = 957; 402 - 555 = -153; 402 * 555 = 223110; 402 / 555 = 0.7243
+6545 + 627 = 7172; 6545 - 627 = 5918; 6545 * 627 = 4103715; 6545 / 627 = 10.4386
+8039 + 962 = 9001; 8039 - 962 = 7077; 8039 * 962 = 7733518; 8039 / 962 = 8.3565
+6843 + 941 = 7784; 6843 - 941 = 5902; 6843 * 941 = 6439263; 6843 / 941 = 7.2721
+7128 + 32 = 7160; 7128 - 32 = 7096; 7128 * 32 = 228096; 7128 / 32 = 222.7500
+4190 + 104 = 4294; 4190 - 104 = 4086; 4190 * 104 = 435760; 4190 / 104 = 40.2885
+9206 + 189 = 9395; 9206 - 189 = 9017; 9206 * 189 = 1739934; 9206 / 189 = 48.7090
+9757 + 555 = 10312; 9757 - 555 = 9202; 9757 * 555 = 5415135; 9757 / 555 = 17.5802
+2815 + 57 = 2872; 2815 - 57 = 2758; 2815 * 57 = 160455; 2815 / 57 = 49.3860
+7183 + 671 = 7854; 7183 - 671 = 6512; 7183 * 671 = 4819793; 7183 / 671 = 10.7049
+4501 + 743 = 5244; 4501 - 743 = 3758; 4501 * 743 = 3344243; 4501 / 743 = 6.0579
+6884 + 299 = 7183; 6884 - 299 = 6585; 6884 * 299 = 2058316; 6884 / 299 = 23.0234
+7199 + 517 = 7716; 7199 - 517 = 6682; 7199 * 517 = 3721883; 7199 / 517 = 13.9246
+7636 + 286 = 7922; 7636 - 286 = 7350; 7636 * 286 = 2183896; 7636 / 286 = 26.6993
+2913 + 42 = 2955; 2913 - 42 = 2871; 2913 * 42 = 122346; 2913 / 42 = 69.3571
+8377 + 852 = 9229; 8377 - 852 = 7525; 8377 * 852 = 7137204; 8377 / 852 = 9.8322
+2371 + 528 = 2899; 2371 - 528 = 1843; 2371 * 528 = 1251888; 2371 / 528 = 4.4905
+2979 + 803 = 3782; 2979 - 803 = 2176; 2979 * 803 = 2392137; 2979 / 803 = 3.7098
+982 + 924 = 1906; 982 - 924 = 58; 982 * 924 = 907368; 982 / 924 = 1.0628
+1421 + 81 = 1502; 1421 - 81 = 1340; 1421 * 81 = 115101; 1421 / 81 = 17.5432
+8207 + 942 = 9149; 8207 - 942 = 7265; 8207 * 942 = 7730994; 8207 / 942 = 8.7123
+9843 + 298 = 10141; 9843 - 298 = 9545; 9843 * 298 = 2933214; 9843 / 298 = 33.0302
+5956 + 855 = 6811; 5956 - 855 = 5101; 5956 * 855 = 5092380; 5956 / 855 = 6.9661
+7445 + 741 = 8186; 7445 - 741 = 6704; 7445 * 741 = 5516745; 7445 / 741 = 10.0472
+6508 + 707 = 7215; 6508 - 707 = 5801; 6508 * 707 = 4601156; 6508 / 707 = 9.2051
+1210 + 915 = 2125; 1210 - 915 = 295; 1210 * 915 = 1107150; 1210 / 915 = 1.3224
+7837 + 190 = 8027; 7837 - 190 = 7647; 7837 * 190 = 1489030; 7837 / 190 = 41.2474
+6717 + 63 = 6780; 6717 - 63 = 6654; 6717 * 63 = 423171; 6717 / 63 = 106.6190
+9095 + 619 = 9714; 9095 - 619 = 8476; 9095 * 619 = 5629805; 9095 / 619 = 14.6931
+6423 + 310 = 6733; 6423 - 310 = 6113; 6423 * 310 = 1991130; 6423 / 310 = 20.7194
+9083 + 721 = 9804; 9083 - 721 = 8362; 9083 * 721 = 6548843; 9083 / 721 = 12.5978
+8667 + 471 = 9138; 8667 - 471 = 8196; 8667 * 471 = 4082157; 8667 / 471 = 18.4013
+7902 + 82 = 7984; 7902 - 82 = 7820; 7902 * 82 = 647964; 7902 / 82 = 96.3659
+9314 + 713 = 10027; 9314 - 713 = 8601; 9314 * 713 = 6640882; 9314 / 713 = 13.0631
+3803 + 98 = 3901; 3803 - 98 = 3705; 3803 * 98 = 372694; 3803 / 98 = 38.8061
+8406 + 570 = 8976; 8406 - 570 = 7836; 8406 * 570 = 4791420; 8406 / 570 = 14.7474
+7373 + 877 = 8250; 7373 - 877 = 6496; 7373 * 877 = 6466121; 7373 / 877 = 8.4071
+9856 + 975 = 10831; 9856 - 975 = 8881; 9856 * 975 = 9609600; 9856 / 975 = 10.1087
+4147 + 99 = 4246; 4147 - 99 = 4048; 4147 * 99 = 410553; 4147 / 99 = 41.8889
+1596 + 854 = 2450; 1596 - 854 = 742; 1596 * 854 = 1362984; 1596 / 854 = 1.8689
+3397 + 452 = 3849; 3397 - 452 = 2945; 3397 * 452 = 1535444; 3397 / 452 = 7.5155
+9167 + 721 = 9888; 9167 - 721 = 8446; 9167 * 721 = 6609407; 9167 / 721 = 12.7143
+891 + 520 = 1411; 891 - 520 = 371; 891 * 520 = 463320; 891 / 520 = 1.7135
+6760 + 976 = 7736; 6760 - 976 = 5784; 6760 * 976 = 6597760; 6760 / 976 = 6.9262
+4023 + 817 = 4840; 4023 - 817 = 3206; 4023 * 817 = 3286791; 4023 / 817 = 4.9241
+5407 + 455 = 5862; 5407 - 455 = 4952; 5407 * 455 = 2460185; 5407 / 455 = 11.8835
+6729 + 816 = 7545; 6729 - 816 = 5913; 6729 * 816 = 5490864; 6729 / 816 = 8.2463
+6812 + 892 = 7704; 6812 - 892 = 5920; 6812 * 892 = 6076304; 6812 / 892 = 7.6368
+8290 + 633 = 8923; 8290 - 633 = 7657; 8290 * 633 = 5247570; 8290 / 633 = 13.0964
+3136 + 684 = 3820; 3136 - 684 = 2452; 3136 * 684 = 2145024; 3136 / 684 = 4.5848
+6003 + 289 = 6292; 6003 - 289 = 5714; 6003 * 289 = 1734867; 6003 / 289 = 20.7716
+3648 + 51 = 3699; 3648 - 51 = 3597; 3648 * 51 = 186048; 3648 / 51 = 71.5294
+5336 + 420 = 5756; 5336 - 420 = 4916; 5336 * 420 = 2241120; 5336 / 420 = 12.7048
+7704 + 94 = 7798; 7704 - 94 = 7610; 7704 * 94 = 724176; 7704 / 94 = 81.9574
+6590 + 606 = 7196; 6590 - 606 = 5984; 6590 * 606 = 3993540; 6590 / 606 = 10.8746
+6075 + 863 = 6938; 6075 - 863 = 5212; 6075 * 863 = 5242725; 6075 / 863 = 7.0394
+3272 + 154 = 3426; 3272 - 154 = 3118; 3272 * 154 = 503888; 3272 / 154 = 21.2468
+7678 + 858 = 8536; 7678 - 858 = 6820; 7678 * 858 = 6587724; 7678 / 858 = 8.9487
+8748 + 703 = 9451; 8748 - 703 = 8045; 8748 * 703 = 6149844; 8748 / 703 = 12.4438
+8184 + 408 = 8592; 8184 - 408 = 7776; 8184 * 408 = 3339072; 8184 / 408 = 20.0588
+8730 + 677 = 9407; 8730 - 677 = 8053; 8730 * 677 = 5910210; 8730 / 677 = 12.8951
+5514 + 510 = 6024; 5514 - 510 = 5004; 5514 * 510 = 2812140; 5514 / 510 = 10.8118
+2663 + 87 = 2750; 2663 - 87 = 2576; 2663 * 87 = 231681; 2663 / 87 = 30.6092
+4743 + 584 = 5327; 4743 - 584 = 4159; 4743 * 584 = 2769912; 4743 / 584 = 8.1216
+2948 + 112 = 3060; 2948 - 112 = 2836; 2948 * 112 = 330176; 2948 / 112 = 26.3214
+8632 + 998 = 9630; 8632 - 998 = 7634; 8632 * 998 = 8614736; 8632 / 998 = 8.6493
+6129 + 378 = 6507; 6129 - 378 = 5751; 6129 * 378 = 2316762; 6129 / 378 = 16.2143
+8733 + 260 = 8993; 8733 - 260 = 8473; 8733 * 260 = 2270580; 8733 / 260 = 33.5885
+3940 + 879 = 4819; 3940 - 879 = 3061; 3940 * 879 = 3463260; 3940 / 879 = 4.4824
+2288 + 389 = 2677; 2288 - 389 = 1899; 2288 * 389 = 890032; 2288 / 389 = 5.8817
+5979 + 810 = 6789; 5979 - 810 = 5169; 5979 * 810 = 4842990; 5979 / 810 = 7.3815
+2625 + 866 = 3491; 2625 - 866 = 1759; 2625 * 866 = 2273250; 2625 / 866 = 3.0312
+2354 + 612 = 2966; 2354 - 612 = 1742; 2354 * 612 = 1440648; 2354 / 612 = 3.8464
+5173 + 114 = 5287; 5173 - 114 = 5059; 5173 * 114 = 589722; 5173 / 114 = 45.3772
+976 + 989 = 1965; 976 - 989 = -13; 976 * 989 = 965264; 976 / 989 = 0.9869
+5849 + 261 = 6110; 5849 - 261 = 5588; 5849 * 261 = 1526589; 5849 / 261 = 22.4100
+567 + 391 = 958; 567 - 391 = 176; 567 * 391 = 221697; 567 / 391 = 1.4501
+8612 + 400 = 9012; 8612 - 400 = 8212; 8612 * 400 = 3444800; 8612 / 400 = 21.5300
+1564 + 650 = 2214; 1564 - 650 = 914; 1564 * 650 = 1016600; 1564 / 650 = 2.4062
+5666 + 402 = 6068; 5666 - 402 = 5264; 5666 * 402 = 2277732; 5666 / 402 = 14.0945
+6714 + 870 = 7584; 6714 - 870 = 5844; 6714 * 870 = 5841180; 6714 / 870 = 7.7172
+2585 + 59 = 2644; 2585 - 59 = 2526; 2585 * 59 = 152515; 2585 / 59 = 43.8136
+176 + 588 = 764; 176 - 588 = -412; 176 * 588 = 103488; 176 / 588 = 0.2993
+6603 + 768 = 7371; 6603 - 768 = 5835; 6603 * 768 = 5071104; 6603 / 768 = 8.5977
+2382 + 674 = 3056; 2382 - 674 = 1708; 2382 * 674 = 1605468; 2382 / 674 = 3.5341
+8495 + 717 = 9212; 8495 - 717 = 7778; 8495 * 717 = 6090915; 8495 / 717 = 11.8480
+5491 + 586 = 6077; 5491 - 586 = 4905; 5491 * 586 = 3217726; 5491 / 586 = 9.3703
+4521 + 586 = 5107; 4521 - 586 = 3935; 4521 * 586 = 2649306; 4521 / 586 = 7.7150
+9381 + 51 = 9432; 9381 - 51 = 9330; 9381 * 51 = 478431; 9381 / 51 = 183.9412
+8456 + 43 = 8499; 8456 - 43 = 8413; 8456 * 43 = 363608; 8456 / 43 = 196.6512
+3267 + 255 = 3522; 3267 - 255 = 3012; 3267 * 255 = 833085; 3267 / 255 = 12.8118
+3122 + 956 = 4078; 3122 - 956 = 2166; 3122 * 956 = 2984632; 3122 / 956 = 3.2657
+8626 + 43 = 8669; 8626 - 43 = 8583; 8626 * 43 = 370918; 8626 / 43 = 200.6047
+7220 + 672 = 7892; 7220 - 672 = 6548; 7220 * 672 = 4851840; 7220 / 672 = 10.7440
+4091 + 830 = 4921; 4091 - 830 = 3261; 4091 * 830 = 3395530; 4091 / 830 = 4.9289
+1700 + 60 = 1760; 1700 - 60 = 1640; 1700 * 60 = 102000; 1700 / 60 = 28.3333
+9619 + 528 = 10147; 9619 - 528 = 9091; 9619 * 528 = 5078832; 9619 / 528 = 18.2178
+5403 + 785 = 6188; 5403 - 785 = 4618; 5403 * 785 = 4241355; 5403 / 785 = 6.8828
+783 + 483 = 1266; 783 - 483 = 300; 783 * 483 = 378189; 783 / 483 = 1.6211
+4227 + 367 = 4594; 4227 - 367 = 3860; 4227 * 367 = 1551309; 4227 / 367 = 11.5177
+931 + 531 = 1462; 931 - 531 = 400; 931 * 531 = 494361; 931 / 531 = 1.7533
+5903 + 301 = 6204; 5903 - 301 = 5602; 5903 * 301 = 1776803; 5903 / 301 = 19.6113
+1253 + 478 = 1731; 1253 - 478 = 775; 1253 * 478 = 598934; 1253 / 478 = 2.6213
+4073 + 592 = 4665; 4073 - 592 = 3481; 4073 * 592 = 2411216; 4073 / 592 = 6.8801
+3944 + 242 = 4186; 3944 - 242 = 3702; 3944 * 242 = 954448; 3944 / 242 = 16.2975
+3589 + 186 = 3775; 3589 - 186 = 3403; 3589 * 186 = 667554; 3589 / 186 = 19.2957
+2966 + 831 = 3797; 2966 - 831 = 2135; 2966 * 831 = 2464746; 2966 / 831 = 3.5692
+4214 + 516 = 4730; 4214 - 516 = 3698; 4214 * 516 = 2174424; 4214 / 516 = 8.1667
+7495 + 651 = 8146; 7495 - 651 = 6844; 7495 * 651 = 4879245; 7495 / 651 = 11.5131
+1658 + 792 = 2450; 1658 - 792 = 866; 1658 * 792 = 1313136; 1658 / 792 = 2.0934
+2981 + 154 = 3135; 2981 - 154 = 2827; 2981 * 154 = 459074; 2981 / 154 = 19.3571
+6387 + 224 = 6611; 6387 - 224 = 6163; 6387 * 224 = 1430688; 6387 / 224 = 28.5134
+3382 + 994 = 4376; 3382 - 994 = 2388; 3382 * 994 = 3361708; 3382 / 994 = 3.4024
+3051 + 437 = 3488; 3051 - 437 = 2614; 3051 * 437 = 1333287; 3051 / 437 = 6.9817
+9155 + 705 = 9860; 9155 - 705 = 8450; 9155 * 705 = 6454275; 9155 / 705 = 12.9858
+5355 + 520 = 5875; 5355 - 520 = 4835; 5355 * 520 = 2784600; 5355 / 520 = 10.2981
+3836 + 407 = 4243; 3836 - 407 = 3429; 3836 * 407 = 1561252; 3836 / 407 = 9.4251
+6995 + 513 = 7508; 6995 - 513 = 6482; 6995 * 513 = 3588435; 6995 / 513 = 13.6355
+2045 + 779 = 2824; 2045 - 779 = 1266; 2045 * 779 = 1593055; 2045 / 779 = 2.6252
+9950 + 279 = 10229; 9950 - 279 = 9671; 9950 * 279 = 2776050; 9950 / 279 = 35.6631
+4162 + 41 = 4203; 4162 - 41 = 4121; 4162 * 41 = 170642; 4162 / 41 = 101.5122
+362 + 154 = 516; 362 - 154 = 208; 362 * 154 = 55748; 362 / 154 = 2.3506
+6543 + 682 = 7225; 6543 - 682 = 5861; 6543 * 682 = 4462326; 6543 / 682 = 9.5938
+8813 + 424 = 9237; 8813 - 424 = 8389; 8813 * 424 = 3736712; 8813 / 424 = 20.7854
+3165 + 546 = 3711; 3165 - 546 = 2619; 3165 * 546 = 1728090; 3165 / 546 = 5.7967
+9585 + 60 = 9645; 9585 - 60 = 9525; 9585 * 60 = 575100; 9585 / 60 = 159.7500
+861 + 929 = 1790; 861 - 929 = -68; 861 * 929 = 799869; 861 / 929 = 0.9268
+1779 + 514 = 2293; 1779 - 514 = 1265; 1779 * 514 = 914406; 1779 / 514 = 3.4611
+9920 + 723 = 10643; 9920 - 723 = 9197; 9920 * 723 = 7172160; 9920 / 723 = 13.7206
+525 + 999 = 1524; 525 - 999 = -474; 525 * 999 = 524475; 525 / 999 = 0.5255
+8169 + 353 = 8522; 8169 - 353 = 7816; 8169 * 353 = 2883657; 8169 / 353 = 23.1416
+4194 + 55 = 4249; 4194 - 55 = 4139; 4194 * 55 = 230670; 4194 / 55 = 76.2545
+4317 + 815 = 5132; 4317 - 815 = 3502; 4317 * 815 = 3518355; 4317 / 815 = 5.2969
+4642 + 937 = 5579; 4642 - 937 = 3705; 4642 * 937 = 4349554; 4642 / 937 = 4.9541
+2578 + 758 = 3336; 2578 - 758 = 1820; 2578 * 758 = 1954124; 2578 / 758 = 3.4011
+5906 + 636 = 6542; 5906 - 636 = 5270; 5906 * 636 = 3756216; 5906 / 636 = 9.2862
+5609 + 798 = 6407; 5609 - 798 = 4811; 5609 * 798 = 4475982; 5609 / 798 = 7.0288
+4466 + 411 = 4877; 4466 - 411 = 4055; 4466 * 411 = 1835526; 4466 / 411 = 10.8662
+6633 + 92 = 6725; 6633 - 92 = 6541; 6633 * 92 = 610236; 6633 / 92 = 72.0978
+2034 + 311 = 2345; 2034 - 311 = 1723; 2034 * 311 = 632574; 2034 / 311 = 6.5402
+2475 + 484 = 2959; 2475 - 484 = 1991; 2475 * 484 = 1197900; 2475 / 484 = 5.1136
+1799 + 660 = 2459; 1799 - 660 = 1139; 1799 * 660 = 1187340; 1799 / 660 = 2.7258
+374 + 710 = 1084; 374 - 710 = -336; 374 * 710 = 265540; 374 / 710 = 0.5268
+7879 + 189 = 8068; 7879 - 189 = 7690; 7879 * 189 = 1489131; 7879 / 189 = 41.6878
+9553 + 423 = 9976; 9553 - 423 = 9130; 9553 * 423 = 4040919; 9553 / 423 = 22.5839
+899 + 237 = 1136; 899 - 237 = 662; 899 * 237 = 213063; 899 / 237 = 3.7932
+5260 + 178 = 5438; 5260 - 178 = 5082; 5260 * 178 = 936280; 5260 / 178 = 29.5506
+7201 + 238 = 7439; 7201 - 238 = 6963; 7201 * 238 = 1713838; 7201 / 238 = 30.2563
+1507 + 130 = 1637; 1507 - 130 = 1377; 1507 * 130 = 195910; 1507 / 130 = 11.5923
+5264 + 49 = 5313; 5264 - 49 = 5215; 5264 * 49 = 257936; 5264 / 49 = 107.4286
+2654 + 68 = 2722; 2654 - 68 = 2586; 2654 * 68 = 180472; 2654 / 68 = 39.0294
+4269 + 718 = 4987; 4269 - 718 = 3551; 4269 * 718 = 3065142; 4269 / 718 = 5.9457
+7306 + 339 = 7645; 7306 - 339 = 6967; 7306 * 339 = 2476734; 7306 / 339 = 21.5516
+8486 + 287 = 8773; 8486 - 287 = 8199; 8486 * 287 = 2435482; 8486 / 287 = 29.5679
+547 + 207 = 754; 547 - 207 = 340; 547 * 207 = 113229; 547 / 207 = 2.6425
+852 + 366 = 1218; 852 - 366 = 486; 852 * 366 = 311832; 852 / 366 = 2.3279
+5422 + 703 = 6125; 5422 - 703 = 4719; 5422 * 703 = 3811666; 5422 / 703 = 7.7127
+3229 + 157 = 3386; 3229 - 157 = 3072; 3229 * 157 = 506953; 3229 / 157 = 20.5669
+9331 + 835 = 10166; 9331 - 835 = 8496; 9331 * 835 = 7791385; 9331 / 835 = 11.1749
+3085 + 908 = 3993; 3085 - 908 = 2177; 3085 * 908 = 2801180; 3085 / 908 = 3.3976
+7164 + 423 = 7587; 7164 - 423 = 6741; 7164 * 423 = 3030372; 7164 / 423 = 16.9362
+2785 + 619 = 3404; 2785 - 619 = 2166; 2785 * 619 = 1723915; 2785 / 619 = 4.4992
+2592 + 648 = 3240; 2592 - 648 = 1944; 2592 * 648 = 1679616; 2592 / 648 = 4.0000
+2764 + 738 = 3502; 2764 - 738 = 2026; 2764 * 738 = 2039832; 2764 / 738 = 3.7453
+5651 + 215 = 5866; 5651 - 215 = 5436; 5651 * 215 = 1214965; 5651 / 215 = 26.2837
+863 + 910 = 1773; 863 - 910 = -47; 863 * 910 = 785330; 863 / 910 = 0.9484
+70 + 185 = 255; 70 - 185 = -115; 70 * 185 = 12950; 70 / 185 = 0.3784
+7947 + 447 = 8394; 7947 - 447 = 7500; 7947 * 447 = 3552309; 7947 / 447 = 17.7785
+8581 + 637 = 9218; 8581 - 637 = 7944; 8581 * 637 = 5466097; 8581 / 637 = 13.4710
+8638 + 820 = 9458; 8638 - 820 = 7818; 8638 * 820 = 7083160; 8638 / 820 = 10.5341
+492 + 527 = 1019; 492 - 527 = -35; 492 * 527 = 259284; 492 / 527 = 0.9336
+

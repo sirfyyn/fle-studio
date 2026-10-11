@@ -122,6 +122,10 @@ def test_a_corpus_can_be_mixed_from_files(api: Client, models):
     status, made = api.post("/api/forge/corpus", {"inputs": [models["eval"]], "chars": 2000})
     assert status == 200 and Path(made["path"]).is_file()
     assert api.post("/api/forge/corpus", {"inputs": []})[0] == 400
+    status, bundled = api.post("/api/forge/corpus", {"bundled": True})
+    assert status == 200 and bundled["part"] == "calibration" and Path(bundled["path"]).is_file()
+    status, held = api.post("/api/forge/corpus", {"bundled": True, "part": "evaluation"})
+    assert status == 200 and held["path"] != bundled["path"] and held["chars"] < bundled["chars"]
 
 
 def test_recipes_are_imported_with_what_they_need(api: Client):

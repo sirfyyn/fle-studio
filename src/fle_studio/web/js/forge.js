@@ -466,7 +466,11 @@ export function mount(main) {
       h("div", { class: "card-head" }, icon("folder"), h("div", { class: "grow" }, h("h3", null, "Calibration text"),
         h("p", null, used ? "The importance matrix and the router statistics are measured on this text. A mixture-of-experts model needs a lot of varied text; a short one never reaches many of the experts."
           : "Only needed when you compute an importance matrix or prune."))),
-      field("Text file", textInput(draft.imatrix, "corpus", { mono: true, id: "fg-corpus", placeholder: "Path of a text file" })),
+      h("div", { class: "row wrap" },
+        h("div", { class: "grow", style: { minWidth: "260px" } }, field("Text file", textInput(draft.imatrix, "corpus", { mono: true, id: "fg-corpus", placeholder: "Path of a text file" }))),
+        h("button", { class: "btn", id: "fg-corpus-bundled", style: { alignSelf: "end" }, onclick: (e) => busy(e.currentTarget, async () => report(await post("/api/forge/corpus", { bundled: true }))) },
+          "Use the text that comes with Studio")),
+      h("p", { class: "small faint", style: { margin: 0 } }, "The bundled text is about 1 MB of English and German prose, code, dialogue and numbers, all public domain, CC0 or MIT (origin and license of every file are in forge/corpus/SOURCES.md). A good start; text from your own use fits your use better."),
       h("div", { class: "grid three" }, field("Chunks", numInput(draft.imatrix, "chunks"), "0 reads the whole text."), field("Context", numInput(draft.imatrix, "context", { min: 64 }))),
       h("details", { class: "fg-details" }, h("summary", null, "Mix a text from your own files"),
         h("div", { class: "stack", style: { marginTop: "8px" } }, inputs,
@@ -504,7 +508,14 @@ export function mount(main) {
           field(draft.mode === "quantize" ? "Reference model (default: the source)" : "Reference model, full precision",
             textInput(v, "reference_path", { mono: true, id: "fg-ref", placeholder: draft.mode === "quantize" ? "Leave empty to use the source model" : "Path of the BF16 or F16 .gguf" }),
             "Without a full-precision file, use the best quant you have; the numbers then say how far the result is from that."),
-          field("Text for the comparison", textInput(v, "text", { mono: true, id: "fg-eval", placeholder: "Path of a text file, different from the calibration text" })),
+          h("div", { class: "row wrap" },
+            h("div", { class: "grow", style: { minWidth: "260px" } }, field("Text for the comparison", textInput(v, "text", { mono: true, id: "fg-eval", placeholder: "Path of a text file, different from the calibration text" }))),
+            h("button", { class: "btn", id: "fg-eval-bundled", style: { alignSelf: "end" }, onclick: (e) => busy(e.currentTarget, async () => {
+              const made = await post("/api/forge/corpus", { bundled: true, part: "evaluation" });
+              v.text = made.path;
+              saveDraft();
+              renderPanel();
+            }) }, "Use the held-out part of the bundled text")),
           h("div", { class: "grid three" }, field("Chunks", numInput(v, "chunks", { min: 1 }), "The stored probabilities grow with chunks times vocabulary."),
             field("Context", numInput(v, "context", { min: 64 })))] : null,
         v.enabled ? referenceTable() : null),
@@ -702,8 +713,25 @@ export function mount(main) {
     if (step === "start" || step === "prune" || step === "verify") renderPanel();
   }
 
+  // The text that comes with Studio is the default for both texts, until the person names another.
+  async function bundledDefaults() {
+    try {
+      if (!draft.imatrix.corpus) {
+        const made = await post("/api/forge/corpus", { bundled: true });
+        if (!draft.imatrix.corpus) draft.imatrix.corpus = made.path; // the person may have typed one meanwhile
+      }
+      if (!draft.verify.text) {
+        const made = await post("/api/forge/corpus", { bundled: true, part: "evaluation" });
+        if (!draft.verify.text) draft.verify.text = made.path;
+      }
+      saveDraft();
+      if (!gone && (step === "verify" || step === "build")) renderPanel();
+    } catch { /* the page works without the defaults */ }
+  }
+
   renderStepper();
   renderPanel();
+  bundledDefaults();
   loadOverview().then(() => {
     const active = (overview?.jobs || []).find((j) => j.running || j.state === "running");
     if (active && !job) get(`/api/forge/jobs/${active.id}`).then((j) => { job = j; follow(); }).catch(() => {});

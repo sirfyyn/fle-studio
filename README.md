@@ -211,8 +211,9 @@ on your hardware: the speed figures in the FLE report and in the model catalog w
 
 ## Roadmap
 
-**Studio Forge** is being built for 0.2 (see [docs/FORGE.md](docs/FORGE.md)). What is still open: a run on a real
-model of the size of the FLE quants, and a calibration text that can ship with Studio (none is bundled today).
+**Studio Forge** is being built for 0.2 (see [docs/FORGE.md](docs/FORGE.md)). A small calibration text (public domain, CC0 and MIT
+sources, listed in `src/fle_studio/forge/corpus/SOURCES.md`) ships with Studio. What is still open: a run on a real
+model of the size of the FLE quants.
 
 Ideas and bug reports are welcome as GitHub issues.
 

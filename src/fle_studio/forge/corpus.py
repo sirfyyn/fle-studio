@@ -6,12 +6,15 @@ the experts). Forge therefore mixes what you give it: text files and folders of 
 random (with a fixed seed, so the same inputs give the same file) up to a character budget, with a per-source report
 so that no single source silently dominates.
 
-No corpus is bundled. For a first trial `stdlib_sample()` collects English documentation and code from the Python
-standard library of the interpreter that runs Studio; it is a convenience, not a recommendation.
+A small mixed text ships with Studio (`bundled()`, about 1 MB: English and German prose, code, dialogue, numbers; every
+file with its origin and license in corpus/SOURCES.md). It is a sound default for a first quant, not a substitute for
+text from your own use. For a trial `stdlib_sample()` collects documentation and code from the Python standard
+library of the interpreter that runs Studio.
 """
 
 from __future__ import annotations
 
+import hashlib
 import os
 import random
 import re
@@ -135,6 +138,52 @@ def build(
         "words": len(text.split()),
         "sources": report,
         "largest_share": max(r["share"] for r in report),
+    }
+
+
+BUNDLED_DIR = Path(__file__).parent / "corpus"
+HELD_OUT_PERCENT = 15
+
+
+def _held_out(unit: str) -> bool:
+    return int(hashlib.sha256(unit.encode("utf-8")).hexdigest(), 16) % 100 < HELD_OUT_PERCENT
+
+
+def bundled(
+    out: str | os.PathLike[str], part: str = "calibration", seed: int = 1, max_unit: int = 4000
+) -> dict[str, Any]:
+    """The text that ships with Studio (see corpus/SOURCES.md for origin and license of every file).
+
+    "calibration" is about 85 % of its paragraphs and "evaluation" the other 15 %, chosen by a hash of the paragraph,
+    so the two never share a paragraph: use the first for the importance matrix and the router statistics, the second
+    for the comparison with the reference model."""
+    if part not in ("calibration", "evaluation"):
+        raise CorpusError("part must be calibration or evaluation")
+    files = sorted(BUNDLED_DIR.glob("*.txt"))
+    if not files:
+        raise CorpusError("this installation has no bundled corpus")
+    units: list[str] = []
+    per_file: dict[str, int] = {}
+    for f in files:
+        before = len(units)
+        for u in UNIT.split(f.read_text(encoding="utf-8", errors="ignore")):
+            u = u.strip()[:max_unit]
+            if len(u) >= 80 and _held_out(u) == (part == "evaluation"):
+                units.append(u)
+        per_file[f.name] = sum(len(x) for x in units[before:])
+    random.Random(seed).shuffle(units)
+    text = "\n\n".join(units)
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text(text, encoding="utf-8")
+    total = max(1, sum(per_file.values()))
+    report = [{"input": k, "chars": v, "share": v / total} for k, v in per_file.items()]
+    return {
+        "path": str(out),
+        "chars": len(text),
+        "words": len(text.split()),
+        "sources": report,
+        "largest_share": max(r["share"] for r in report),
+        "part": part,
     }
 
 

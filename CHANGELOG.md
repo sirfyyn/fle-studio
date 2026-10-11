@@ -17,6 +17,9 @@ Version `0.2.0.dev0`. Not released.
   - jobs with progress and a log, cancel, resume and a record that survives a restart of Studio;
   - recipes (JSON schema 1) that carry no folders and no commands, to save, share and load;
   - publishing a result to the library with a start profile.
+- A calibration text that ships with Studio (about 1 MB: English and German prose, code, dialogue, numbers; public
+  domain, CC0 or MIT, with the origin, license and checksum of every file in `forge/corpus/SOURCES.md`), used by Forge
+  as the default, split into a calibration and a held-out comparison part.
 - Tests with synthetic mini GGUF files and stand-in llama.cpp tools; the browser test walks through Forge.
 
 ### Changed

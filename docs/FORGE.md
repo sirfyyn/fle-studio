@@ -67,10 +67,14 @@ and hardware. The FLE figures shown for orientation were measured on the FLE pro
 
 ## Calibration text
 
-No text is bundled. A mixture-of-experts model needs plenty of varied text: a short one never reaches many experts.
-Forge can mix your own files and folders into one text (seeded draws, a report per source), or take the Python
-standard library as a first trial. **Open question:** a text that may ship with Studio needs a license that allows
-redistribution; until one is chosen, bring your own and check its license before sharing numbers that depend on it.
+A mixture-of-experts model needs plenty of varied text: a short one never reaches many experts. Studio ships a
+mixed text of about 1 MB (`src/fle_studio/forge/corpus/`): English prose (Alice, Pride and Prejudice, Sherlock Holmes),
+German prose (Kafka, Goethe, Fontane), Python and JavaScript, question-and-answer dialogue in both languages, and
+tables and numbers. Every file is public domain, CC0 or MIT, with origin, license, retrieval date and SHA-256 in
+`corpus/SOURCES.md`; `scripts/make_corpus.py` rebuilds it. Forge uses it as the default. 85 % of its paragraphs form
+the calibration text and the other 15 % (chosen by a hash, so the two never share a paragraph) the comparison text.
+You can mix your own files and folders instead (seeded draws, a report per source) or take the Python standard
+library as a trial. The bundled text is a sound start, not a substitute for text from your own use.
 
 ## Tools
 

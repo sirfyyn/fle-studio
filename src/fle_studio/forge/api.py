@@ -141,6 +141,9 @@ class Forge:
         out = paths.ensure(self.data_dir / "forge" / "corpus") / f"corpus-{int(time.time())}.txt"
         chars = int(body.get("chars") or 1_000_000)
         try:
+            if body.get("bundled"):
+                part = "evaluation" if body.get("part") == "evaluation" else "calibration"
+                return corpus.bundled(out.with_name(f"bundled-{part}.txt"), part)
             if body.get("stdlib"):
                 return corpus.stdlib_sample(out, chars)
             inputs = [str(x) for x in body.get("inputs") or []]
