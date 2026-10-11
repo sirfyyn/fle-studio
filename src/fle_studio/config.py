@@ -60,6 +60,9 @@ DEFAULTS: dict[str, Any] = {
         "thinking": True,
         "system_prompt": "",
     },
+    "forge": {
+        "tools_dir": "",  # folder with llama-imatrix / llama-quantize / llama-perplexity; empty = engines, then PATH
+    },
     "attach_url": "",  # talk to an already running llama.cpp/FLE server instead of starting one
     "attach_service": "",  # Linux: the systemd service that runs it (FLE Studio can then start and stop it)
     "attach_key": "",  # API key of that server, if it wants one

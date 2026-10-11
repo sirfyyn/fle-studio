@@ -1,5 +1,29 @@
 # Changelog
 
+## [Unreleased]
+
+Version `0.2.0.dev0`. Not released.
+
+### Added
+
+- **Forge**, a new page for building your own quant (see [docs/FORGE.md](docs/FORGE.md)):
+  - a hybrid builder that takes whole expert layers from several quants of the same model, with a size-budget
+    calculator (exact knapsack over the layers), the exact file size and a RAM/VRAM preview before anything is written;
+    the file is written without requantizing, with a correct header, and can be resumed after a stop;
+  - quantizing a full-precision model with `llama-quantize` (per-tensor rules, optional importance matrix from
+    `llama-imatrix`);
+  - optional REAP pruning: the best experts per layer are kept, the router and the metadata are made consistent;
+  - a check with `llama-perplexity` (KL divergence, top-1 agreement, perplexity ratio) and a result card;
+  - jobs with progress and a log, cancel, resume and a record that survives a restart of Studio;
+  - recipes (JSON schema 1) that carry no folders and no commands, to save, share and load;
+  - publishing a result to the library with a start profile.
+- Tests with synthetic mini GGUF files and stand-in llama.cpp tools; the browser test walks through Forge.
+
+### Changed
+
+- The release test accepts a development version: installers and README name the last release until the new one
+  is cut.
+
 ## [0.1.1] - 2026-10-11
 
 Installers, CI and docs. The app itself does not change in this release.
