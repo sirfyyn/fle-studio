@@ -532,8 +532,9 @@ def test_windows_gets_a_helper_instead_of_an_install_from_inside(
     u.apply("v9.0.0")
     assert u.run["state"] == "restarting" and run_env["restarts"] == [None]  # just end: the helper starts it again
     assert not run_env["out"].exists()  # nothing was installed from inside the running program
-    cmd = started[0][0]
-    assert cmd[0] == "powershell.exe" and "-File" in cmd and cmd[-2] == "-Job"
+    # Popen is patched process-wide: a sampler thread (vm_stat on macOS) may land here too
+    cmd = next(c for c, _ in started if c and c[0] == "powershell.exe")
+    assert "-File" in cmd and cmd[-2] == "-Job"
     job = json.loads(Path(cmd[-1]).read_text(encoding="utf-8"))
     assert job["spec"] == "git+https://github.com/sirfyyn/fle-studio@v9.0.0" and job["tag"] == "v9.0.0"
     assert job["start"][-2:] == ["9000", "--no-browser"] and job["uv"][0] == sys.executable
