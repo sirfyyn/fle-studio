@@ -7,7 +7,8 @@ import { attachmentsEl, createAttach } from "./attach.js";
 import { buildRequest, estimateRequest, usedImages } from "./chat-request.js";
 import { addChild, ensureTree, indexOf, newId, pathOf, removeBranch, siblingsOf, switchTo } from "./chat-tree.js";
 import { renderMarkdown } from "./md.js";
-import { toolCardEl, waitForApproval } from "./tools-ui.js";
+import { host as appHost, replaceMessages, swapNode } from "./app-bridge.js";
+import { showAppNow, toolCardEl, waitForApproval } from "./tools-ui.js";
 import { clear, confirmDialog, copyText, debounce, fmt, h, icon, mark, meter, openMenu, ring, sparkline, stateBadge, toast } from "./ui.js";
 
 const SUGGESTIONS = [
@@ -161,6 +162,16 @@ export function mount(main, chatId) {
     if (toolInfo.connecting && alive && toolPolls < 60) { toolPolls += 1; setTimeout(fetchTools, 1500); } else toolPolls = 0;
   }
 
+  // What an MCP App may ask of the chat (app-bridge.js asks the user first, then calls these).
+  appHost.trusted = (server) => (store.state?.settings?.tools?.mcp_trusted || []).includes(server);
+  appHost.say = async (text) => {
+    if (turn) throw new Error("The assistant is still answering; try again in a moment");
+    if (!engineUp()) throw new Error("No model is loaded");
+    ta.value = text;
+    autosize();
+    await submit();
+  };
+
   // Function declarations, not consts: the first render above runs before this point is reached.
   function toolsActive() { return toolInfo.enabled && toolInfo.tools.length > 0 && caps.tools !== false; }
   function infoFor(name) { return toolInfo.tools.find((t) => t.name === name); }
@@ -287,7 +298,7 @@ export function mount(main, chatId) {
       return;
     }
     const v = view();
-    clear(inner, v.path.map((m, i) => msgEl(m, i, v)));
+    replaceMessages(inner, v.path.map((m, i) => msgEl(m, i, v)));
   }
 
   function welcome() {
@@ -458,7 +469,7 @@ export function mount(main, chatId) {
     const i = v.path.indexOf(node);
     const old = inner.querySelector(`.msg[data-id="${node.id}"]`);
     if (i < 0 || !old) { renderMessages(); return; }
-    old.replaceWith(msgEl(node, i, v));
+    swapNode(old, msgEl(node, i, v));
     scrollBottom();
   }
 
@@ -780,6 +791,12 @@ export function mount(main, chatId) {
         call.result = r.content;
         call.ms = r.ms;
         call.status = r.is_error ? "error" : "done";
+        if (r.app) { // an MCP App shows this result (app-bridge.js); kept with the chat, small results only
+          const big = JSON.stringify(r.app.result).length > 200000;
+          call.app = { server: r.app.server, uri: r.app.uri, tool: r.app.tool, input: args,
+            result: big ? { content: [{ type: "text", text: call.result }] } : r.app.result };
+          showAppNow(call.id);
+        }
       } catch (e) {
         call.status = "error";
         call.result = e.message;
@@ -860,7 +877,7 @@ export function mount(main, chatId) {
     if (old) {
       const thinkBody = old.querySelector(".think-body");
       const keepScroll = thinkBody ? thinkBody.scrollTop : 0;
-      old.replaceWith(fresh);
+      swapNode(old, fresh);
       const nb = fresh.querySelector(".think-body");
       if (nb) nb.scrollTop = s.thinking ? nb.scrollHeight : keepScroll;
     } else inner.append(fresh);
