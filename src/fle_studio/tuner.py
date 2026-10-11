@@ -355,6 +355,7 @@ class Tuner:
         engine = self.host.engine
         restart = engine.restart_on_crash
         engine.restart_on_crash = False  # a candidate that crashes is a result, not a reason to start it again
+        outcome = ("failed", "The run ended without a result")
         try:
             sysinfo = self.host.sysinfo()
             runs = cur["runs"]
@@ -375,7 +376,7 @@ class Tuner:
                 first = self._trial(cur, base_plan, runs, "Probe: the starting settings", check)
             except TrialFailed as exc:
                 self._set(cur, probe={"ok": False, "error": str(exc)})
-                self._finish(cur, "failed", f"The starting settings do not work, so nothing was tried: {exc}")
+                outcome = ("failed", f"The starting settings do not work, so nothing was tried: {exc}")
                 return
             best_plan, best = base_plan, first
             longest = first["seconds"]
@@ -441,16 +442,17 @@ class Tuner:
             self._set(cur, notes=cur_notes)
             profile = self._save_profile(cur, best_plan, base_plan, first, best)
             self._set(cur, profile=profile, best={**cur["best"], "command": best_plan.command_line()})
-            self._finish(cur, "done")
+            outcome = ("done", "")
         except InterruptedError:
-            self._finish(cur, "cancelled")
+            outcome = ("cancelled", "")
         except EngineBusy as exc:
-            self._finish(cur, "failed", str(exc))
+            outcome = ("failed", str(exc))
         except Exception as exc:  # report, never crash the thread silently
-            self._finish(cur, "failed", f"{type(exc).__name__}: {exc}")
+            outcome = ("failed", f"{type(exc).__name__}: {exc}")
         finally:
             engine.restart_on_crash = restart
             TrialRunner(engine, self.host.bench, self._cancel).stop()
+            self._finish(cur, *outcome)  # only now: a run started on "done" must not meet this one's stop
 
     def _screen(
         self, cur: dict[str, Any], binary: Path, plan: Plan, param: Param, values: list[Change]
@@ -579,13 +581,14 @@ class Tuner:
                 "prefill": stats.aba(by["A1"]["prefill_runs"], by["B"]["prefill_runs"], by["A2"]["prefill_runs"]),
             }
             self._set(cur, result=result)
-            self._finish(cur, "done")
+            outcome = ("done", "")
         except InterruptedError:
-            self._finish(cur, "cancelled")
+            outcome = ("cancelled", "")
         except TrialFailed as exc:
-            self._finish(cur, "failed", f"{cur.get('step') or 'A trial'} failed: {exc}")
+            outcome = ("failed", f"{cur.get('step') or 'A trial'} failed: {exc}")
         except Exception as exc:
-            self._finish(cur, "failed", f"{type(exc).__name__}: {exc}")
+            outcome = ("failed", f"{type(exc).__name__}: {exc}")
         finally:
             engine.restart_on_crash = restart
             TrialRunner(engine, self.host.bench, self._cancel).stop()
+        self._finish(cur, *outcome)  # only now: a run started on "done" must not meet this one's stop
