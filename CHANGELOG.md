@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.1] - unreleased
+## [0.1.1] - 2026-10-11
 
 Installers, CI and docs. The app itself does not change in this release.
 
