@@ -501,7 +501,7 @@ class Tuner:
             return None
         scored.sort(key=lambda s: -s[0])
         with self._lock:
-            cur.setdefault("screen", []).append(
+            cur.setdefault("screened", []).append(
                 {
                     "param": param.key,
                     "values": [{"label": v.label, key: round(m, 2)} for m, v in scored],

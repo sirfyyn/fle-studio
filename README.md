@@ -142,6 +142,12 @@ and decode speed with the profile and engine used, so you can compare settings s
 **Simple settings.** Theme, sampling (the model's recommended values or your own), the folder for models, the
 Hugging Face token for gated repos, and network access.
 
+**Best for my machine, measured.** On the Engine page the simple view has one button that tunes threads, the GPU expert
+cache or `--n-cpu-moe`, and batch size by measuring, and saves the winner as a profile. Experiments show the median with
+a 95 % interval over repeated runs, say "within noise" when a difference is not real, compare two settings A/B/A, and put
+quality (KL divergence, a knowledge probe) next to speed. See [docs/TUNING-AND-QUALITY.md](docs/TUNING-AND-QUALITY.md);
+the Expert cache page is described in [docs/EXPERT-CACHE-DATA.md](docs/EXPERT-CACHE-DATA.md).
+
 ## Engines
 
 FLE Studio installs the engine that suits your machine. You can always choose another one, use your own

@@ -3,6 +3,8 @@
 
 import { get, post } from "./api.js";
 import { engineModelName, engineUp, navigate, on, store, topbar } from "./app.js";
+import { mountExtras } from "./lab_extra.js";
+import { loadStyle, withCi } from "./tuner.js";
 import { clear, confirmDialog, copyButton, fmt, h, icon, toast } from "./ui.js";
 
 const TEST_INFO = {
@@ -13,6 +15,10 @@ const TEST_INFO = {
 
 export function mount(main) {
   const unsub = [];
+  loadStyle();
+  const abaBox = h("div", { class: "card pad-lg" });
+  const qualityBox = h("div", { class: "card pad-lg" });
+  let kldByModel = {};
   const runBox = h("div", { class: "card pad-lg" });
   const chartBox = h("div", { class: "card" });
   const tableBox = h("div", { class: "card", style: { padding: 0 } });
@@ -20,13 +26,14 @@ export function mount(main) {
     h("div", { class: "page-head" }, h("div", null, h("h2", null, "Experiments"),
       h("p", null, "Measure the loaded model with the same three requests every time, then change a setting or a profile and measure again. "
         + "Results stay on this computer with the exact command that produced them."))),
-    runBox, chartBox, tableBox)));
+    runBox, chartBox, tableBox, abaBox, qualityBox)));
 
   let bench = { current: null, results: [], tests: [] };
   let open = null; // id of the result whose details are shown
   let timer = 0;
   let runs = 3;
   let label = "";
+  let knowledge = false;
 
   async function load() {
     try {
@@ -65,6 +72,9 @@ export function mount(main) {
       h("div", { class: "row wrap", style: { marginTop: "14px" } },
         h("label", { class: "field", style: { flex: "1 1 260px" } }, h("span", null, "Label"), labelInput),
         h("label", { class: "field", style: { width: "140px" } }, h("span", null, "Repeat"), runsSel),
+        h("label", { class: "field", style: { alignSelf: "end", flexDirection: "row", gap: "6px", alignItems: "center" } },
+          h("input", { type: "checkbox", checked: knowledge, disabled: running, onchange: (e) => { knowledge = e.target.checked; } }),
+          h("span", null, "Also ask the knowledge questions")),
         h("div", { class: "field", style: { alignSelf: "end" } }, running
           ? h("button", { class: "btn danger", onclick: cancel }, icon("stop", "sm"), "Cancel")
           : h("button", { class: "btn primary", onclick: start, disabled: !up }, icon("play", "sm"), "Run the test"))),
@@ -84,7 +94,7 @@ export function mount(main) {
 
   async function start() {
     try {
-      bench.current = await post("/api/bench/start", { runs, label: label.trim() });
+      bench.current = await post("/api/bench/start", { runs, label: label.trim(), knowledge });
       renderRun();
       clearTimeout(timer);
       timer = setTimeout(load, 800);
@@ -143,18 +153,30 @@ export function mount(main) {
         h("td", { class: "nowrap muted" }, fmt.date(r.started)),
         h("td", null, h("b", null, title(r)), r.state !== "done" ? h("span", { class: "pill warn", style: { marginLeft: "6px" } }, r.state) : null,
           model && model !== title(r) ? h("div", { class: "small faint" }, model) : null),
-        h("td", { class: "r" }, s.decode ? fmt.rate(s.decode) : "–"),
-        h("td", { class: "r" }, s.prefill ? fmt.int(s.prefill) : "–"),
+        h("td", { class: "r" }, s.decode ? (s.decode_ci?.n > 1 ? withCi(s.decode_ci) : fmt.rate(s.decode)) : "–"),
+        h("td", { class: "r" }, s.prefill ? (s.prefill_ci?.n > 1 ? withCi(s.prefill_ci) : fmt.int(s.prefill)) : "–"),
         h("td", { class: "r" }, s.ttft_ms ? `${fmt.int(s.ttft_ms)} ms` : "–"),
         h("td", { class: "r" }, s.accept !== null && s.accept !== undefined ? fmt.pct(s.accept) : "–"),
+        h("td", { class: "r" }, qualityCell(r)),
         h("td", { class: "r" }, h("button", { class: "btn ghost icon sm", title: "Delete this result", "aria-label": "Delete",
           onclick: (e) => { e.stopPropagation(); remove(r); } }, icon("trash", "sm")))));
-      if (open === r.id) body.push(h("tr", null, h("td", { colspan: 7, style: { background: "var(--soft)" } }, details(r))));
+      if (open === r.id) body.push(h("tr", null, h("td", { colspan: 8, style: { background: "var(--soft)" } }, details(r))));
     }
     clear(tableBox, h("div", { class: "table-wrap", style: { border: 0 } }, h("table", { class: "t" },
       h("thead", null, h("tr", null, h("th", null, "When"), h("th", null, "Run"), h("th", { class: "r" }, "Decode tok/s"),
-        h("th", { class: "r" }, "Prefill tok/s"), h("th", { class: "r" }, "First token"), h("th", { class: "r" }, "MTP accepted"), h("th"))),
+        h("th", { class: "r" }, "Prefill tok/s"), h("th", { class: "r" }, "First token"), h("th", { class: "r" }, "MTP accepted"), h("th", { class: "r" }, "Quality"), h("th"))),
       h("tbody", null, body))));
+  }
+
+  // Next to the speed: the knowledge score of the same run, and the newest KL divergence measured for this file.
+  function qualityCell(r) {
+    const q = r.quality;
+    const kld = kldByModel[r.context?.model];
+    const parts = [];
+    if (q?.n) parts.push(h("div", { title: `Knowledge probe: ${q.correct} of ${q.n} correct, 95 % interval ${fmt.pct(q.ci_lo)} to ${fmt.pct(q.ci_hi)}` },
+      `${fmt.pct(q.accuracy)} `, h("span", { class: "ci" }, `[${fmt.pct(q.ci_lo)} to ${fmt.pct(q.ci_hi)}]`)));
+    if (kld) parts.push(h("div", { class: "small faint", title: `Mean KL divergence against ${kld.reference} (lower is better)` }, `KLD ${kld.mean_kld.toFixed(3)}`));
+    return parts.length ? parts : "–";
   }
 
   function details(r) {
@@ -197,6 +219,7 @@ export function mount(main) {
   }
 
   unsub.push(on("engine", () => { if (bench.current?.state !== "running") renderRun(); }));
+  const extras = mountExtras(abaBox, qualityBox, { onQuality: (q) => { kldByModel = q.kld_by_model || {}; renderTable(); } });
   load();
-  return { unmount() { clearTimeout(timer); unsub.forEach((u) => u()); } };
+  return { unmount() { clearTimeout(timer); extras.unmount(); unsub.forEach((u) => u()); } };
 }

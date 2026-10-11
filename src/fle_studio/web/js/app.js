@@ -106,11 +106,12 @@ const pages = {
   models: () => import("./models.js"),
   engine: () => import("./engine.js"),
   lab: () => import("./lab.js"),
+  cache: () => import("./cache.js"),
   settings: () => import("./settings.js"),
 };
 const routes = [
   [/^\/$/, "chat"], [/^\/c\/([0-9a-f]{16})$/, "chat"], [/^\/models\/?$/, "models"], [/^\/engine\/?$/, "engine"],
-  [/^\/lab\/?$/, "lab"], [/^\/settings\/?$/, "settings"],
+  [/^\/lab\/?$/, "lab"], [/^\/cache\/?$/, "cache"], [/^\/settings\/?$/, "settings"],
 ];
 let current = null;
 let currentName = "";
@@ -152,7 +153,7 @@ export function topbar(title, ...right) {
 
 const NAV = [
   ["/", "chat", "Chat"], ["/models", "models", "Models"], ["/engine", "engine", "Engine"],
-  ["/lab", "lab", "Experiments"], ["/settings", "settings", "Settings"],
+  ["/lab", "lab", "Experiments"], ["/cache", "grid", "Expert cache"], ["/settings", "settings", "Settings"],
 ];
 
 let navKey = "";
