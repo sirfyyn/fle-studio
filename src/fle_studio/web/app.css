@@ -629,6 +629,54 @@ table.t tr.click:hover td { background: var(--soft); }
 .menu .sep { height: 1px; background: var(--line); margin: 4px 2px; }
 .menu .head { padding: 6px 10px 4px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); font-weight: 600; }
 
+/* ------------------------------------------------------------------------------------------- forge page */
+
+.fg-panel { display: grid; gap: 14px; min-width: 0; }
+.fg-steps { display: flex; gap: 6px; flex-wrap: wrap; }
+.fg-step { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 6px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--card); color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
+.fg-step:hover { background: var(--soft); color: var(--text); }
+.fg-step .n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 600;
+  background: var(--soft-2); color: var(--muted); font-variant-numeric: tabular-nums; }
+.fg-step.on { color: var(--text); border-color: var(--accent); }
+.fg-step.on .n { background: var(--accent); color: var(--accent-ink); }
+.fg-mode { display: grid; gap: 4px; text-align: left; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft);
+  color: var(--text); font: inherit; cursor: pointer; }
+.fg-mode span { color: var(--muted); font-size: 13px; }
+.fg-mode:hover { border-color: var(--line-2); }
+.fg-mode.on { border-color: var(--accent); background: var(--accent-soft); }
+.fg-source { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); }
+.fg-id { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-weight: 600; font-family: var(--mono); flex: none; }
+.fg-info { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--muted); }
+.fg-info .tag { color: var(--text); }
+.fg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 6px; }
+.fg-cell { display: grid; justify-items: center; gap: 0; padding: 4px 0 5px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; font: inherit;
+  color: var(--text); }
+.fg-cell small { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.fg-cell b { font-family: var(--mono); font-size: 14px; }
+.fg-cell:hover { border-color: var(--line-2); }
+.fg-c0 { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
+.fg-c1 { background: color-mix(in srgb, var(--cyan) 20%, transparent); color: var(--cyan); }
+.fg-c2 { background: color-mix(in srgb, var(--fuchsia) 20%, transparent); color: var(--fuchsia); }
+.fg-c3 { background: color-mix(in srgb, var(--violet) 20%, transparent); color: var(--violet); }
+.fg-c4 { background: color-mix(in srgb, var(--good) 20%, transparent); color: var(--good); }
+.fg-c5 { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
+.fg-c6, .fg-c7, .fg-c8, .fg-c9, .fg-c10, .fg-c11, .fg-c12, .fg-c13, .fg-c14 { background: var(--soft-2); color: var(--text); }
+.fg-cell b, .fg-cell small { color: inherit; }
+.fg-list { margin: 6px 0 0; padding-left: 1.2em; }
+.fg-plan { margin: 0; padding-left: 1.3em; display: grid; gap: 2px; color: var(--muted); }
+.fg-details > summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.fg-job-step { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 6px 0; }
+.fg-job-step .ic { display: grid; place-items: center; height: 22px; color: var(--faint); }
+.fg-job-step.running .ic { color: var(--accent); }
+.fg-job-step.done .ic { color: var(--good); }
+.fg-job-step.failed .ic { color: var(--bad); }
+.fg-job-step.cancelled .ic, .fg-job-step.interrupted .ic { color: var(--warn); }
+.fg-job-step .dotp { width: 8px; height: 8px; border-radius: 50%; background: var(--line-2); }
+.bad-text { color: var(--bad); }
+.warn-text { color: var(--warn); }
+.mono { font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
+
 /* ------------------------------------------------------------------------------------------- responsive */
 
 @media (max-width: 1180px) {

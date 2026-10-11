@@ -139,6 +139,11 @@ and decode speed with the profile and engine used, so you can compare settings s
   <img alt="A speed test on the Experiments page" src="docs/media/experiments-light.png">
 </picture>
 
+**Forge (in development, not in the current release).** Build your own quant with the FLE recipe: take whole expert
+layers from the quants you already have, quantize a full-precision model with `llama-quantize` and an importance
+matrix, optionally prune experts with REAP, and check the result against the original (KL divergence, top-1
+agreement). Recipes are small JSON files that can be shared. See [docs/FORGE.md](docs/FORGE.md).
+
 **Simple settings.** Theme, sampling (the model's recommended values or your own), the folder for models, the
 Hugging Face token for gated repos, and network access.
 
@@ -206,10 +211,9 @@ on your hardware: the speed figures in the FLE report and in the model catalog w
 
 ## Roadmap
 
-**Studio Forge** (planned, not in this release): build your own quant with the FLE recipe, from inside FLE Studio.
-That means computing an importance matrix (imatrix) on your data, choosing the quant type per tensor, and, optionally,
-pruning experts with REAP. The aim is that anyone can reproduce the FLE files for another MoE model, or tune one to a
-specific machine.
+**Studio Forge** is being built for 0.2 (see [docs/FORGE.md](docs/FORGE.md)). A small calibration text (public domain, CC0 and MIT
+sources, listed in `src/fle_studio/forge/corpus/SOURCES.md`) ships with Studio. What is still open: a run on a real
+model of the size of the FLE quants.
 
 Ideas and bug reports are welcome as GitHub issues.
 
