@@ -190,7 +190,8 @@ def normalize(data: dict[str, Any]) -> dict[str, Any]:
     q = r["quantize"]
     for key in ("type", "output_type", "embedding_type"):
         q[key] = str(q[key] or "").lower()
-        if q[key] and q[key] not in ggufio.QUANTIZE_TARGETS:
+        allowed = ggufio.QUANTIZE_FTYPES if key == "type" else ggufio.QUANTIZE_TARGETS
+        if q[key] and q[key] not in allowed:
             raise RecipeError(f"quantize.{key}: unknown type {q[key]!r}")
     if not q["type"]:
         raise RecipeError("quantize.type is required")

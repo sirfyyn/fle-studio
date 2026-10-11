@@ -390,6 +390,7 @@ def estimate_quantize(
     that matches its name, else the default type; vectors (norms, biases) keep their type. A row that is not a whole
     number of blocks of the new type keeps the old type here, as llama-quantize falls back in that case too (to a
     type it picks itself, so the real file can differ by a little). Marked as an estimate everywhere it is shown."""
+    default_type = ggufio.FTYPE_BASE.get(default_type, default_type)  # a named mixture: estimated by its main type
     infos = []
     changed = kept = 0
     for name in model.order:

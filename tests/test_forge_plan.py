@@ -153,3 +153,9 @@ def test_the_quantize_estimate_follows_the_rules(sources):
     assert plain["estimate"] is True and plain["tensors_kept"] > 0  # vectors keep their type
     same = plan.estimate_quantize(m, "q8_0", [])
     assert same["estimate_bytes"] == pytest.approx(m.total_bytes, rel=0.01)
+
+
+def test_a_named_mixture_is_estimated_by_its_main_type(sources):
+    m = sources["H"].model
+    mix = plan.estimate_quantize(m, "q3_k_m", [])
+    assert mix["estimate_bytes"] == plan.estimate_quantize(m, "q3_k", [])["estimate_bytes"]

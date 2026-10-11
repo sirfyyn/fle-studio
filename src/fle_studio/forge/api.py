@@ -65,6 +65,7 @@ class Forge:
             "jobs": self.jobs.list(),
             "defaults": recipes.normalize({}),
             "types": list(ggufio.QUANTIZE_TARGETS),
+            "ftypes": list(ggufio.QUANTIZE_FTYPES),
             "scores": list(reap.SCORES),
             "output_dir": str(Path(self.models_dir()) / "forge"),
             "references": verify.reference_cards(),

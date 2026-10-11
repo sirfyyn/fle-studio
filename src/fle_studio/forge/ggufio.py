@@ -84,6 +84,24 @@ QUANTIZE_TARGETS = tuple(
     sorted(n.lower() for n in TYPE_IDS if n not in ("Q8_K", "Q8_1", "I8", "I16", "I32", "I64", "F64", "MXFP4"))
 )
 
+# The named mixtures llama-quantize accepts as its target (the "Q4_K_M" of a download name). They are not tensor types:
+# the tool picks a type per tensor. Only the default type of a recipe may be one; for a size estimate each is
+# approximated by the tensor type it is built around.
+FTYPE_BASE = {
+    "q2_k_s": "q2_k",
+    "q3_k_s": "q3_k",
+    "q3_k_m": "q3_k",
+    "q3_k_l": "q3_k",
+    "q4_k_s": "q4_k",
+    "q4_k_m": "q4_k",
+    "q5_k_s": "q5_k",
+    "q5_k_m": "q5_k",
+    "iq3_xs": "iq3_xxs",
+    "iq3_m": "iq3_s",
+    "iq2_m": "iq2_s",
+}
+QUANTIZE_FTYPES = tuple(sorted({*QUANTIZE_TARGETS, *FTYPE_BASE}))
+
 
 def type_name(type_id: int) -> str:
     info = _TYPES.get(type_id)

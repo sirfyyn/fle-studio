@@ -102,3 +102,11 @@ def test_normalizing_twice_changes_nothing():
 def test_broken_json_is_reported():
     with pytest.raises(recipes.RecipeError, match="not valid JSON"):
         recipes.loads("{nope")
+
+
+def test_named_mixtures_are_a_default_type_but_not_a_tensor_type():
+    assert recipes.normalize({"quantize": {"type": "Q3_K_M"}})["quantize"]["type"] == "q3_k_m"
+    rule = {"rules": [{"pattern": "x", "type": "q3_k_m"}]}
+    for bad in ({"output_type": "q3_k_m"}, {"embedding_type": "q4_k_m"}, rule):
+        with pytest.raises(recipes.RecipeError, match="unknown type"):
+            recipes.normalize({"quantize": {"type": "q4_0", **bad}})

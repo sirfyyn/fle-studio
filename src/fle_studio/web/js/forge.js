@@ -410,7 +410,7 @@ export function mount(main) {
       h("div", { class: "card stack" },
         h("div", { class: "card-head" }, icon("sliders"), h("div", { class: "grow" }, h("h3", null, "Quantization"),
           h("p", null, "The type is used for every weight matrix unless a rule below names it. Vectors such as norms keep their precision."))),
-        h("div", { class: "grid three" }, field("Default type", select(q, "type", types)),
+        h("div", { class: "grid three" }, field("Default type", select(q, "type", overview?.ftypes || types), "Names like q4_k_m are mixtures that llama-quantize composes per tensor."),
           h("div", { class: "field" }, h("span", null, "Importance matrix"), toggle(q, "imatrix", "Compute one first (recommended)")),
           h("div", { class: "field" }, h("span", null, "Source is already quantized"), toggle(q, "allow_requantize", "Allow requantizing"))),
         h("div", { class: "label" }, "Rules for single tensors"), rules,
