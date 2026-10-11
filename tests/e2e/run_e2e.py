@@ -6,8 +6,9 @@ with the automatic plan. Then a headless Chromium (Playwright) does what a perso
 
 * open the app, send one chat message and wait for the streamed answer, with its reasoning block and speed line;
 * check that the live panel shows a decode speed;
-* visit Models, Engine, Experiments (one run of the speed test) and Settings (the theme switch), and save a
-  full-page screenshot of every page in light and in dark mode;
+* visit Models, Engine, Experiments (one run of the speed test), Forge (two synthetic quants, a calculated hybrid,
+  pruning and a check built by stand-in llama.cpp tools, then published) and Settings (the theme switch), and save
+  a full-page screenshot of every page in light and in dark mode;
 * fail on any uncaught page error and any console error.
 
 At the end it stops the engine and Studio and checks that no engine process is left behind. One line is printed per
@@ -472,7 +473,7 @@ class Session:
             self.page.goto(self.studio.base + "/", wait_until="domcontentloaded")
             self.expect(self.page).to_have_title("FLE Studio", timeout=WAIT_MS)
             self.expect(self.page.locator("#brand-ver")).to_have_text(f"v{self.studio.version}", timeout=WAIT_MS)
-            self.expect(self.page.locator("#nav a")).to_have_count(5, timeout=WAIT_MS)
+            self.expect(self.page.locator("#nav a")).to_have_count(6, timeout=WAIT_MS)
             self.expect(self.page.locator("#engine-card .pill")).to_have_text("Ready", timeout=WAIT_MS)
             self.expect(self.page.locator(".welcome h2")).to_contain_text(f"What should {self.model['name']} work on?",
                                                                           timeout=WAIT_MS)
@@ -624,6 +625,97 @@ class Session:
             self.expect(page.locator(".bench-bar").first).to_be_visible(timeout=WAIT_MS)
             step.note = f"decode {decode:g} tok/s, prefill {prefill:g} tok/s; " + self.shoot("experiments")
 
+    def forge(self) -> None:
+        """Forge: tools, two tiny synthetic quants, a hybrid with pruning and a check, built by the stand-in tools."""
+        page, studio = self.page, self.studio
+        tests = Path(__file__).resolve().parents[1]
+        sys.path.insert(0, str(tests))
+        from forge_synth import make_model  # the synthetic mixture-of-experts files of the unit tests
+
+        folder = studio.work / "forge-files"
+        folder.mkdir(exist_ok=True)
+        high = make_model(folder / "high-Q8_0.gguf", seed=1, layers=4, types=[("Q8_0",) * 3] * 4)
+        low = make_model(folder / "low-Q4_0.gguf", seed=2, layers=4, types=[("Q4_0",) * 3] * 4)
+        (folder / "calibration.txt").write_text("calibration text\n" * 60, encoding="utf-8")
+        (folder / "evaluation.txt").write_text("evaluation text\n" * 60, encoding="utf-8")
+        tools = tests / "fake_tools"
+
+        def next_step() -> None:
+            page.get_by_role("button", name="Next", exact=True).click()
+
+        with self.step("Forge page: tools and the two source quants") as step:
+            self.go("Forge", "/forge", "Forge")
+            page.locator("#fg-name").fill("e2e-forge")
+            page.locator("#fg-tools-dir").fill(str(tools))
+            page.get_by_role("button", name="Search again").click()
+            self.expect(page.locator(".pill.good", has_text="Found")).to_have_count(4, timeout=WAIT_MS)
+            next_step()
+            for sid, path in (("B", high), ("K", low)):
+                row = page.locator(f".fg-source[data-source='{sid}']")
+                row.locator("input").fill(str(path))
+                row.get_by_role("button", name="Read it").click()
+                self.expect(row.locator(".fg-info")).to_contain_text("4 layers", timeout=WAIT_MS)
+                self.expect(row.locator(".fg-info")).to_contain_text("8 experts, 2 used", timeout=WAIT_MS)
+            step.note = "4 tools found, both files read (4 layers, 8 experts)"
+
+        with self.step("Forge page: the calculator picks layers within a size budget") as step:
+            next_step()
+            limits = studio.api("POST", "/api/forge/calculate", {"mode": "hybrid", "base": "B", "budget_gb": 1,
+                                                                   "sources": {"B": str(high), "K": str(low)}})
+            selection = limits["selection"]
+            middle = (selection["min_bytes"] + selection["max_bytes"]) / 2 / 1e9
+            page.locator("#fg-budget").fill(f"{middle:.9f}")
+            page.locator("#fg-ram").fill("64")
+            page.locator("#fg-vram").fill("24")
+            page.locator("#fg-calc").click()
+            self.expect(page.locator(".fg-cell")).to_have_count(4, timeout=WAIT_MS)
+            self.expect(page.locator(".fg-grid + .stack .fact").first).to_be_visible(timeout=WAIT_MS)
+            mixed = {c.strip() for c in page.locator(".fg-cell b").all_inner_texts()}
+            if mixed != {"B", "K"}:
+                raise E2EError(f"a budget between the smallest and the largest result should mix both sources: {mixed}")
+            first = page.locator(".fg-cell").first
+            before = first.locator("b").inner_text()
+            first.click()
+            self.expect(first.locator("b")).not_to_have_text(before, timeout=WAIT_MS)  # a click takes the next source
+            first.click()
+            self.expect(first.locator("b")).to_have_text(before, timeout=WAIT_MS)
+            step.note = f"layers {sorted(mixed)} within {middle * 1000:.3f} MB; " + self.shoot("forge-recipe")
+
+        with self.step("Forge page: prune, check, build and publish") as step:
+            next_step()
+            page.locator("label.check", has_text="Prune experts after the build").click()
+            page.locator("#fg-keep").fill("4")
+            next_step()
+            page.locator("#fg-corpus").fill(str(folder / "calibration.txt"))
+            page.locator("#fg-eval").fill(str(folder / "evaluation.txt"))
+            next_step()
+            page.locator("#fg-check").click()
+            self.expect(page.locator("#fg-check-box")).to_contain_text("Everything is in place", timeout=WAIT_MS)
+            for title in ("Build the model", "Prune experts", "KL divergence"):
+                self.expect(page.locator("#fg-check-box .fg-plan")).to_contain_text(title, timeout=WAIT_MS)
+            with page.expect_download() as download:
+                page.locator("#fg-save").click()
+            shared = json.loads(Path(download.value.path()).read_text(encoding="utf-8"))
+            if any(s["path"] for s in shared["sources"].values()) or str(folder) in json.dumps(shared):
+                raise E2EError("the saved recipe still contains folders of this computer")
+            page.locator("#fg-start").click()
+            self.expect(page.locator("#fg-job-state")).to_have_text("done", timeout=120_000)
+            self.expect(page.locator("#fg-result")).to_contain_text("KL divergence", timeout=WAIT_MS)
+            self.expect(page.locator("#fg-result")).to_contain_text("0.0123", timeout=WAIT_MS)
+            self.expect(page.locator(".fg-job-step.done")).to_have_count(6, timeout=WAIT_MS)
+            self.expect(page.locator("#fg-log")).to_contain_text("Done", timeout=WAIT_MS)
+            page.locator("#fg-publish").click()
+
+            def published() -> bool:
+                names = [p["name"] for p in studio.api("GET", "/api/state")["profiles"]]
+                return "Forge: e2e-forge" in names
+
+            wait_until(published, 15, "the profile 'Forge: e2e-forge' to be saved")
+            built = studio.home / "models" / "forge" / "e2e-forge.gguf"
+            if not built.is_file() or not (built.parent / "e2e-forge.recipe.json").is_file():
+                raise E2EError(f"the result or its recipe is missing in {built.parent}")
+            step.note = "hybrid + 4 of 8 experts + check, published; " + self.shoot("forge")
+
     def settings(self) -> None:
         page, studio = self.page, self.studio
 
@@ -694,6 +786,7 @@ def run_browser(args: argparse.Namespace, report: Report, studio: StudioProcess,
             session.models()
             session.engine()
             session.experiments()
+            session.forge()
             session.settings()
             with report.step("No uncaught page errors or console errors in the whole run") as step:
                 watch.check("the whole run")
