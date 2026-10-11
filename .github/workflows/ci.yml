@@ -45,8 +45,9 @@ jobs:
       - name: Format check
         run: ruff format --check src tests
 
+      # A test that hangs prints its stack after two minutes, so a timeout still says where it stuck.
       - name: Test
-        run: pytest -q
+        run: pytest -q -o faulthandler_timeout=120 --durations=15
 
   # The wheel and the source archive build, hold the web files, and install into a clean environment.
   package:
