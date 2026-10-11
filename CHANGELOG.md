@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Host and client mode ([docs/REMOTE.md](docs/REMOTE.md)). A host (`--host`) serves TLS with a self-made certificate
+  whose fingerprint is shown and pinned by clients; clients pair with a 10-minute single-use code and get a revocable
+  token of their own (list with Revoke in Settings → Remote access). `--pair-code`, `--pair`, `--tls`, `--no-tls`.
+- Client switcher at the top of the sidebar ("This machine / host / Add host…"). Hosts are added by address and code,
+  or by SSH target; Studio runs and watches `ssh -N -L` itself (keys only). All pages, streaming chat included, run
+  against the chosen host through a generic pass-through, so pages added later work too. The window shows the host's
+  name and colour and reports an unreachable host with Reconnect.
+- Rights per client: chat, look and measure by default; Admin for settings, installs and models; installs and updates
+  ask for a confirmation on the client. Pairing is rate limited; tokens are stored as hashes and never logged.
+- Optional read-only local copy of a host's chats for offline reading.
+
 ## [0.1.1] - 2026-10-11
 
 Installers, CI and docs. The app itself does not change in this release.

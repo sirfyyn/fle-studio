@@ -195,6 +195,15 @@ on your hardware: the speed figures in the FLE report and in the model catalog w
 (RTX PRO 4500 32 GB, 120 GB DDR5, Ryzen 9 9950X3D), and yours will differ. Method and measurements are in the
 [FLE report](https://sirfyyn.github.io/FastLocalExperts/).
 
+## Host and client
+
+A Studio on your Mac can compute on another machine: start the machine with the GPU with `fle-studio --host 0.0.0.0`
+(TLS with a certificate it makes itself, pinned by fingerprint), pair with a short-lived code, or reach it through an
+SSH tunnel that Studio starts and watches itself (keys only, no passwords). The switcher at the top of the sidebar
+("This machine / host / Add host…") sends every page to the chosen host; the window shows its name and colour. Paired
+computers can chat, look and measure; **Admin** adds settings, installs and models, and installs still ask for a
+confirmation. Chats live on the host, with an optional read-only copy. Details: [docs/REMOTE.md](docs/REMOTE.md).
+
 ## Privacy
 
 - FLE Studio listens on `127.0.0.1` only, unless you ask for more with `--host`. The engine it starts listens on
