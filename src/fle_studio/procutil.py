@@ -51,21 +51,40 @@ class KillOnCloseJob:
         k32.AssignProcessToJobObject.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
 
         class Basic(ctypes.Structure):
-            _fields_ = [("PerProcessUserTimeLimit", ctypes.c_int64), ("PerJobUserTimeLimit", ctypes.c_int64),
-                        ("LimitFlags", ctypes.c_uint32), ("MinimumWorkingSetSize", ctypes.c_size_t),
-                        ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", ctypes.c_uint32),
-                        ("Affinity", ctypes.c_size_t), ("PriorityClass", ctypes.c_uint32),
-                        ("SchedulingClass", ctypes.c_uint32)]
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_int64),
+                ("PerJobUserTimeLimit", ctypes.c_int64),
+                ("LimitFlags", ctypes.c_uint32),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", ctypes.c_uint32),
+                ("Affinity", ctypes.c_size_t),
+                ("PriorityClass", ctypes.c_uint32),
+                ("SchedulingClass", ctypes.c_uint32),
+            ]
 
         class Io(ctypes.Structure):
-            _fields_ = [(n, ctypes.c_uint64) for n in ("ReadOperationCount", "WriteOperationCount",
-                                                       "OtherOperationCount", "ReadTransferCount",
-                                                       "WriteTransferCount", "OtherTransferCount")]
+            _fields_ = [
+                (n, ctypes.c_uint64)
+                for n in (
+                    "ReadOperationCount",
+                    "WriteOperationCount",
+                    "OtherOperationCount",
+                    "ReadTransferCount",
+                    "WriteTransferCount",
+                    "OtherTransferCount",
+                )
+            ]
 
         class Extended(ctypes.Structure):
-            _fields_ = [("BasicLimitInformation", Basic), ("IoInfo", Io), ("ProcessMemoryLimit", ctypes.c_size_t),
-                        ("JobMemoryLimit", ctypes.c_size_t), ("PeakProcessMemoryUsed", ctypes.c_size_t),
-                        ("PeakJobMemoryUsed", ctypes.c_size_t)]
+            _fields_ = [
+                ("BasicLimitInformation", Basic),
+                ("IoInfo", Io),
+                ("ProcessMemoryLimit", ctypes.c_size_t),
+                ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed", ctypes.c_size_t),
+            ]
 
         handle = k32.CreateJobObjectW(None, None)
         if not handle:
@@ -116,15 +135,31 @@ def _win_counters(proc: subprocess.Popen[Any]) -> tuple[int, int] | None:
     k32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
 
     class Io(ctypes.Structure):
-        _fields_ = [(n, ctypes.c_uint64) for n in ("ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
-                                                   "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+        _fields_ = [
+            (n, ctypes.c_uint64)
+            for n in (
+                "ReadOperationCount",
+                "WriteOperationCount",
+                "OtherOperationCount",
+                "ReadTransferCount",
+                "WriteTransferCount",
+                "OtherTransferCount",
+            )
+        ]
 
     class Mem(ctypes.Structure):
-        _fields_ = [("cb", ctypes.c_uint32), ("PageFaultCount", ctypes.c_uint32),
-                    ("PeakWorkingSetSize", ctypes.c_size_t), ("WorkingSetSize", ctypes.c_size_t),
-                    ("QuotaPeakPagedPoolUsage", ctypes.c_size_t), ("QuotaPagedPoolUsage", ctypes.c_size_t),
-                    ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t), ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
-                    ("PagefileUsage", ctypes.c_size_t), ("PeakPagefileUsage", ctypes.c_size_t)]
+        _fields_ = [
+            ("cb", ctypes.c_uint32),
+            ("PageFaultCount", ctypes.c_uint32),
+            ("PeakWorkingSetSize", ctypes.c_size_t),
+            ("WorkingSetSize", ctypes.c_size_t),
+            ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+            ("PagefileUsage", ctypes.c_size_t),
+            ("PeakPagefileUsage", ctypes.c_size_t),
+        ]
 
     handle = ctypes.c_void_p(int(proc._handle))  # type: ignore[attr-defined]
     io, mem = Io(), Mem()

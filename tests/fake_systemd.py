@@ -24,10 +24,23 @@ from pathlib import Path
 from typing import Any
 
 HOME = Path(os.environ.get("FAKE_SYSTEMD_DIR", "."))
-DEFAULTS = {"LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead", "Result": "success",
-            "MainPID": "0", "ExecMainCode": "0", "ExecMainStatus": "0", "UnitFileState": "disabled",
-            "Description": "", "User": "", "WorkingDirectory": "", "ActiveEnterTimestamp": "",
-            "InactiveEnterTimestamp": "", "InactiveExitTimestamp": "", "ExecMainStartTimestamp": ""}
+DEFAULTS = {
+    "LoadState": "loaded",
+    "ActiveState": "inactive",
+    "SubState": "dead",
+    "Result": "success",
+    "MainPID": "0",
+    "ExecMainCode": "0",
+    "ExecMainStatus": "0",
+    "UnitFileState": "disabled",
+    "Description": "",
+    "User": "",
+    "WorkingDirectory": "",
+    "ActiveEnterTimestamp": "",
+    "InactiveEnterTimestamp": "",
+    "InactiveExitTimestamp": "",
+    "ExecMainStartTimestamp": "",
+}
 
 
 def load(name: str) -> dict[str, Any] | None:
@@ -73,8 +86,10 @@ def systemctl(args: list[str]) -> int:
                 value = {"LoadState": "not-found", "ActiveState": "inactive", "SubState": "dead"}.get(prop, "")
             elif prop == "ExecStart":
                 argv = unit["argv"]
-                value = (f"{{ path={argv[0]} ; argv[]={' '.join(argv)} ; ignore_errors=no ; start_time=[n/a] ; "
-                         "stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }")
+                value = (
+                    f"{{ path={argv[0]} ; argv[]={' '.join(argv)} ; ignore_errors=no ; start_time=[n/a] ; "
+                    "stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }"
+                )
             elif prop == "Environment":
                 value = " ".join(f"{k}={v}" for k, v in unit.get("env", {}).items())
             else:
@@ -95,8 +110,13 @@ def start(name: str) -> None:
     if (load(name) or {}).get("ActiveState") in ("active", "activating"):
         return
     update(name, ActiveState="activating", SubState="start", InactiveExitTimestamp=stamp(), Result="success")
-    subprocess.Popen([sys.executable, __file__, "run", name], start_new_session=True, stdin=subprocess.DEVNULL,
-                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.Popen(
+        [sys.executable, __file__, "run", name],
+        start_new_session=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 def stop(name: str, wait: bool) -> None:
@@ -119,10 +139,21 @@ def run(name: str) -> None:
     unit = load(name) or {}
     argv = unit["argv"]
     cmd = [sys.executable, *argv] if argv[0].endswith(".py") else argv
-    child = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                             env=dict(os.environ, **unit.get("env", {})))
-    update(name, ActiveState="active", SubState="running", MainPID=str(child.pid), ExecMainStartTimestamp=stamp(),
-           ActiveEnterTimestamp=stamp())
+    child = subprocess.Popen(
+        cmd,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=dict(os.environ, **unit.get("env", {})),
+    )
+    update(
+        name,
+        ActiveState="active",
+        SubState="running",
+        MainPID=str(child.pid),
+        ExecMainStartTimestamp=stamp(),
+        ActiveEnterTimestamp=stamp(),
+    )
     journal(name, f"Started {name} - {unit.get('Description') or name}.")
     assert child.stdout is not None
     for raw in iter(child.stdout.readline, b""):
@@ -132,13 +163,29 @@ def run(name: str) -> None:
     rc = child.wait()
     code, status = ("2", str(-rc)) if rc < 0 else ("1", str(rc))
     if (load(name) or {}).get("ActiveState") == "deactivating" or rc == 0:
-        update(name, ActiveState="inactive", SubState="dead", MainPID="0", Result="success", ExecMainCode=code,
-               ExecMainStatus=status, InactiveEnterTimestamp=stamp())
+        update(
+            name,
+            ActiveState="inactive",
+            SubState="dead",
+            MainPID="0",
+            Result="success",
+            ExecMainCode=code,
+            ExecMainStatus=status,
+            InactiveEnterTimestamp=stamp(),
+        )
         journal(name, f"Stopped {name}.")
         return
     result = "signal" if rc < 0 else "exit-code"
-    update(name, ActiveState="failed", SubState="failed", MainPID="0", Result=result, ExecMainCode=code,
-           ExecMainStatus=status, InactiveEnterTimestamp=stamp())
+    update(
+        name,
+        ActiveState="failed",
+        SubState="failed",
+        MainPID="0",
+        Result=result,
+        ExecMainCode=code,
+        ExecMainStatus=status,
+        InactiveEnterTimestamp=stamp(),
+    )
     journal(name, f"{name}: Main process exited, code={'killed' if rc < 0 else 'exited'}, status={status}")
     journal(name, f"{name}: Failed with result '{result}'.")
 
@@ -172,7 +219,7 @@ def journalctl(args: list[str]) -> int:
                 chunk = f.read()
         except OSError:
             chunk = b""
-        whole = chunk[:chunk.rfind(b"\n") + 1]
+        whole = chunk[: chunk.rfind(b"\n") + 1]
         if whole:
             sys.stdout.buffer.write(whole)
             sys.stdout.buffer.flush()

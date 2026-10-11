@@ -139,14 +139,26 @@ ANSWER_SENTENCES = (
 
 # (file name token, name printed by llama_ftype_name, bits per weight)
 FTYPES = (
-    ("IQ2_XXS", "IQ2_XXS - 2.0625 bpw", 2.06), ("IQ2_XS", "IQ2_XS - 2.3125 bpw", 2.31),
-    ("IQ2_S", "IQ2_S - 2.5 bpw", 2.5), ("IQ2_M", "IQ2_M - 2.7 bpw", 2.7),
-    ("IQ3_XXS", "IQ3_XXS - 3.0625 bpw", 3.06), ("IQ3_XS", "IQ3_XS - 3.3 bpw", 3.3),
-    ("IQ3_S", "IQ3_S - 3.4375 bpw", 3.44), ("IQ3_M", "IQ3_S mix - 3.66 bpw", 3.66),
-    ("IQ4_NL", "IQ4_NL - 4.5 bpw", 4.5), ("IQ4_XS", "IQ4_XS - 4.25 bpw", 4.25),
-    ("Q2_K", "Q2_K - Medium", 2.96), ("Q3_K_S", "Q3_K - Small", 3.5), ("Q3_K_M", "Q3_K - Medium", 3.9),
-    ("Q4_K_S", "Q4_K - Small", 4.6), ("Q4_K_M", "Q4_K - Medium", 4.85), ("Q5_K_M", "Q5_K - Medium", 5.7),
-    ("Q6_K", "Q6_K", 6.56), ("Q8_0", "Q8_0", 8.5), ("BF16", "BF16", 16.0), ("F16", "F16", 16.0),
+    ("IQ2_XXS", "IQ2_XXS - 2.0625 bpw", 2.06),
+    ("IQ2_XS", "IQ2_XS - 2.3125 bpw", 2.31),
+    ("IQ2_S", "IQ2_S - 2.5 bpw", 2.5),
+    ("IQ2_M", "IQ2_M - 2.7 bpw", 2.7),
+    ("IQ3_XXS", "IQ3_XXS - 3.0625 bpw", 3.06),
+    ("IQ3_XS", "IQ3_XS - 3.3 bpw", 3.3),
+    ("IQ3_S", "IQ3_S - 3.4375 bpw", 3.44),
+    ("IQ3_M", "IQ3_S mix - 3.66 bpw", 3.66),
+    ("IQ4_NL", "IQ4_NL - 4.5 bpw", 4.5),
+    ("IQ4_XS", "IQ4_XS - 4.25 bpw", 4.25),
+    ("Q2_K", "Q2_K - Medium", 2.96),
+    ("Q3_K_S", "Q3_K - Small", 3.5),
+    ("Q3_K_M", "Q3_K - Medium", 3.9),
+    ("Q4_K_S", "Q4_K - Small", 4.6),
+    ("Q4_K_M", "Q4_K - Medium", 4.85),
+    ("Q5_K_M", "Q5_K - Medium", 5.7),
+    ("Q6_K", "Q6_K", 6.56),
+    ("Q8_0", "Q8_0", 8.5),
+    ("BF16", "BF16", 16.0),
+    ("F16", "F16", 16.0),
 )
 
 
@@ -216,36 +228,96 @@ class Config:
 
 
 VALUE_FLAGS = {
-    "-m": "model", "--model": "model", "-a": "alias", "--alias": "alias", "--host": "host", "--port": "port",
-    "-c": "ctx", "--ctx-size": "ctx", "-np": "parallel", "--parallel": "parallel",
-    "-md": "draft", "--model-draft": "draft", "--spec-draft-model": "draft",
-    "--spec-type": "spec_type", "--spec-draft-n-max": "draft_max", "--draft-max": "draft_max", "--draft": "draft_max",
-    "--draft-n": "draft_max", "-lv": "verbosity", "--verbosity": "verbosity", "--log-verbosity": "verbosity",
-    "--api-key": "api_keys", "-t": "threads", "--threads": "threads", "--cache-ram": "cache_ram",
-    "-b": "batch", "--batch-size": "batch", "-ub": "ubatch", "--ubatch-size": "ubatch",
-    "-ncmoe": "n_cpu_moe", "--n-cpu-moe": "n_cpu_moe",
-    "-cram": "cache_ram", "-fit": "fit", "--fit": "fit", "--fit-target": "fit_target", "-fitt": "fit_target",
-    "--temp": "temp", "--temperature": "temp", "--top-k": "top_k", "--top-p": "top_p", "--min-p": "min_p",
-    "--presence-penalty": "presence_penalty", "--repeat-penalty": "repeat_penalty",
-    "--frequency-penalty": "frequency_penalty", "-n": "n_predict", "--n-predict": "n_predict",
-    "--predict": "n_predict", "--chat-template-kwargs": "chat_kwargs",
+    "-m": "model",
+    "--model": "model",
+    "-a": "alias",
+    "--alias": "alias",
+    "--host": "host",
+    "--port": "port",
+    "-c": "ctx",
+    "--ctx-size": "ctx",
+    "-np": "parallel",
+    "--parallel": "parallel",
+    "-md": "draft",
+    "--model-draft": "draft",
+    "--spec-draft-model": "draft",
+    "--spec-type": "spec_type",
+    "--spec-draft-n-max": "draft_max",
+    "--draft-max": "draft_max",
+    "--draft": "draft_max",
+    "--draft-n": "draft_max",
+    "-lv": "verbosity",
+    "--verbosity": "verbosity",
+    "--log-verbosity": "verbosity",
+    "--api-key": "api_keys",
+    "-t": "threads",
+    "--threads": "threads",
+    "--cache-ram": "cache_ram",
+    "-b": "batch",
+    "--batch-size": "batch",
+    "-ub": "ubatch",
+    "--ubatch-size": "ubatch",
+    "-ncmoe": "n_cpu_moe",
+    "--n-cpu-moe": "n_cpu_moe",
+    "-cram": "cache_ram",
+    "-fit": "fit",
+    "--fit": "fit",
+    "--fit-target": "fit_target",
+    "-fitt": "fit_target",
+    "--temp": "temp",
+    "--temperature": "temp",
+    "--top-k": "top_k",
+    "--top-p": "top_p",
+    "--min-p": "min_p",
+    "--presence-penalty": "presence_penalty",
+    "--repeat-penalty": "repeat_penalty",
+    "--frequency-penalty": "frequency_penalty",
+    "-n": "n_predict",
+    "--n-predict": "n_predict",
+    "--predict": "n_predict",
+    "--chat-template-kwargs": "chat_kwargs",
 }
 SWITCHES = {
-    "--metrics": ("metrics", True), "--no-metrics": ("metrics", False), "--slots": ("slots", True),
-    "--no-slots": ("slots", False), "--props": ("props", True), "--ui": ("ui", True), "--webui": ("ui", True),
-    "--no-ui": ("ui", False), "--no-webui": ("ui", False), "--kv-unified": ("kv_unified", True),
-    "-kvu": ("kv_unified", True), "--no-kv-unified": ("kv_unified", False), "--warmup": ("warmup", True),
-    "--no-warmup": ("warmup", False), "-v": ("verbosity", INT_MAX), "--verbose": ("verbosity", INT_MAX),
-    "--log-verbose": ("verbosity", INT_MAX), "--log-prefix": ("log_prefix", True),
-    "--no-log-prefix": ("log_prefix", False), "--log-timestamps": ("log_timestamps", True),
-    "--no-log-timestamps": ("log_timestamps", False), "--log-disable": ("log_disable", True),
-    "--version": ("version", True), "-h": ("help", True), "--help": ("help", True), "--usage": ("help", True),
+    "--metrics": ("metrics", True),
+    "--no-metrics": ("metrics", False),
+    "--slots": ("slots", True),
+    "--no-slots": ("slots", False),
+    "--props": ("props", True),
+    "--ui": ("ui", True),
+    "--webui": ("ui", True),
+    "--no-ui": ("ui", False),
+    "--no-webui": ("ui", False),
+    "--kv-unified": ("kv_unified", True),
+    "-kvu": ("kv_unified", True),
+    "--no-kv-unified": ("kv_unified", False),
+    "--warmup": ("warmup", True),
+    "--no-warmup": ("warmup", False),
+    "-v": ("verbosity", INT_MAX),
+    "--verbose": ("verbosity", INT_MAX),
+    "--log-verbose": ("verbosity", INT_MAX),
+    "--log-prefix": ("log_prefix", True),
+    "--no-log-prefix": ("log_prefix", False),
+    "--log-timestamps": ("log_timestamps", True),
+    "--no-log-timestamps": ("log_timestamps", False),
+    "--log-disable": ("log_disable", True),
+    "--version": ("version", True),
+    "-h": ("help", True),
+    "--help": ("help", True),
+    "--usage": ("help", True),
 }
 ENV_FLAGS = {
-    "LLAMA_ARG_MODEL": "model", "LLAMA_ARG_ALIAS": "alias", "LLAMA_ARG_HOST": "host", "LLAMA_ARG_PORT": "port",
-    "LLAMA_ARG_CTX_SIZE": "ctx", "LLAMA_ARG_N_PARALLEL": "parallel", "LLAMA_ARG_LOG_VERBOSITY": "verbosity",
-    "LLAMA_ARG_THREADS": "threads", "LLAMA_ARG_ENDPOINT_METRICS": "metrics", "LLAMA_API_KEY": "api_keys",
-    "LLAMA_ARG_LOG_PREFIX": "log_prefix", "LLAMA_ARG_LOG_TIMESTAMPS": "log_timestamps",
+    "LLAMA_ARG_MODEL": "model",
+    "LLAMA_ARG_ALIAS": "alias",
+    "LLAMA_ARG_HOST": "host",
+    "LLAMA_ARG_PORT": "port",
+    "LLAMA_ARG_CTX_SIZE": "ctx",
+    "LLAMA_ARG_N_PARALLEL": "parallel",
+    "LLAMA_ARG_LOG_VERBOSITY": "verbosity",
+    "LLAMA_ARG_THREADS": "threads",
+    "LLAMA_ARG_ENDPOINT_METRICS": "metrics",
+    "LLAMA_API_KEY": "api_keys",
+    "LLAMA_ARG_LOG_PREFIX": "log_prefix",
+    "LLAMA_ARG_LOG_TIMESTAMPS": "log_timestamps",
 }
 
 
@@ -361,7 +433,7 @@ def read_gguf_meta(path: str, limit: int = 16 << 20) -> dict[str, Any]:
         pos = 24
         for _ in range(n_kv):
             key_len = struct.unpack_from("<Q", buf, pos)[0]
-            key = buf[pos + 8:pos + 8 + key_len].decode("utf-8", "replace")
+            key = buf[pos + 8 : pos + 8 + key_len].decode("utf-8", "replace")
             pos += 8 + key_len
             kind = struct.unpack_from("<I", buf, pos)[0]
             pos += 4
@@ -369,7 +441,7 @@ def read_gguf_meta(path: str, limit: int = 16 << 20) -> dict[str, Any]:
                 out[key] = struct.unpack_from(scalars[kind], buf, pos)[0]
             elif kind == 8:
                 size = struct.unpack_from("<Q", buf, pos)[0]
-                out[key] = buf[pos + 8:pos + 8 + size].decode("utf-8", "replace")
+                out[key] = buf[pos + 8 : pos + 8 + size].decode("utf-8", "replace")
             pos = skip(kind, pos)
     except (OSError, struct.error, ValueError, IndexError, OverflowError, MemoryError):
         pass
@@ -514,29 +586,43 @@ class Metrics:
             ("prompt_seconds_total", "Total time spent processing prompts", self.prompt.time_us / 1e6),
             ("tokens_predicted_total", "Number of generation tokens processed", self.predict.count),
             ("tokens_predicted_seconds_total", "Total time spent generating tokens", self.predict.time_us / 1e6),
-            ("n_decode_total", "Total number of llama_decode() calls, excluding speculative decoding and "
-                               "multimodal decoding", self.n_decode),
+            (
+                "n_decode_total",
+                "Total number of llama_decode() calls, excluding speculative decoding and multimodal decoding",
+                self.n_decode,
+            ),
             ("n_tokens_max", "Largest observed sequence length (prompt + generation)", self.n_tokens_max),
             ("spec_decode_num_draft_tokens_total", "Speculative: Total draft tokens generated", self.n_draft_tokens),
-            ("spec_decode_num_accepted_tokens_total", "Speculative: Total draft tokens accepted by the target model",
-             self.n_draft_accepted),
-            ("spec_decode_num_drafts_total", "Speculative: Total speculative decoding verification steps",
-             self.n_draft_verif_steps),
+            (
+                "spec_decode_num_accepted_tokens_total",
+                "Speculative: Total draft tokens accepted by the target model",
+                self.n_draft_accepted,
+            ),
+            (
+                "spec_decode_num_drafts_total",
+                "Speculative: Total speculative decoding verification steps",
+                self.n_draft_verif_steps,
+            ),
         )
         gauges = (
             ("prompt_tokens_seconds", "Average prompt throughput in tokens/s", self.prompt_bucket.per_second()),
-            ("predicted_tokens_seconds", "Average generation throughput in tokens/s",
-             self.predict_bucket.per_second()),
+            ("predicted_tokens_seconds", "Average generation throughput in tokens/s", self.predict_bucket.per_second()),
             ("requests_processing", "Number of requests processing", n_processing),
             ("requests_deferred", "Number of requests deferred", n_deferred),
-            ("n_busy_slots_per_decode", "Average number of busy slots per llama_decode() call",
-             self.n_busy_slots / max(self.n_decode, 1)),
+            (
+                "n_busy_slots_per_decode",
+                "Average number of busy slots per llama_decode() call",
+                self.n_busy_slots / max(self.n_decode, 1),
+            ),
         )
         lines: list[str] = []
         for kind, items in (("counter", counters), ("gauge", gauges)):
             for name, desc, value in items:
-                lines += [f"# HELP llamacpp:{name} {desc}", f"# TYPE llamacpp:{name} {kind}",
-                          f"llamacpp:{name} {value:g}"]
+                lines += [
+                    f"# HELP llamacpp:{name} {desc}",
+                    f"# TYPE llamacpp:{name} {kind}",
+                    f"llamacpp:{name} {value:g}",
+                ]
         if self.n_accepted_per_pos:
             name = "spec_decode_num_accepted_tokens_per_pos_total"
             lines += [f"# HELP llamacpp:{name} Accepted tokens per draft position", f"# TYPE llamacpp:{name} counter"]
@@ -598,8 +684,12 @@ def flatten_content(content: Any) -> str:
 
 def has_image(messages: list[Any]) -> bool:
     """Does any message carry a picture part (OpenAI `image_url`)?"""
-    return any(isinstance(m, dict) and isinstance(m.get("content"), list)
-               and any(isinstance(p, dict) and p.get("type") == "image_url" for p in m["content"]) for m in messages)
+    return any(
+        isinstance(m, dict)
+        and isinstance(m.get("content"), list)
+        and any(isinstance(p, dict) and p.get("type") == "image_url" for p in m["content"])
+        for m in messages
+    )
 
 
 CALL_RE = re.compile(r"CALL_TOOL[ \t]+(\S+)(?:[ \t]+(\{[^\n]*\}))?")
@@ -662,8 +752,9 @@ def render_prompt(messages: list[Any], think: bool) -> tuple[str, str]:
     return "".join(parts), last_user
 
 
-def make_tokens(seed: int, last_user: str, think: bool, limit: int, ignore_eos: bool,
-                lead: str = "") -> tuple[list, str]:
+def make_tokens(
+    seed: int, last_user: str, think: bool, limit: int, ignore_eos: bool, lead: str = ""
+) -> tuple[list, str]:
     """The deterministic token list [(piece, channel)] and the finish reason; channel is reasoning|content|hidden.
     `lead` replaces the first sentence of the answer."""
     n_think = max(0, int(env_float("FAKE_THINK_TOKENS", 40))) if think else 0
@@ -697,7 +788,7 @@ def tool_call_tokens(seed: int, think: bool, calls: list[tuple[str, str]]) -> tu
         out.append(("", "hidden"))  # </think>
     for i, (name, args) in enumerate(calls):
         out.append((name, f"toolname:{i}"))
-        out += [(args[k:k + 8], f"toolargs:{i}") for k in range(0, len(args), 8)]
+        out += [(args[k : k + 8], f"toolargs:{i}") for k in range(0, len(args), 8)]
     out.append(("", "hidden"))  # EOS
     return out, "tool_calls"
 
@@ -709,13 +800,14 @@ def json_tokens(seed: int, think: bool, text: str) -> tuple[list, str]:
     if think:
         out += [(w if i == 0 else " " + w, "reasoning") for i, w in enumerate(words(THINK_SENTENCES, seed, n_think))]
         out.append(("", "hidden"))
-    out += [(text[k:k + 6], "content") for k in range(0, len(text), 6)]
+    out += [(text[k : k + 6], "content") for k in range(0, len(text), 6)]
     out.append(("", "hidden"))
     return out, "stop"
 
 
-def plan_timeline(n_tokens: int, t_prompt: float, rate: float, jitter: float, draft_max: int,
-                  rng: random.Random) -> tuple[list[float], list[tuple[int, int, int]]]:
+def plan_timeline(
+    n_tokens: int, t_prompt: float, rate: float, jitter: float, draft_max: int, rng: random.Random
+) -> tuple[list[float], list[tuple[int, int, int]]]:
     """Virtual time of every token, plus the speculative rounds as (tokens so far, drafted, accepted)."""
     times = [t_prompt] if n_tokens > 0 else []  # the first token comes with the last prompt batch
     rounds: list[tuple[int, int, int]] = []
@@ -737,8 +829,14 @@ def plan_timeline(n_tokens: int, t_prompt: float, rate: float, jitter: float, dr
 
 def spec_stats(rounds: list[tuple[int, int, int]], n_sent: int, width: int) -> dict[str, Any]:
     """Speculative statistics for the first n_sent tokens of a request."""
-    stats: dict[str, Any] = {"drafted": 0, "accepted": 0, "verif": 0, "acc_drafts": 0, "per_pos": [0] * width,
-                             "width": width}
+    stats: dict[str, Any] = {
+        "drafted": 0,
+        "accepted": 0,
+        "verif": 0,
+        "acc_drafts": 0,
+        "per_pos": [0] * width,
+        "width": width,
+    }
     for end, drafted, accepted in rounds:
         if end > n_sent:
             break
@@ -795,8 +893,14 @@ class Fake:
         self.queue: deque[object] = deque()
         self.slots = [Slot(i, self.n_ctx_slot) for i in range(cfg.parallel)]
         self.metrics = Metrics()
-        self.spec_total: dict[str, Any] = {"begin": 0, "rounds": 0, "acc_drafts": 0, "drafted": 0, "accepted": 0,
-                                           "per_pos": [0] * self.draft_width}
+        self.spec_total: dict[str, Any] = {
+            "begin": 0,
+            "rounds": 0,
+            "acc_drafts": 0,
+            "drafted": 0,
+            "accepted": 0,
+            "per_pos": [0] * self.draft_width,
+        }
         self.next_task = 0
         self.n_reused = 0
         self.moe_steps = 0
@@ -887,16 +991,20 @@ class Fake:
     def print_params_info(self) -> None:
         log, cfg = self.log, self.cfg
         fn = "common_params_print_info"
-        log.trc(cmn(fn) + f"{fn}: build {self.engine['build']} ({self.engine['commit']}) with {self.compiler} "
-                          f"for {self.target}")
+        log.trc(
+            cmn(fn) + f"{fn}: build {self.engine['build']} ({self.engine['commit']}) with {self.compiler} "
+            f"for {self.target}"
+        )
         log.inf(cmn(fn) + f"{fn}: verbosity = {log.threshold} (adjust with the `-lv N` CLI arg)")
         log.trc(cmn(fn) + "device_info:")
         log.trc(cmn(fn) + "  - CPU     : Fake CPU (65536 MiB, 32768 MiB free)")
         n_hw = os.cpu_count() or 1
         n_threads = cfg.threads if cfg.threads > 0 else n_hw
-        log.trc(cmn(fn) + f"system_info: n_threads = {n_threads} (n_threads_batch = {n_threads}) / {n_hw} | CPU : "
-                          "SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | LLAMAFILE = 1 | OPENMP = 1 "
-                          "| REPACK = 1 |")
+        log.trc(
+            cmn(fn) + f"system_info: n_threads = {n_threads} (n_threads_batch = {n_threads}) / {n_hw} | CPU : "
+            "SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | LLAMAFILE = 1 | OPENMP = 1 "
+            "| REPACK = 1 |"
+        )
 
     def warn_cors(self) -> None:
         if self.cfg.api_keys:
@@ -909,8 +1017,10 @@ class Fake:
             self.log.wrn(head + "more info: https://github.com/ggml-org/llama.cpp/pull/25655")
             self.log.wrn(head + "-----------------")
         else:
-            self.log.wrn(head + "security: no API key is set and CORS allows all origins "
-                                "(see https://github.com/ggml-org/llama.cpp/pull/25655)")
+            self.log.wrn(
+                head + "security: no API key is set and CORS allows all origins "
+                "(see https://github.com/ggml-org/llama.cpp/pull/25655)"
+            )
 
     def clean_up_line(self) -> None:
         self.log.inf(srv("operator()") + "operator(): cleaning up before exit...")
@@ -963,19 +1073,29 @@ class Fake:
             log.err(srv("load_model") + f"failed to load model, '{cfg.model}'")
             return False
         n_fit = cfg.fit_target
-        if (self.is_fle and cfg.fit and self.cache_budget > 0
-                and os.environ.get("FLE_MOE_CACHE_BUDGET_FIT") not in (None, "", "0")):
+        if (
+            self.is_fle
+            and cfg.fit
+            and self.cache_budget > 0
+            and os.environ.get("FLE_MOE_CACHE_BUDGET_FIT") not in (None, "", "0")
+        ):
             n_fit += self.cache_budget
-            log.inf(f"common_init_result: MoE cache budget {self.cache_budget} MiB added to the fit margin of "
-                    f"device 0 (now {n_fit} MiB)")
+            log.inf(
+                f"common_init_result: MoE cache budget {self.cache_budget} MiB added to the fit margin of "
+                f"device 0 (now {n_fit} MiB)"
+            )
         if cfg.fit:
             log.trc(cmn("common_init_") + "fitting params to device memory ...")
-            log.trc(cmn("common_init_") + "(for bugs during this step try to reproduce them with -fit off, or "
-                                          "provide --verbose logs if the bug only occurs with -fit on)")
+            log.trc(
+                cmn("common_init_") + "(for bugs during this step try to reproduce them with -fit off, or "
+                "provide --verbose logs if the bug only occurs with -fit on)"
+            )
         n_gib = m.size_pretended / 1024**3
         self.at(t0, 0.05)
-        log.trc(f"llama_model_loader: loaded meta data with 52 key-value pairs and 733 tensors from {cfg.model} "
-                "(version GGUF V3 (latest))")
+        log.trc(
+            f"llama_model_loader: loaded meta data with 52 key-value pairs and 733 tensors from {cfg.model} "
+            "(version GGUF V3 (latest))"
+        )
         log.trc("llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.")
         log.trc("llama_model_loader: - type  f32:  361 tensors")
         log.trc("llama_model_loader: - type iq3_s:  372 tensors")
@@ -997,8 +1117,10 @@ class Fake:
         if os.environ.get("FAKE_FAIL") == "oom" or self.over_budget():
             self.at(t0, 0.4)
             size = max(int(m.size_pretended * 0.9), 1 << 30)
-            log.err(f"ggml_backend_cuda_buffer_type_alloc_buffer: allocating {size / 1048576:.2f} MiB on device 0: "
-                    "cudaMalloc failed: out of memory")
+            log.err(
+                f"ggml_backend_cuda_buffer_type_alloc_buffer: allocating {size / 1048576:.2f} MiB on device 0: "
+                "cudaMalloc failed: out of memory"
+            )
             if self.is_fle:
                 log.err(f"alloc_tensor_range: failed to allocate CUDA0 buffer of size {size}")
             else:
@@ -1028,8 +1150,9 @@ class Fake:
                 log.err(srv("load_model") + f"failed to load draft model, '{cfg.draft}'")
                 return False
         elif self.spec_type == "draft-mtp":
-            log.inf(f"common_speculative_init_result: creating MTP draft context against the target model "
-                    f"'{cfg.model}'")
+            log.inf(
+                f"common_speculative_init_result: creating MTP draft context against the target model '{cfg.model}'"
+            )
         kv_mib = self.n_ctx_total * m.n_layer * 0.0625
         log.trc(f"llama_context: n_seq_max             = {cfg.parallel}")
         log.trc(f"llama_context: n_ctx                 = {self.n_ctx_total}")
@@ -1043,8 +1166,10 @@ class Fake:
         log.trc("llama_context: freq_scale            = 1")
         self.at(t0, 0.9)
         half = kv_mib / 2
-        log.trc(f"llama_kv_cache: size = {kv_mib:7.2f} MiB ({self.n_ctx_total:6d} cells, {m.n_layer:3d} layers, "
-                f"{cfg.parallel:2d}/{cfg.parallel} seqs), K (f16): {half:7.2f} MiB, V (f16): {half:7.2f} MiB")
+        log.trc(
+            f"llama_kv_cache: size = {kv_mib:7.2f} MiB ({self.n_ctx_total:6d} cells, {m.n_layer:3d} layers, "
+            f"{cfg.parallel:2d}/{cfg.parallel} seqs), K (f16): {half:7.2f} MiB, V (f16): {half:7.2f} MiB"
+        )
         log.trc(f"llama_context:      CUDA0 compute buffer size = {512.0:8.2f} MiB")
         self.at(t0, 0.92)
         n_threads = cfg.threads if cfg.threads > 0 else (os.cpu_count() or 1)
@@ -1053,19 +1178,27 @@ class Fake:
             layers = m.n_layer
             slots = max(1, min(m.n_expert, int(self.cache_budget / (layers * self.cache_slot_mib))))
             vram = slots * layers * self.cache_slot_mib
-            log.trc(f"operator(): MoE expert cache enabled: {layers} layers x {slots} slots, 1 inserts/step, "
-                    f"{vram:.1f} MiB device memory")
-            log.trc(f"operator(): [fle-moe-budget] EVIDENCE allocated {vram:.1f} MiB of budget {self.cache_budget} "
-                    f"MiB ({100.0 * vram / self.cache_budget:.1f} %) in {layers} layers, usable slots per layer "
-                    f"min/mean/max {slots}/{slots:.1f}/{slots} (\"x {slots} slots\" above is the maximum)")
+            log.trc(
+                f"operator(): MoE expert cache enabled: {layers} layers x {slots} slots, 1 inserts/step, "
+                f"{vram:.1f} MiB device memory"
+            )
+            log.trc(
+                f"operator(): [fle-moe-budget] EVIDENCE allocated {vram:.1f} MiB of budget {self.cache_budget} "
+                f"MiB ({100.0 * vram / self.cache_budget:.1f} %) in {layers} layers, usable slots per layer "
+                f'min/mean/max {slots}/{slots:.1f}/{slots} ("x {slots} slots" above is the maximum)'
+            )
         if cfg.warmup:
-            log.trc(cmn("common_init_") + "warming up the model with an empty run - please wait ... "
-                                          "(--no-warmup to disable)")
+            log.trc(
+                cmn("common_init_") + "warming up the model with an empty run - please wait ... "
+                "(--no-warmup to disable)"
+            )
         if self.draft_width:
             log.trc(spc("common_specu") + f"adding speculative implementation '{self.spec_type}'")
         self.at(t0, 1.0)
-        log.inf(srv("load_model") + f"initializing, n_slots = {cfg.parallel}, n_ctx_slot = {self.n_ctx_slot}, "
-                                    f"kv_unified = '{'true' if cfg.kv_unified else 'false'}'")
+        log.inf(
+            srv("load_model") + f"initializing, n_slots = {cfg.parallel}, n_ctx_slot = {self.n_ctx_slot}, "
+            f"kv_unified = '{'true' if cfg.kv_unified else 'false'}'"
+        )
         for slot in self.slots:
             log.trc(slt("init", slot.id, -1) + f"new slot, n_ctx = {slot.n_ctx}")
         return True
@@ -1078,10 +1211,23 @@ class Fake:
         model, context, compute = int(self.model.size_pretended / 1048576 * 0.3), 1500, 512
         own = model + context + compute
         rows = [
-            ("header", ["memory breakdown [MiB]", "total", "free", "self", "model", "context", "compute",
-                        "unaccounted"]),
-            ("gpu", ["  - CUDA0 (Fake GPU)", str(total), str(free), str(own), str(model), str(context),
-                     str(compute), str(total - free - own)]),
+            (
+                "header",
+                ["memory breakdown [MiB]", "total", "free", "self", "model", "context", "compute", "unaccounted"],
+            ),
+            (
+                "gpu",
+                [
+                    "  - CUDA0 (Fake GPU)",
+                    str(total),
+                    str(free),
+                    str(own),
+                    str(model),
+                    str(context),
+                    str(compute),
+                    str(total - free - own),
+                ],
+            ),
             ("other", ["  - Host", "", "", "1024", "512", "0", "512", ""]),
         ]
         templates = {
@@ -1137,8 +1283,10 @@ class Fake:
                 best, best_sim = s, sim
         if best is not None:
             f_keep = best_sim * n_prompt / max(best.cache_tokens, 1)
-            log.inf(slt("get_availabl", best.id, -1) + f"selected slot by LCP similarity, f_sim_best = "
-                                                      f"{best_sim:.3f} (> {thold:.3f} thold), f_keep = {f_keep:.3f}")
+            log.inf(
+                slt("get_availabl", best.id, -1) + f"selected slot by LCP similarity, f_sim_best = "
+                f"{best_sim:.3f} (> {thold:.3f} thold), f_keep = {f_keep:.3f}"
+            )
             return best
         chosen, t_last = None, -1
         for s in idle:
@@ -1171,14 +1319,22 @@ class Fake:
         self.early_n += 1
         self.early_ms += ms
         what = "saved:" if is_new else "not copied (already in cache or rejected):"
-        self.log.inf(slt("fle_early_sa", slot.id, -1)
-                     + f"[fle-slot-early-save] {what} {slot.cache_tokens} tokens in {ms:.2f} ms "
-                       f"(n = {self.early_n}, total {self.early_ms:.1f} ms)")
+        self.log.inf(
+            slt("fle_early_sa", slot.id, -1)
+            + f"[fle-slot-early-save] {what} {slot.cache_tokens} tokens in {ms:.2f} ms "
+            f"(n = {self.early_n}, total {self.early_ms:.1f} ms)"
+        )
 
     # -------------------------------------------------------------------------------------- documents
 
-    def params_json(self, req: dict[str, Any] | None = None, stream: bool = True, n_predict: int | None = None,
-                    ignore_eos: bool = False, timings_per_token: bool = False) -> dict[str, Any]:
+    def params_json(
+        self,
+        req: dict[str, Any] | None = None,
+        stream: bool = True,
+        n_predict: int | None = None,
+        ignore_eos: bool = False,
+        timings_per_token: bool = False,
+    ) -> dict[str, Any]:
         """task_params::to_json(only_metrics = true), the shape used by /props and /slots."""
         cfg, req = self.cfg, req or {}
 
@@ -1188,25 +1344,57 @@ class Fake:
 
         n_pred = cfg.n_predict if n_predict is None else n_predict
         return {
-            "seed": pick("seed", 4294967295), "temperature": pick("temperature", cfg.temp),
-            "dynatemp_range": 0.0, "dynatemp_exponent": 1.0, "top_k": pick("top_k", cfg.top_k),
-            "top_p": pick("top_p", cfg.top_p), "min_p": pick("min_p", cfg.min_p), "top_n_sigma": -1.0,
-            "xtc_probability": 0.0, "xtc_threshold": 0.1, "typical_p": 1.0, "repeat_last_n": 64,
+            "seed": pick("seed", 4294967295),
+            "temperature": pick("temperature", cfg.temp),
+            "dynatemp_range": 0.0,
+            "dynatemp_exponent": 1.0,
+            "top_k": pick("top_k", cfg.top_k),
+            "top_p": pick("top_p", cfg.top_p),
+            "min_p": pick("min_p", cfg.min_p),
+            "top_n_sigma": -1.0,
+            "xtc_probability": 0.0,
+            "xtc_threshold": 0.1,
+            "typical_p": 1.0,
+            "repeat_last_n": 64,
             "repeat_penalty": pick("repeat_penalty", cfg.repeat_penalty),
             "presence_penalty": pick("presence_penalty", cfg.presence_penalty),
-            "frequency_penalty": pick("frequency_penalty", cfg.frequency_penalty), "dry_multiplier": 0.0,
-            "dry_base": 1.75, "dry_allowed_length": 2, "dry_penalty_last_n": 64, "mirostat": 0,
-            "mirostat_tau": 5.0, "mirostat_eta": 0.1, "adaptive_target": -1.0, "adaptive_decay": 0.9,
-            "max_tokens": n_pred, "n_predict": n_pred, "n_keep": 0, "n_discard": 0, "ignore_eos": ignore_eos,
-            "stream": stream, "n_probs": 0, "min_keep": 0, "chat_format": "Content-only",
-            "reasoning_format": "deepseek", "reasoning_in_content": False, "generation_prompt": "",
-            "samplers": SAMPLERS, "speculative.types": self.spec_type, "timings_per_token": timings_per_token,
-            "post_sampling_probs": False, "backend_sampling": False, "lora": [],
+            "frequency_penalty": pick("frequency_penalty", cfg.frequency_penalty),
+            "dry_multiplier": 0.0,
+            "dry_base": 1.75,
+            "dry_allowed_length": 2,
+            "dry_penalty_last_n": 64,
+            "mirostat": 0,
+            "mirostat_tau": 5.0,
+            "mirostat_eta": 0.1,
+            "adaptive_target": -1.0,
+            "adaptive_decay": 0.9,
+            "max_tokens": n_pred,
+            "n_predict": n_pred,
+            "n_keep": 0,
+            "n_discard": 0,
+            "ignore_eos": ignore_eos,
+            "stream": stream,
+            "n_probs": 0,
+            "min_keep": 0,
+            "chat_format": "Content-only",
+            "reasoning_format": "deepseek",
+            "reasoning_in_content": False,
+            "generation_prompt": "",
+            "samplers": SAMPLERS,
+            "speculative.types": self.spec_type,
+            "timings_per_token": timings_per_token,
+            "post_sampling_probs": False,
+            "backend_sampling": False,
+            "lora": [],
         }
 
     def slot_json(self, slot: Slot) -> dict[str, Any]:
-        out: dict[str, Any] = {"id": slot.id, "n_ctx": slot.n_ctx, "speculative": self.draft_width > 0,
-                               "is_processing": slot.busy}
+        out: dict[str, Any] = {
+            "id": slot.id,
+            "n_ctx": slot.n_ctx,
+            "speculative": self.draft_width > 0,
+            "is_processing": slot.busy,
+        }
         task = slot.task
         if task:
             out["id_task"] = task["id"]
@@ -1214,43 +1402,90 @@ class Fake:
             out["n_prompt_tokens_processed"] = task["n_processed"]
             out["n_prompt_tokens_cache"] = task["n_cached"]
             out["params"] = task["params"]
-            out["next_token"] = [{"has_next_token": task["has_next"], "has_new_line": False,
-                                  "n_remain": task["n_remain"], "n_decoded": task["n_decoded"]}]
+            out["next_token"] = [
+                {
+                    "has_next_token": task["has_next"],
+                    "has_new_line": False,
+                    "n_remain": task["n_remain"],
+                    "n_decoded": task["n_decoded"],
+                }
+            ]
         return out
 
     def props_json(self) -> dict[str, Any]:
         cfg = self.cfg
         return {
             "default_generation_settings": {"params": self.params_json(), "n_ctx": self.n_ctx_slot},
-            "total_slots": cfg.parallel, "model_alias": self.model_name, "model_ftype": self.model.ftype,
+            "total_slots": cfg.parallel,
+            "model_alias": self.model_name,
+            "model_ftype": self.model.ftype,
             "model_path": cfg.model,
             "modalities": {"vision": self.vision, "video": False, "audio": False},
             "media_marker": self.media_marker,
-            "endpoint_slots": cfg.slots, "endpoint_props": cfg.props, "endpoint_metrics": cfg.metrics, "ui": cfg.ui,
-            "ui_settings": {}, "chat_template": CHAT_TEMPLATE, "chat_template_caps": CHAT_TEMPLATE_CAPS,
-            "bos_token": "", "eos_token": "<|im_end|>", "build_info": self.build_info, "is_sleeping": False,
+            "endpoint_slots": cfg.slots,
+            "endpoint_props": cfg.props,
+            "endpoint_metrics": cfg.metrics,
+            "ui": cfg.ui,
+            "ui_settings": {},
+            "chat_template": CHAT_TEMPLATE,
+            "chat_template_caps": CHAT_TEMPLATE_CAPS,
+            "bos_token": "",
+            "eos_token": "<|im_end|>",
+            "build_info": self.build_info,
+            "is_sleeping": False,
             "cors_proxy_enabled": False,
         }
 
     def models_json(self) -> dict[str, Any]:
         m = self.model
         return {
-            "models": [{
-                "name": self.model_name, "model": self.model_name, "modified_at": "", "size": "", "digest": "",
-                "type": "model", "description": "", "tags": [""], "capabilities": ["completion"], "parameters": "",
-                "details": {"parent_model": "", "format": "gguf", "family": "", "families": [""],
-                            "parameter_size": "", "quantization_level": ""},
-            }],
+            "models": [
+                {
+                    "name": self.model_name,
+                    "model": self.model_name,
+                    "modified_at": "",
+                    "size": "",
+                    "digest": "",
+                    "type": "model",
+                    "description": "",
+                    "tags": [""],
+                    "capabilities": ["completion"],
+                    "parameters": "",
+                    "details": {
+                        "parent_model": "",
+                        "format": "gguf",
+                        "family": "",
+                        "families": [""],
+                        "parameter_size": "",
+                        "quantization_level": "",
+                    },
+                }
+            ],
             "object": "list",
-            "data": [{
-                "id": self.model_name, "aliases": self.aliases, "tags": [], "object": "model",
-                "architecture": {"input_modalities": ["text", "image"] if self.vision else ["text"],
-                                 "output_modalities": ["text"]},
-                "created": int(time.time()), "owned_by": "llamacpp",
-                "meta": {"vocab_type": 2, "n_vocab": m.n_vocab, "n_ctx": self.n_ctx_slot,
-                         "n_ctx_train": m.n_ctx_train, "n_embd": m.n_embd, "n_params": m.n_params,
-                         "size": m.size_pretended, "ftype": m.ftype},
-            }],
+            "data": [
+                {
+                    "id": self.model_name,
+                    "aliases": self.aliases,
+                    "tags": [],
+                    "object": "model",
+                    "architecture": {
+                        "input_modalities": ["text", "image"] if self.vision else ["text"],
+                        "output_modalities": ["text"],
+                    },
+                    "created": int(time.time()),
+                    "owned_by": "llamacpp",
+                    "meta": {
+                        "vocab_type": 2,
+                        "n_vocab": m.n_vocab,
+                        "n_ctx": self.n_ctx_slot,
+                        "n_ctx_train": m.n_ctx_train,
+                        "n_embd": m.n_embd,
+                        "n_params": m.n_params,
+                        "size": m.size_pretended,
+                        "ftype": m.ftype,
+                    },
+                }
+            ],
         }
 
     # -------------------------------------------------------------------------------------- accounting
@@ -1305,12 +1540,16 @@ class Fake:
         pre = slt("print_timing", slot_id, task_id)
         n_gen, prompt_n = t["predicted_n"], t["prompt_n"]
         total_ms = t["prompt_ms"] + t["predicted_ms"]
-        log.inf(pre + f"prompt eval time = {t['prompt_ms']:10.2f} ms / {prompt_n:5d} tokens "
-                      f"({t['prompt_per_token_ms']:8.2f} ms per token, "
-                      f"{t['prompt_per_second']:8.2f} tokens per second)")
-        log.inf(pre + f"       eval time = {t['predicted_ms']:10.2f} ms / {n_gen:5d} tokens "
-                      f"({t['predicted_per_token_ms']:8.2f} ms per token, "
-                      f"{t['predicted_per_second']:8.2f} tokens per second)")
+        log.inf(
+            pre + f"prompt eval time = {t['prompt_ms']:10.2f} ms / {prompt_n:5d} tokens "
+            f"({t['prompt_per_token_ms']:8.2f} ms per token, "
+            f"{t['prompt_per_second']:8.2f} tokens per second)"
+        )
+        log.inf(
+            pre + f"       eval time = {t['predicted_ms']:10.2f} ms / {n_gen:5d} tokens "
+            f"({t['predicted_per_token_ms']:8.2f} ms per token, "
+            f"{t['predicted_per_second']:8.2f} tokens per second)"
+        )
         log.inf(pre + f"      total time = {total_ms:10.2f} ms / {prompt_n + n_gen:5d} tokens")
         with self.cv:
             self.n_reused += max(0, n_gen - 2)
@@ -1319,8 +1558,10 @@ class Fake:
         if spec["drafted"] > 0:
             mean = 1.0 + spec["accepted"] / spec["verif"] if spec["verif"] > 0 else 1.0
             rates = ", ".join(f"{c / spec['verif']:.3f}" for c in spec["per_pos"]) if spec["verif"] else ""
-            log.inf(pre + f"draft acceptance = {spec['accepted'] / spec['drafted']:.5f} ({spec['accepted']:5d} "
-                          f"accepted / {spec['drafted']:5d} generated), mean len = {mean:5.2f}")
+            log.inf(
+                pre + f"draft acceptance = {spec['accepted'] / spec['drafted']:.5f} ({spec['accepted']:5d} "
+                f"accepted / {spec['drafted']:5d} generated), mean len = {mean:5.2f}"
+            )
             log.trc(pre + f"     acc per pos = ({rates})")
         if self.draft_width:
             tot = self.spec_total
@@ -1328,10 +1569,12 @@ class Fake:
             mean = 1.0 + tot["accepted"] / calls if calls else 1.0
             rates = ", ".join(f"{c / calls:.3f}" for c in tot["per_pos"]) if calls else ""
             extra = f", #mean acc len = {mean:.2f}, #acc rate/pos = ({rates})" if calls else ""
-            log.trc(spc("common_specu") + f"statistics {self.spec_type:>16}: #calls(b,g,a) = {tot['begin']:4d} "
-                                          f"{calls:6d} {calls:6d}, #gen drafts = {calls:6d}, #acc drafts = "
-                                          f"{tot['acc_drafts']:5d}, #gen tokens = {tot['drafted']:6d}, #acc tokens = "
-                                          f"{tot['accepted']:5d}{extra}")
+            log.trc(
+                spc("common_specu") + f"statistics {self.spec_type:>16}: #calls(b,g,a) = {tot['begin']:4d} "
+                f"{calls:6d} {calls:6d}, #gen drafts = {calls:6d}, #acc drafts = "
+                f"{tot['acc_drafts']:5d}, #gen tokens = {tot['drafted']:6d}, #acc tokens = "
+                f"{tot['accepted']:5d}{extra}"
+            )
 
     def settle(self, run: Completion, spec: dict[str, Any], timing: dict[str, Any] | None) -> None:
         """What the server does when a task ends: speculative totals, print_timings, metrics, slot release."""
@@ -1424,12 +1667,15 @@ class Fake:
             log.inf(srv("llama_server") + "model loaded")
             log.inf(srv("llama_server") + f"listening on {self.listening_address(port)}")
             if self.is_fle and self.listening_address(port).endswith(":8080"):
-                log.wrn(srv("llama_server") + "NOTICE: server default port will be changed to :9931 in a future "
-                                              "release")
+                log.wrn(
+                    srv("llama_server") + "NOTICE: server default port will be changed to :9931 in a future release"
+                )
                 log.wrn(srv("llama_server") + "        ref: https://github.com/ggml-org/llama.cpp/pull/26508")
             if self.early_save:
-                log.inf(srv("operator()") + "[fle-slot-early-save] ON: slots are saved into the RAM cache when they "
-                                            "become free")
+                log.inf(
+                    srv("operator()") + "[fle-slot-early-save] ON: slots are saved into the RAM cache when they "
+                    "become free"
+                )
             log.trc(srv("update_slots") + "all slots are idle")
         crash_after = env_float("FAKE_CRASH_AFTER", 0)
         while not self.stop.wait(0.1):
@@ -1519,13 +1765,22 @@ class Completion:
 
     # ---- building blocks of the reply
 
-    def chunk(self, delta: dict[str, Any] | None, reason: str | None = None, usage: dict[str, Any] | None = None,
-              timings: dict[str, Any] | None = None, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    def chunk(
+        self,
+        delta: dict[str, Any] | None,
+        reason: str | None = None,
+        usage: dict[str, Any] | None = None,
+        timings: dict[str, Any] | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         fake = self.fake
         body: dict[str, Any] = {
             "choices": [] if delta is None else [{"finish_reason": reason, "index": 0, "delta": delta}],
-            "created": self.created, "id": self.chat_id, "model": fake.model_name,
-            "system_fingerprint": fake.build_info, "object": "chat.completion.chunk",
+            "created": self.created,
+            "id": self.chat_id,
+            "model": fake.model_name,
+            "system_fingerprint": fake.build_info,
+            "object": "chat.completion.chunk",
         }
         if usage is not None:
             body["usage"] = usage
@@ -1543,8 +1798,12 @@ class Completion:
         kind, _, number = channel.partition(":")
         index = int(number)
         if kind == "toolname":
-            return {"index": index, "id": self.call_id(index), "type": "function",
-                    "function": {"name": piece, "arguments": ""}}
+            return {
+                "index": index,
+                "id": self.call_id(index),
+                "type": "function",
+                "function": {"name": piece, "arguments": ""},
+            }
         return {"index": index, "function": {"arguments": piece}}
 
     def timings_at(self, n_gen: int) -> dict[str, Any]:
@@ -1553,10 +1812,13 @@ class Completion:
         t_gen_ms = max(1e-3, (self.t_last(n_gen) - self.t_prompt) * 1000.0) if n_gen > 0 else 0.0
         steps = max(0, n_gen - 1)
         out: dict[str, Any] = {
-            "cache_n": self.cache_n, "prompt_n": self.prompt_n, "prompt_ms": t_prompt_ms,
+            "cache_n": self.cache_n,
+            "prompt_n": self.prompt_n,
+            "prompt_ms": t_prompt_ms,
             "prompt_per_token_ms": t_prompt_ms / self.prompt_n if self.prompt_n else 0.0,
             "prompt_per_second": 1e3 / t_prompt_ms * self.prompt_n if t_prompt_ms > 0 else 0.0,
-            "predicted_n": n_gen, "predicted_ms": t_gen_ms,
+            "predicted_n": n_gen,
+            "predicted_ms": t_gen_ms,
             "predicted_per_token_ms": t_gen_ms / steps if steps else 0.0,
             "predicted_per_second": 1e3 / t_gen_ms * steps if t_gen_ms > 0 else 0.0,
         }
@@ -1569,8 +1831,14 @@ class Completion:
         return spec_stats(self.rounds, n, self.fake.draft_width)
 
     def send_progress(self, processed: int, time_ms: int) -> None:
-        progress = {"prompt_progress": {"total": self.n_prompt, "cache": self.cache_n, "processed": processed,
-                                        "time_ms": time_ms}}
+        progress = {
+            "prompt_progress": {
+                "total": self.n_prompt,
+                "cache": self.cache_n,
+                "processed": processed,
+                "time_ms": time_ms,
+            }
+        }
         self.h.sse(self.chunk({"role": "assistant", "content": None}, extra=progress))
 
     # ---- the request
@@ -1585,19 +1853,38 @@ class Completion:
             h.close_connection = True
             return
         slot = self.slot
-        view = {"id": self.task_id, "n_tokens": 0, "n_processed": 0, "n_cached": 0, "n_decoded": 0,
-                "n_remain": opts.cap, "has_next": True,
-                "params": fake.params_json(self.req, opts.stream, opts.cap, opts.ignore_eos, opts.per_token)}
+        view = {
+            "id": self.task_id,
+            "n_tokens": 0,
+            "n_processed": 0,
+            "n_cached": 0,
+            "n_decoded": 0,
+            "n_remain": opts.cap,
+            "has_next": True,
+            "params": fake.params_json(self.req, opts.stream, opts.cap, opts.ignore_eos, opts.per_token),
+        }
         slot.task = view
         log.inf(slt("launch_slot_", slot.id, self.task_id) + "processing task, is_child = 0")
         if self.n_prompt >= slot.n_ctx:
-            msg = (f"request ({self.n_prompt} tokens) exceeds the available context size ({slot.n_ctx} tokens), "
-                   "try increasing it")
+            msg = (
+                f"request ({self.n_prompt} tokens) exceeds the available context size ({slot.n_ctx} tokens), "
+                "try increasing it"
+            )
             log.err(srv("send_error") + f"task id = {self.task_id}, error: {msg}")
             fake.release(slot, self.task_id, None)
             self.finished = True
-            h.send_json(400, {"error": {"code": 400, "message": msg, "type": "exceed_context_size_error",
-                                        "n_prompt_tokens": self.n_prompt, "n_ctx": slot.n_ctx}})
+            h.send_json(
+                400,
+                {
+                    "error": {
+                        "code": 400,
+                        "message": msg,
+                        "type": "exceed_context_size_error",
+                        "n_prompt_tokens": self.n_prompt,
+                        "n_ctx": slot.n_ctx,
+                    }
+                },
+            )
             return
         self.plan(view)
         try:
@@ -1619,13 +1906,15 @@ class Completion:
             slot.cache_text, slot.cache_tokens = "", 0
         self.prompt_n = self.n_prompt - self.cache_n
         view.update(n_tokens=self.n_prompt, n_processed=self.prompt_n, n_cached=self.cache_n)
-        fake.log.trc(slt("update_slots", slot.id, self.task_id) + f"new prompt, n_ctx_slot = {slot.n_ctx}, n_keep = 0, "
-                                                                 f"task.n_tokens = {self.n_prompt}")
+        fake.log.trc(
+            slt("update_slots", slot.id, self.task_id) + f"new prompt, n_ctx_slot = {slot.n_ctx}, n_keep = 0, "
+            f"task.n_tokens = {self.n_prompt}"
+        )
         room = max(0, slot.n_ctx - self.n_prompt)
         limit = room if opts.cap < 0 else min(opts.cap, room)
         if self.json_only:
             snippet = re.sub(r"\s+", " ", self.last_user).strip().replace('"', "'")[:40]
-            reply = ({"result": "no tools were called"} if self.req.get("tools") else {"reply": snippet})
+            reply = {"result": "no tools were called"} if self.req.get("tools") else {"reply": snippet}
             self.tokens, self.finish_reason = json_tokens(self.seed, opts.think, json.dumps(reply))
         elif self.tool_calls:
             self.tokens, self.finish_reason = tool_call_tokens(self.seed, opts.think, self.tool_calls)
@@ -1634,13 +1923,15 @@ class Completion:
             if self.tool_result:
                 said = re.sub(r"\s+", " ", self.tool_result).strip().replace('"', "'")[:80]
                 lead = f'Tool said "{said}".'
-            self.tokens, self.finish_reason = make_tokens(self.seed, self.last_user, opts.think, limit,
-                                                          opts.ignore_eos, lead)
+            self.tokens, self.finish_reason = make_tokens(
+                self.seed, self.last_user, opts.think, limit, opts.ignore_eos, lead
+            )
         rng = random.Random(self.seed ^ 0x9E3779B97F4A7C15)
         noise = fake.request_noise()
         self.t_prompt = self.prompt_n / (fake.prompt_rate * noise) * (1 + fake.jitter * (2 * rng.random() - 1))
-        self.times, self.rounds = plan_timeline(len(self.tokens), self.t_prompt, fake.tok_rate * noise, fake.jitter,
-                                                fake.draft_width, rng)
+        self.times, self.rounds = plan_timeline(
+            len(self.tokens), self.t_prompt, fake.tok_rate * noise, fake.jitter, fake.draft_width, rng
+        )
 
     def generate(self, view: dict[str, Any]) -> None:
         fake, log, opts, h = self.fake, self.fake.log, self.opts, self.h
@@ -1676,8 +1967,10 @@ class Completion:
             if n >= 100 and times[i] - t_print_last >= 3.0:  # slot.print_timings_tg()
                 rate = (n - 1) / (times[i] - self.t_prompt)
                 window = (n - n_gen_last) / (times[i] - t_print_last)
-                log.inf(slt("print_timing", self.slot.id, self.task_id)
-                        + f"n_gen = {n:6d}, tg = {rate:6.2f} t/s, tg_3s = {window:6.2f} t/s")
+                log.inf(
+                    slt("print_timing", self.slot.id, self.task_id)
+                    + f"n_gen = {n:6d}, tg = {rate:6.2f} t/s, tg_3s = {window:6.2f} t/s"
+                )
                 t_print_last, n_gen_last = times[i], n
             if not opts.stream:
                 continue
@@ -1694,8 +1987,12 @@ class Completion:
                 h.sse(*events)
         view["has_next"] = False
         timing = self.timings_at(n_total)
-        usage = {"completion_tokens": n_total, "prompt_tokens": self.n_prompt,
-                 "total_tokens": n_total + self.n_prompt, "prompt_tokens_details": {"cached_tokens": self.cache_n}}
+        usage = {
+            "completion_tokens": n_total,
+            "prompt_tokens": self.n_prompt,
+            "total_tokens": n_total + self.n_prompt,
+            "prompt_tokens_details": {"cached_tokens": self.cache_n},
+        }
         # print_timings, metrics and release come first; the reply is only the last step, as seen from outside
         fake.settle(self, self.spec_at(n_total), timing)
         self.finished = True
@@ -1711,14 +2008,23 @@ class Completion:
             if self.reasoning:
                 message["reasoning_content"] = "".join(self.reasoning)
             if self.tool_calls:
-                message["tool_calls"] = [{"type": "function", "id": self.call_id(i),
-                                          "function": {"name": name, "arguments": args}}
-                                         for i, (name, args) in enumerate(self.tool_calls)]
-            h.send_json(200, {
-                "choices": [{"finish_reason": self.finish_reason, "index": 0, "message": message}],
-                "created": self.created, "model": fake.model_name, "system_fingerprint": fake.build_info,
-                "object": "chat.completion", "usage": usage, "id": self.chat_id, "timings": timing,
-            })
+                message["tool_calls"] = [
+                    {"type": "function", "id": self.call_id(i), "function": {"name": name, "arguments": args}}
+                    for i, (name, args) in enumerate(self.tool_calls)
+                ]
+            h.send_json(
+                200,
+                {
+                    "choices": [{"finish_reason": self.finish_reason, "index": 0, "message": message}],
+                    "created": self.created,
+                    "model": fake.model_name,
+                    "system_fingerprint": fake.build_info,
+                    "object": "chat.completion",
+                    "usage": usage,
+                    "id": self.chat_id,
+                    "timings": timing,
+                },
+            )
 
 
 # ------------------------------------------------------------------------------------------------ HTTP
@@ -1745,8 +2051,10 @@ class ThreadingServer(socketserver.ThreadingMixIn, HTTPServer):
         pass  # a vanished client is routine; the default handler would print a traceback
 
 
-UI_PAGE = (b"<!doctype html><html><head><meta charset=\"utf-8\"><title>llama.cpp</title></head>"
-           b"<body><h1>llama.cpp</h1><p>fake llama-server</p></body></html>")
+UI_PAGE = (
+    b'<!doctype html><html><head><meta charset="utf-8"><title>llama.cpp</title></head>'
+    b"<body><h1>llama.cpp</h1><p>fake llama-server</p></body></html>"
+)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1775,8 +2083,13 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(length))
         self.end_headers()
 
-    def send_body(self, status: int, body: bytes, ctype: str = "application/json; charset=utf-8",
-                  extra: tuple[tuple[str, str], ...] = ()) -> None:
+    def send_body(
+        self,
+        status: int,
+        body: bytes,
+        ctype: str = "application/json; charset=utf-8",
+        extra: tuple[tuple[str, str], ...] = (),
+    ) -> None:
         self.head(status, ctype, len(body), extra)
         if self.command != "HEAD":
             self.wfile.write(body)
@@ -1847,10 +2160,16 @@ class Handler(BaseHTTPRequestHandler):
         parts = urlsplit(self.path)
         path = parts.path
         if self.command == "OPTIONS":
-            self.send_body(200, b"", "text/html", (
-                ("Access-Control-Allow-Credentials", "true"),
-                ("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS"),
-                ("Access-Control-Allow-Headers", "*")))
+            self.send_body(
+                200,
+                b"",
+                "text/html",
+                (
+                    ("Access-Control-Allow-Credentials", "true"),
+                    ("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS"),
+                    ("Access-Control-Allow-Headers", "*"),
+                ),
+            )
             return
         ui_path = path in ("/", "/index.html") and fake.cfg.ui
         if not fake.ready.is_set() and not ui_path:
@@ -1886,18 +2205,28 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, fake.models_json())
             if path == "/metrics":
                 if not cfg.metrics:
-                    return self.fail("This server does not support metrics endpoint. Start it with `--metrics`",
-                                     "not_supported_error", 501)
+                    return self.fail(
+                        "This server does not support metrics endpoint. Start it with `--metrics`",
+                        "not_supported_error",
+                        501,
+                    )
                 fake.new_task_id()
                 with fake.cv:
                     text = fake.metrics.render(sum(1 for s in fake.slots if s.busy), len(fake.queue))
                     fake.metrics.reset_bucket()
-                return self.send_body(200, text.encode("utf-8"), "text/plain; version=0.0.4",
-                                      (("Process-Start-Time-Unix", str(fake.metrics.t_start)),))
+                return self.send_body(
+                    200,
+                    text.encode("utf-8"),
+                    "text/plain; version=0.0.4",
+                    (("Process-Start-Time-Unix", str(fake.metrics.t_start)),),
+                )
             if path == "/slots":
                 if not cfg.slots:
-                    return self.fail("This server does not support slots endpoint. Start it with `--slots`",
-                                     "not_supported_error", 501)
+                    return self.fail(
+                        "This server does not support slots endpoint. Start it with `--slots`",
+                        "not_supported_error",
+                        501,
+                    )
                 fake.new_task_id()
                 with fake.cv:
                     data = [fake.slot_json(s) for s in fake.slots]
@@ -1912,8 +2241,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.chat(fake, body)
             if path == "/props":
                 if not cfg.props:
-                    return self.fail("This server does not support changing global properties. Start it with "
-                                     "`--props`", "not_supported_error", 501)
+                    return self.fail(
+                        "This server does not support changing global properties. Start it with `--props`",
+                        "not_supported_error",
+                        501,
+                    )
                 return self.send_json(200, {"success": True})
         self.middleware_error(404, "File Not Found", "not_found_error")
 
@@ -1929,8 +2261,11 @@ class Handler(BaseHTTPRequestHandler):
         if not isinstance(req["messages"], list):
             return self.fail("Expected 'messages' to be an array", "invalid_request_error", 400)
         if has_image(req["messages"]) and not fake.vision:
-            return self.fail("image input is not supported - hint: if this is unexpected, you may need to provide "
-                             "the mmproj", "invalid_request_error", 400)
+            return self.fail(
+                "image input is not supported - hint: if this is unexpected, you may need to provide the mmproj",
+                "invalid_request_error",
+                400,
+            )
         Completion(fake, self, req).run()
 
 
@@ -1946,14 +2281,18 @@ def main(argv: list[str] | None = None) -> int:
     engine = ENGINES[cfg.engine]
     if cfg.version:
         compiler, target = build_strings()
-        sys.stderr.write(f"version: {engine['version']} (build {engine['build']}, commit {engine['commit']})\n"
-                         f"built with {compiler} for {target}\n")
+        sys.stderr.write(
+            f"version: {engine['version']} (build {engine['build']}, commit {engine['commit']})\n"
+            f"built with {compiler} for {target}\n"
+        )
         return 0
     if cfg.help:
         # The two option names FLE Studio looks for in the real help (engines.detect): -lv support and the FLE flavor.
-        lines = ["usage: fake_llama_server.py -m MODEL.gguf [--host H] [--port N] [-c N] [-a ALIAS] "
-                 "[--metrics] [-np N] [-md DRAFT.gguf] [-lv N]",
-                 "-lv,   --verbosity, --log-verbosity N      Set the verbosity threshold (default: 3)"]
+        lines = [
+            "usage: fake_llama_server.py -m MODEL.gguf [--host H] [--port N] [-c N] [-a ALIAS] "
+            "[--metrics] [-np N] [-md DRAFT.gguf] [-lv N]",
+            "-lv,   --verbosity, --log-verbosity N      Set the verbosity threshold (default: 3)",
+        ]
         if cfg.engine == "fle":
             lines.append("--moe-expert-cache-inserts N            expert-cache inserts per step")
         sys.stdout.write("\n".join(lines) + "\n")

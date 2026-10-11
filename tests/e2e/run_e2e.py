@@ -55,7 +55,7 @@ from fake_github import FakeGitHub, release  # noqa: E402 - the stand-in for api
 UPDATE_TAG = "v9.0.0"
 UPDATE_NOTES = (
     "## What is new\n\n- A **fast** thing with `code`\n- A second thing\n\n"
-    "<script>window.__pwned = 1</script>\n<img src=x onerror=\"window.__pwned = 1\">\n"
+    '<script>window.__pwned = 1</script>\n<img src=x onerror="window.__pwned = 1">\n'
 )
 
 MODEL_NAME = "FLE Studio E2E stub"
@@ -70,8 +70,16 @@ MAX_SHOT_HEIGHT = 6000
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 # Makes the stand-in engine fast and gives the settings a sweet spot, so the tuner and the A/B/A test have something to
 # find within a few seconds. Passed to the engine through the start settings ("Extra environment"), not to Studio.
-FAST_ENV = "\n".join(["FAKE_SPEED_MODEL=1", "FAKE_TOK_PER_SEC=3000", "FAKE_PROMPT_TOK_PER_SEC=200000",
-                      "FAKE_JITTER=0", "FAKE_RUN_NOISE=0.01", "FAKE_LOAD_SECONDS=0.3"])
+FAST_ENV = "\n".join(
+    [
+        "FAKE_SPEED_MODEL=1",
+        "FAKE_TOK_PER_SEC=3000",
+        "FAKE_PROMPT_TOK_PER_SEC=200000",
+        "FAKE_JITTER=0",
+        "FAKE_RUN_NOISE=0.01",
+        "FAKE_LOAD_SECONDS=0.3",
+    ]
+)
 FLE_ENV = "\n".join([FAST_ENV, "FLE_MOE_CACHE_BUDGET_MIB=1024", "FAKE_ANSWER_TOKENS=1300"])
 
 # Settings that would change how the stand-in or Studio behave must not leak in from the caller's shell.
@@ -188,8 +196,9 @@ def kill_pid(pid: int) -> None:
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # never through a proxy: it is all loopback
 
 
-def http(method: str, url: str, *, body: Any = None, headers: dict[str, str] | None = None,
-         timeout: float = 30) -> tuple[int, bytes]:
+def http(
+    method: str, url: str, *, body: Any = None, headers: dict[str, str] | None = None, timeout: float = 30
+) -> tuple[int, bytes]:
     data = None
     sent = dict(headers or {})
     if body is not None:
@@ -237,8 +246,11 @@ def gguf_stub() -> bytes:
         ("tokenizer.chat_template", string, text("{{ messages }}")),
         ("tokenizer.ggml.tokens", array, struct.pack("<IQ", string, 100) + b"".join(text(f"t{i}") for i in range(100))),
     ]
-    tensors = [("token_embd.weight", (64, 100), 12800), ("blk.0.ffn_up_exps.weight", (64, 64, 4), 32768),
-               ("blk.0.attn_q.weight", (64, 64), 8192)]  # (name, dimensions, bytes as F16)
+    tensors = [
+        ("token_embd.weight", (64, 100), 12800),
+        ("blk.0.ffn_up_exps.weight", (64, 64, 4), 32768),
+        ("blk.0.attn_q.weight", (64, 64), 8192),
+    ]  # (name, dimensions, bytes as F16)
     out = b"GGUF" + struct.pack("<IQQ", 3, len(tensors), len(metadata))
     for key, kind, value in metadata:
         out += text(key) + struct.pack("<I", kind) + value
@@ -269,8 +281,11 @@ class StudioProcess:
         self.engine_port = 0
         self.killed = False
         self.github: FakeGitHub | None = None
-        self.env ={k: v for k, v in os.environ.items()
-                    if not k.upper().startswith(SCRUBBED_PREFIXES) and k.upper() not in SCRUBBED_NAMES}
+        self.env = {
+            k: v
+            for k, v in os.environ.items()
+            if not k.upper().startswith(SCRUBBED_PREFIXES) and k.upper() not in SCRUBBED_NAMES
+        }
         self.env.update({"PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1", "NO_PROXY": "127.0.0.1,localhost"})
 
     def _ping(self) -> dict[str, Any] | None:
@@ -288,13 +303,22 @@ class StudioProcess:
         for _ in range(3):  # a port can be taken between looking for a free one and the server binding it
             self.port = free_port()
             self.base = f"http://127.0.0.1:{self.port}"
-            cmd = [sys.executable, "-m", "fle_studio", "--home", str(self.home), "--port", str(self.port),
-                   "--no-browser"]
+            cmd = [
+                sys.executable,
+                "-m",
+                "fle_studio",
+                "--home",
+                str(self.home),
+                "--port",
+                str(self.port),
+                "--no-browser",
+            ]
             with self.log_path.open("ab") as log:
                 log.write(f"$ {' '.join(cmd)}\n".encode())
                 log.flush()
-                self.proc = subprocess.Popen(cmd, cwd=self.work, env=self.env, stdin=subprocess.DEVNULL, stdout=log,
-                                             stderr=subprocess.STDOUT)
+                self.proc = subprocess.Popen(
+                    cmd, cwd=self.work, env=self.env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT
+                )
             deadline = time.monotonic() + 60
             ping = None
             while time.monotonic() < deadline and self.proc.poll() is None:
@@ -337,8 +361,10 @@ class StudioProcess:
             if state["state"] == "crashed":
                 lines = self.api("GET", "/api/engine/log?since=0")["lines"][-12:]
                 tail = "\n".join(line["text"] for line in lines)
-                raise E2EError(f"the engine stopped with an error: {state.get('error')} "
-                               f"(exit code {state.get('exit_code')})\n{tail}")
+                raise E2EError(
+                    f"the engine stopped with an error: {state.get('error')} "
+                    f"(exit code {state.get('exit_code')})\n{tail}"
+                )
             return state if state["state"] == want else None
 
         return wait_until(probe, timeout, f"the engine to be {want}")  # type: ignore[no-any-return]
@@ -448,8 +474,16 @@ def full_page_screenshot(page: Page, path: Path) -> None:
 class Session:
     """The browser side of the run: one page whose errors are watched, and the steps that use it."""
 
-    def __init__(self, report: Report, studio: StudioProcess, page: Page, watch: PageWatch, out: Path, expect: Any,
-                 model: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        report: Report,
+        studio: StudioProcess,
+        page: Page,
+        watch: PageWatch,
+        out: Path,
+        expect: Any,
+        model: dict[str, Any],
+    ) -> None:
         self.report, self.studio, self.page, self.watch = report, studio, page, watch
         self.out, self.expect, self.model = out, expect, model
         self.chat_id = ""
@@ -488,7 +522,8 @@ class Session:
             wait_for_look(self.page, scheme, f"{name} with a {scheme} system setting")
             if self.page.locator("iframe.mcp-app").count():  # an MCP App follows the setting a moment later
                 self.expect(self.page.frame_locator("iframe.mcp-app").locator("#theme")).to_have_text(
-                    scheme, timeout=WAIT_MS)
+                    scheme, timeout=WAIT_MS
+                )
             path = self.out / f"{name}-{scheme}.png"
             full_page_screenshot(self.page, path)
             data = path.read_bytes()
@@ -510,8 +545,9 @@ class Session:
             self.expect(self.page.locator("#brand-ver")).to_have_text(f"v{self.studio.version}", timeout=WAIT_MS)
             self.expect(self.page.locator("#nav a")).to_have_count(7, timeout=WAIT_MS)
             self.expect(self.page.locator("#engine-card .pill")).to_have_text("Ready", timeout=WAIT_MS)
-            self.expect(self.page.locator(".welcome h2")).to_contain_text(f"What should {self.model['name']} work on?",
-                                                                          timeout=WAIT_MS)
+            self.expect(self.page.locator(".welcome h2")).to_contain_text(
+                f"What should {self.model['name']} work on?", timeout=WAIT_MS
+            )
             step.note = f"FLE Studio v{self.studio.version}, engine card says Ready"
 
     def chat(self) -> None:
@@ -559,8 +595,10 @@ class Session:
             chat = wait_until(stored, 15, "the finished chat to be saved")
             roles = [m["role"] for m in chat["messages"]]
             if roles != ["user", "assistant"] or not chat["messages"][1].get("reasoning"):
-                raise E2EError(f"the saved chat looks wrong: roles {roles}, reasoning kept: "
-                               f"{bool(chat['messages'][1].get('reasoning'))}")
+                raise E2EError(
+                    f"the saved chat looks wrong: roles {roles}, reasoning kept: "
+                    f"{bool(chat['messages'][1].get('reasoning'))}"
+                )
             listed = [c["id"] for c in studio.api("GET", "/api/chats")["chats"]]
             if listed != [self.chat_id]:
                 raise E2EError(f"the chat list is {listed}, expected just {self.chat_id}")
@@ -578,7 +616,9 @@ class Session:
                     .find((t) => t.textContent.includes('Generation'));
                   const value = tile && tile.querySelector('.v');
                   return !!value && /\\d/.test(value.textContent);
-                }""", timeout=WAIT_MS)
+                }""",
+                timeout=WAIT_MS,
+            )
             text = tile.locator(".v").text_content()
             speed = number_in(text)
             if not speed or not 1 <= speed <= 100_000 or "tok/s" not in (text or ""):
@@ -603,7 +643,8 @@ class Session:
             self.expect(page.locator(".msg.assistant details.think")).to_have_count(1, timeout=WAIT_MS)
             self.expect(page.locator("#chat-list .chat-item.active")).to_have_count(1, timeout=WAIT_MS)
             self.expect(page.locator(".live-panel .tile", has_text="Generation").locator(".v")).to_contain_text(
-                "tok/s", timeout=WAIT_MS)
+                "tok/s", timeout=WAIT_MS
+            )
             step.note = self.shoot("chat")
 
     # ---- chat features: attachments, versions, export and import, search, tools
@@ -625,8 +666,9 @@ class Session:
         page, studio = self.page, self.studio
         page.wait_for_function("() => /^\\/c\\/[0-9a-f]{16}$/.test(location.pathname)", timeout=WAIT_MS)
         chat_id = page.evaluate("() => location.pathname.split('/').pop()")
-        found = wait_until(lambda: (lambda c: c if want(c) else None)(studio.api("GET", f"/api/chats/{chat_id}")), 15,
-                           what)
+        found = wait_until(
+            lambda: (lambda c: c if want(c) else None)(studio.api("GET", f"/api/chats/{chat_id}")), 15, what
+        )
         return found  # type: ignore[no-any-return]
 
     def attachments(self) -> None:
@@ -644,12 +686,17 @@ class Session:
             self.expect(page.locator(".msg.assistant .stats")).to_be_visible(timeout=60_000)
             self.idle()
             sent = self.sent[-1]["messages"][-1]["content"]
-            if not isinstance(sent, str) or not (sent.startswith('<attachment name="notes.txt">') and NEEDLE in sent
-                                                 and sent.endswith("What do the notes say?")):
+            if not isinstance(sent, str) or not (
+                sent.startswith('<attachment name="notes.txt">')
+                and NEEDLE in sent
+                and sent.endswith("What do the notes say?")
+            ):
                 raise E2EError(f"the attachment did not reach the model in front of the question: {str(sent)[:200]!r}")
             self.expect(page.locator(".att-row .att-chip")).to_have_count(0, timeout=WAIT_MS)  # taken by the send
-            saved = self.saved_chat(lambda c: len(c["messages"]) == 2 and c["messages"][1].get("content"),
-                                    "the chat with the attachment to be saved")
+            saved = self.saved_chat(
+                lambda c: len(c["messages"]) == 2 and c["messages"][1].get("content"),
+                "the chat with the attachment to be saved",
+            )
             kept = (saved["messages"][0].get("attachments") or [{}])[0]
             if kept.get("name") != "notes.txt" or NEEDLE not in kept.get("text", ""):
                 raise E2EError(f"the saved chat lost the attachment: {kept}")
@@ -739,8 +786,10 @@ class Session:
             download.value.save_as(str(json_path))
             doc = json.loads(json_path.read_text(encoding="utf-8"))
             if doc.get("format") != "fle-studio-chat" or len(doc["chat"]["messages"]) != 5:
-                raise E2EError(f"the JSON export is not the whole tree: {doc.get('format')}, "
-                               f"{len(doc.get('chat', {}).get('messages', []))} messages")
+                raise E2EError(
+                    f"the JSON export is not the whole tree: {doc.get('format')}, "
+                    f"{len(doc.get('chat', {}).get('messages', []))} messages"
+                )
             step.note = "Markdown has the version on screen, JSON has all 5 messages"
 
         with self.step("Import the JSON file as a new chat") as step:
@@ -748,7 +797,9 @@ class Session:
             self.expect(page.locator("#toasts .toast.good")).to_contain_text("Imported", timeout=WAIT_MS)
             page.wait_for_function(
                 "(old) => /^\\/c\\/[0-9a-f]{16}$/.test(location.pathname) && !location.pathname.endsWith(old)",
-                arg=self.chat_id, timeout=WAIT_MS)
+                arg=self.chat_id,
+                timeout=WAIT_MS,
+            )
             self.expect(page.locator(".msg.user .bubble")).to_have_text(EDITED, timeout=WAIT_MS)
             self.expect(page.locator(".msg.user .switcher .num")).to_have_text("2 / 2", timeout=WAIT_MS)
             after = len(studio.api("GET", "/api/chats")["chats"])
@@ -802,8 +853,11 @@ class Session:
             config = json.dumps({"mcpServers": {"fake": {"command": sys.executable, "args": [str(FAKE_MCP)]}}})
             studio.api("POST", "/api/settings", {"tools": {"mcp_enabled": True, "mcp_json": config}})
             studio.api("POST", "/api/tools/reload")
-            wait_until(lambda: any(t["name"] == "fake__write_note" for t in studio.api("GET", "/api/tools")["tools"]),
-                       30, "the MCP server's tools to be listed")
+            wait_until(
+                lambda: any(t["name"] == "fake__write_note" for t in studio.api("GET", "/api/tools")["tools"]),
+                30,
+                "the MCP server's tools to be listed",
+            )
             self.new_chat()
             self.expect(page.locator("button.chip", has_text="Tools ·")).to_be_visible(timeout=WAIT_MS)
             self.send('CALL_TOOL fake__write_note {"text": "from the e2e test"}')
@@ -826,8 +880,11 @@ class Session:
             self.expect(card.last.locator(".pill")).to_contain_text("Declined", timeout=WAIT_MS)
             self.expect(page.locator(".msg.assistant .body > .md").last).to_contain_text("declined", timeout=60_000)
             self.idle()
-            notes = studio.api("POST", "/api/tools/call", {"name": "fake__write_note", "arguments": {"text": "probe"},
-                                                           "approved": True})["content"]
+            notes = studio.api(
+                "POST",
+                "/api/tools/call",
+                {"name": "fake__write_note", "arguments": {"text": "probe"}, "approved": True},
+            )["content"]
             if notes != "saved note 2":
                 raise E2EError(f"the declined call still ran on the server (the next note is {notes!r}, expected 2)")
             step.note = "the server never ran it"
@@ -843,9 +900,12 @@ class Session:
         """A web MCP server that wants a sign-in (OAuth), and an MCP App in the chat."""
         page, studio = self.page, self.studio
         port = free_port()
-        proc = subprocess.Popen([sys.executable, str(FAKE_MCP), "--http", str(port), "--oauth"],
-                                env={k: v for k, v in os.environ.items() if not k.startswith("FAKE_")},
-                                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(
+            [sys.executable, str(FAKE_MCP), "--http", str(port), "--oauth"],
+            env={k: v for k, v in os.environ.items() if not k.startswith("FAKE_")},
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
         try:
             assert proc.stderr is not None
             proc.stderr.readline()
@@ -854,15 +914,26 @@ class Session:
             row = page.locator(".mcp-row[data-server='web']")
 
             with self.step("A web MCP server asks for a sign-in, and Sign in connects it") as step:
-                config = json.dumps({"mcpServers": {
-                    "fake": {"command": sys.executable, "args": [str(FAKE_MCP)]},
-                    "web": {"url": remote + "/mcp"}}})
-                studio.api("POST", "/api/settings", {"tools": {"mcp_enabled": True, "mcp_json": config,
-                                                               "mcp_trusted": []}})
+                config = json.dumps(
+                    {
+                        "mcpServers": {
+                            "fake": {"command": sys.executable, "args": [str(FAKE_MCP)]},
+                            "web": {"url": remote + "/mcp"},
+                        }
+                    }
+                )
+                studio.api(
+                    "POST", "/api/settings", {"tools": {"mcp_enabled": True, "mcp_json": config, "mcp_trusted": []}}
+                )
                 studio.api("POST", "/api/tools/reload")
-                wait_until(lambda: any(sv["name"] == "web" and sv["status"] == "auth_required"
-                                       for sv in studio.api("GET", "/api/tools")["servers"]), 30,
-                           "the web server to ask for a sign-in")
+                wait_until(
+                    lambda: any(
+                        sv["name"] == "web" and sv["status"] == "auth_required"
+                        for sv in studio.api("GET", "/api/tools")["servers"]
+                    ),
+                    30,
+                    "the web server to ask for a sign-in",
+                )
                 self.go("Settings", "/settings", "Settings")
                 self.expect(row.locator(".pill")).to_have_text("Sign-in needed", timeout=WAIT_MS)
                 self.expect(row.locator("[data-act='signin']")).to_be_visible(timeout=WAIT_MS)
@@ -884,13 +955,19 @@ class Session:
                 token = json.loads(files[0].read_text(encoding="utf-8"))["access_token"]
                 if token in page_text or token in json.dumps(studio.api("GET", "/api/settings")):
                     raise E2EError("the access token reached the page or the settings")
-                step.note = ("the 401 led to discovery, registration and PKCE; token file mode 0600; " + needed + "; "
-                             + self.shoot("settings-mcp-signed-in"))
+                step.note = (
+                    "the 401 led to discovery, registration and PKCE; token file mode 0600; "
+                    + needed
+                    + "; "
+                    + self.shoot("settings-mcp-signed-in")
+                )
 
             with self.step("The tool of an MCP App shows its app in the chat, inside a sandboxed frame") as step:
-                wait_until(lambda: any(t["name"] == "web__show_chart"
-                                       for t in studio.api("GET", "/api/tools")["tools"]), 30,
-                           "the web server's tools to be listed")
+                wait_until(
+                    lambda: any(t["name"] == "web__show_chart" for t in studio.api("GET", "/api/tools")["tools"]),
+                    30,
+                    "the web server's tools to be listed",
+                )
                 self.new_chat()
                 self.expect(page.locator("button.chip", has_text="Tools ·")).to_be_visible(timeout=WAIT_MS)
                 self.send('CALL_TOOL web__show_chart {"title": "E2E chart"}')
@@ -906,17 +983,20 @@ class Session:
                 inside = next(f for f in page.frames if "/app-frame/" in f.url)
                 origin = inside.evaluate("() => window.origin")
                 reach = inside.evaluate(
-                    "() => { try { return typeof parent.document.title; } catch (e) { return 'blocked'; } }")
+                    "() => { try { return typeof parent.document.title; } catch (e) { return 'blocked'; } }"
+                )
                 storage = inside.evaluate(
-                    "() => { try { return typeof localStorage; } catch (e) { return 'blocked'; } }")
+                    "() => { try { return typeof localStorage; } catch (e) { return 'blocked'; } }"
+                )
                 fetched = inside.evaluate("() => fetch('/api/tools').then(() => 'reached', () => 'blocked')")
                 blocked = [e for e in self.watch.errors if "Content Security Policy" in e]
                 if not blocked:
                     raise E2EError("the browser did not report that the app's fetch broke the frame's CSP")
                 self.watch.errors = [e for e in self.watch.errors if "Content Security Policy" not in e]  # expected
                 if origin != "null" or reach != "blocked" or storage != "blocked" or fetched != "blocked":
-                    raise E2EError(f"the app is not isolated: origin {origin}, parent {reach}, storage {storage}, "
-                                   f"fetch {fetched}")
+                    raise E2EError(
+                        f"the app is not isolated: origin {origin}, parent {reach}, storage {storage}, fetch {fetched}"
+                    )
                 self.idle()
                 step.note = "iframe sandbox=allow-scripts; origin null; no access to the page, storage or Studio's API"
 
@@ -944,8 +1024,10 @@ class Session:
                 app.locator("#b4").click()  # a writing tool, from the app
                 dialog.get_by_role("button", name="Allow once").click()
                 self.expect(app.locator("#reply")).to_contain_text("saved note", timeout=WAIT_MS)
-                step.note = "declined once (nothing ran), allowed once (count 1), writing call asked too; " + \
-                    self.shoot("chat-mcp-app-call")
+                step.note = (
+                    "declined once (nothing ran), allowed once (count 1), writing call asked too; "
+                    + self.shoot("chat-mcp-app-call")
+                )
 
             with self.step("The app can put a message into the chat only after you agree; links ask too") as step:
                 app.locator("#b3").click()
@@ -964,8 +1046,9 @@ class Session:
                 self.expect(page.locator(".toolcard").first).to_be_visible(timeout=WAIT_MS)
                 self.expect(page.locator("iframe.mcp-app")).to_have_count(0, timeout=WAIT_MS)
                 page.locator(".app-open").first.click()
-                self.expect(page.frame_locator("iframe.mcp-app").locator("#title")).to_have_text("E2E chart",
-                                                                                                  timeout=WAIT_MS)
+                self.expect(page.frame_locator("iframe.mcp-app").locator("#title")).to_have_text(
+                    "E2E chart", timeout=WAIT_MS
+                )
                 self.go("Settings", "/settings", "Settings")
                 self.expect(row.locator("[data-act='signout']")).to_be_visible(timeout=WAIT_MS)
                 row.locator("[data-act='signout']").click()
@@ -979,9 +1062,11 @@ class Session:
                 config = json.dumps({"mcpServers": {"fake": {"command": sys.executable, "args": [str(FAKE_MCP)]}}})
                 studio.api("POST", "/api/settings", {"tools": {"mcp_json": config}})
                 studio.api("POST", "/api/tools/reload")
-                wait_until(lambda: any(t["name"] == "fake__write_note"
-                                       for t in studio.api("GET", "/api/tools")["tools"]), 30,
-                           "the stdio server to be back")
+                wait_until(
+                    lambda: any(t["name"] == "fake__write_note" for t in studio.api("GET", "/api/tools")["tools"]),
+                    30,
+                    "the stdio server to be back",
+                )
                 step.note = "only the stdio server is left"
         finally:
             proc.kill()
@@ -1022,8 +1107,9 @@ class Session:
             self.expect(page.get_by_text(f"{self.studio.base}/v1", exact=True)).to_be_visible(timeout=WAIT_MS)
             command = page.locator(".card", has=page.get_by_role("heading", name="Command", exact=True)).locator(".cmd")
             self.expect(command).to_contain_text(Path(self.model["path"]).name, timeout=WAIT_MS)
-            page.wait_for_function("() => /listening/i.test(document.querySelector('.log')?.innerText || '')",
-                                   timeout=WAIT_MS)
+            page.wait_for_function(
+                "() => /listening/i.test(document.querySelector('.log')?.innerText || '')", timeout=WAIT_MS
+            )
             step.note = "status, command and engine log; " + self.shoot("engine")
 
     def experiments(self) -> None:
@@ -1091,8 +1177,11 @@ class Session:
 
         with self.step("Forge page: the calculator picks layers within a size budget") as step:
             next_step()
-            limits = studio.api("POST", "/api/forge/calculate", {"mode": "hybrid", "base": "B", "budget_gb": 1,
-                                                                   "sources": {"B": str(high), "K": str(low)}})
+            limits = studio.api(
+                "POST",
+                "/api/forge/calculate",
+                {"mode": "hybrid", "base": "B", "budget_gb": 1, "sources": {"B": str(high), "K": str(low)}},
+            )
             selection = limits["selection"]
             middle = (selection["min_bytes"] + selection["max_bytes"]) / 2 / 1e9
             page.locator("#fg-budget").fill(f"{middle:.9f}")
@@ -1258,8 +1347,10 @@ class Session:
             row = page.locator("tr.click", has_text="with knowledge")
             self.expect(row).to_contain_text("KLD", timeout=WAIT_MS)
             self.expect(row.locator(".ci").first).to_be_visible(timeout=WAIT_MS)
-            step.note = (f"KL divergence {mean:.4f}, knowledge {probe['correct']} of {probe['n']}, decode "
-                         f"{ci['median']:g} tok/s [{ci['lo']:g} to {ci['hi']:g}]; " + self.shoot("experiments-quality"))
+            step.note = (
+                f"KL divergence {mean:.4f}, knowledge {probe['correct']} of {probe['n']}, decode "
+                f"{ci['median']:g} tok/s [{ci['lo']:g} to {ci['hi']:g}]; " + self.shoot("experiments-quality")
+            )
 
     def cache_page(self) -> None:
         page, studio = self.page, self.studio
@@ -1273,18 +1364,26 @@ class Session:
             status, raw = http("POST", base + "/v1/chat/completions", body=body, timeout=120)
             if status != 200:
                 raise E2EError(f"the engine answered {status} to the long request: {raw[:200]!r}")
-            snap = wait_until(lambda: (lambda d: d if d["available"]["layers"] and d["available"]["hot"] else None)(
-                studio.api("GET", "/api/cache")), 30, "the cache lines to arrive")
+            snap = wait_until(
+                lambda: (lambda d: d if d["available"]["layers"] and d["available"]["hot"] else None)(
+                    studio.api("GET", "/api/cache")
+                ),
+                30,
+                "the cache lines to arrive",
+            )
             if len(snap["layers"]) != 2 or len(snap["overall"]["series"]) < 2:
-                raise E2EError(f"unexpected cache data: {len(snap['layers'])} layers, "
-                               f"{len(snap['overall']['series'])} points")
+                raise E2EError(
+                    f"unexpected cache data: {len(snap['layers'])} layers, {len(snap['overall']['series'])} points"
+                )
             self.expect(page.locator(".layer-cell")).to_have_count(2, timeout=WAIT_MS)
             self.expect(page.get_by_text("What this engine does not tell us yet")).to_have_count(0, timeout=WAIT_MS)
             page.locator(".layer-cell").first.click()
             self.expect(page.locator(".hot-cell").first).to_be_visible(timeout=WAIT_MS)
             self.expect(page.locator(".cache-top .fact").first).to_contain_text("%", timeout=WAIT_MS)
-            step.note = (f"hit rate {snap['overall']['hit_rate']} % over {len(snap['overall']['series'])} points, "
-                         f"{len(snap['layers'])} layers; " + empty + ", " + self.shoot("cache"))
+            step.note = (
+                f"hit rate {snap['overall']['hit_rate']} % over {len(snap['overall']['series'])} points, "
+                f"{len(snap['layers'])} layers; " + empty + ", " + self.shoot("cache")
+            )
 
     def tuning(self) -> None:
         page, studio = self.page, self.studio
@@ -1327,9 +1426,18 @@ class Session:
                 args[args.index("-t") + 1] = "1"
             else:
                 args += ["-t", "1"]
-            studio.api("POST", "/api/profiles", {"name": "E2E one thread", "engine": slow["engine"],
-                                                 "binary": slow["binary"],
-                                                 "args": args, "env": slow["env"], "notes": "slow on purpose"})
+            studio.api(
+                "POST",
+                "/api/profiles",
+                {
+                    "name": "E2E one thread",
+                    "engine": slow["engine"],
+                    "binary": slow["binary"],
+                    "args": args,
+                    "env": slow["env"],
+                    "notes": "slow on purpose",
+                },
+            )
             studio.api("POST", "/api/engine/stop")
             studio.wait_engine("stopped", 30)
             page.reload(wait_until="domcontentloaded")  # the page learns about the new profile
@@ -1446,24 +1554,28 @@ class Session:
 # ------------------------------------------------------------------------------------------------ the run
 
 
-def run_browser(args: argparse.Namespace, report: Report, studio: StudioProcess, out: Path,
-                model: dict[str, Any]) -> None:
+def run_browser(
+    args: argparse.Namespace, report: Report, studio: StudioProcess, out: Path, model: dict[str, Any]
+) -> None:
     try:
         from playwright.sync_api import expect, sync_playwright  # imported here to give a clear message when missing
     except ImportError:
-        raise E2EError("Playwright is not installed: python -m pip install playwright && "
-                       "python -m playwright install chromium") from None
+        raise E2EError(
+            "Playwright is not installed: python -m pip install playwright && python -m playwright install chromium"
+        ) from None
 
     with sync_playwright() as pw:
         with report.step("Launch the browser") as step:
             browser = pw.chromium.launch(headless=not args.headed, channel=args.channel)
-            step.note = (f"{args.channel or 'Playwright Chromium'} {browser.version}, "
-                         f"{'headed' if args.headed else 'headless'}")
+            step.note = (
+                f"{args.channel or 'Playwright Chromium'} {browser.version}, {'headed' if args.headed else 'headless'}"
+            )
         page = None
         watch = None
         try:
-            context = browser.new_context(viewport=VIEWPORT, device_scale_factor=1, locale="en-US",
-                                          color_scheme="light", reduced_motion="reduce")
+            context = browser.new_context(
+                viewport=VIEWPORT, device_scale_factor=1, locale="en-US", color_scheme="light", reduced_motion="reduce"
+            )
             context.set_default_timeout(WAIT_MS)
             page = context.new_page()
             watch = PageWatch(page)
@@ -1579,8 +1691,9 @@ def collect_logs(work: Path, out: Path) -> None:
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Browser end-to-end test of FLE Studio against the stand-in engine.")
     parser.add_argument("--out", default="e2e-out", help="folder for the screenshots and logs (default: e2e-out)")
-    parser.add_argument("--channel", help="use an installed browser instead of Playwright's Chromium, "
-                        "e.g. chrome or msedge")
+    parser.add_argument(
+        "--channel", help="use an installed browser instead of Playwright's Chromium, e.g. chrome or msedge"
+    )
     parser.add_argument("--headed", action="store_true", help="show the browser window (default: headless)")
     return parser.parse_args(argv)
 
@@ -1621,8 +1734,10 @@ def main(argv: list[str] | None = None) -> int:
             collect_logs(work, out)
         shutil.rmtree(work, ignore_errors=True)
     if status == 0:
-        say(f"E2E PASSED: {report.number} steps, {len(report.screenshots)} screenshots in {out} "
-            f"({time.monotonic() - started:.0f} s)")
+        say(
+            f"E2E PASSED: {report.number} steps, {len(report.screenshots)} screenshots in {out} "
+            f"({time.monotonic() - started:.0f} s)"
+        )
     return status
 
 

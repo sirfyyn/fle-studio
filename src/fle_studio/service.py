@@ -30,29 +30,73 @@ from . import gguf, paths
 
 ACTIONS = ("start", "stop", "restart")
 UNIT_RE = re.compile(r"^[A-Za-z0-9@._:\\-]+\.service$")
-PROPS = ("LoadState", "ActiveState", "SubState", "Result", "MainPID", "ExecMainCode", "ExecMainStatus",
-         "UnitFileState", "Description", "User", "WorkingDirectory", "ActiveEnterTimestamp", "InactiveEnterTimestamp",
-         "InactiveExitTimestamp", "ExecMainStartTimestamp", "ExecStart", "Environment")
+PROPS = (
+    "LoadState",
+    "ActiveState",
+    "SubState",
+    "Result",
+    "MainPID",
+    "ExecMainCode",
+    "ExecMainStatus",
+    "UnitFileState",
+    "Description",
+    "User",
+    "WorkingDirectory",
+    "ActiveEnterTimestamp",
+    "InactiveEnterTimestamp",
+    "InactiveExitTimestamp",
+    "ExecMainStartTimestamp",
+    "ExecStart",
+    "Environment",
+)
 # llama-server options FLE Studio reads from the unit's command; long spellings map to the short ones.
-OPTIONS = {"-m": "-m", "--model": "-m", "-md": "-md", "--model-draft": "-md", "--host": "--host",
-           "--port": "--port", "-a": "-a", "--alias": "-a", "--moe-expert-cache": "--moe-expert-cache",
-           "-lv": "-lv", "--verbosity": "-lv", "--log-verbosity": "-lv"}
-ENV_OPTIONS = {"LLAMA_ARG_MODEL": "-m", "LLAMA_ARG_MODEL_DRAFT": "-md", "LLAMA_ARG_HOST": "--host",
-               "LLAMA_ARG_PORT": "--port", "LLAMA_ARG_ALIAS": "-a", "LLAMA_ARG_MOE_EXPERT_CACHE": "--moe-expert-cache",
-               "LLAMA_ARG_LOG_VERBOSITY": "-lv"}
+OPTIONS = {
+    "-m": "-m",
+    "--model": "-m",
+    "-md": "-md",
+    "--model-draft": "-md",
+    "--host": "--host",
+    "--port": "--port",
+    "-a": "-a",
+    "--alias": "-a",
+    "--moe-expert-cache": "--moe-expert-cache",
+    "-lv": "-lv",
+    "--verbosity": "-lv",
+    "--log-verbosity": "-lv",
+}
+ENV_OPTIONS = {
+    "LLAMA_ARG_MODEL": "-m",
+    "LLAMA_ARG_MODEL_DRAFT": "-md",
+    "LLAMA_ARG_HOST": "--host",
+    "LLAMA_ARG_PORT": "--port",
+    "LLAMA_ARG_ALIAS": "-a",
+    "LLAMA_ARG_MOE_EXPERT_CACHE": "--moe-expert-cache",
+    "LLAMA_ARG_LOG_VERBOSITY": "-lv",
+}
 VERBOSE_FLAGS = ("-v", "--verbose", "--log-verbose")  # log everything
 # llama.cpp logs its library lines (the FLE expert-cache hit rate among them) at level 4; without -lv it shows up to 3.
 DEFAULT_LOG_LEVEL = 3
 CACHE_LOG_LEVEL = 4
 SECRET_OPTIONS = ("--api-key", "--hf-token", "-hft")  # shown as <hidden>
 DENIED = re.compile(r"access denied|interactive authentication required|not authorized|permission denied", re.I)
-SUDO_DENIED = re.compile(r"password is required|not allowed to|terminal is required|not in the sudoers|"
-                         r"may not run sudo|no askpass", re.I)
+SUDO_DENIED = re.compile(
+    r"password is required|not allowed to|terminal is required|not in the sudoers|"
+    r"may not run sudo|no askpass",
+    re.I,
+)
 # systemd reports Linux signal numbers; Python's signal module only knows the host's own (Windows has no SIGKILL).
-LINUX_SIGNALS = dict(enumerate(
-    ("SIGHUP SIGINT SIGQUIT SIGILL SIGTRAP SIGABRT SIGBUS SIGFPE SIGKILL SIGUSR1 SIGSEGV SIGUSR2 SIGPIPE SIGALRM "
-     "SIGTERM SIGSTKFLT SIGCHLD SIGCONT SIGSTOP SIGTSTP SIGTTIN SIGTTOU SIGURG SIGXCPU SIGXFSZ SIGVTALRM SIGPROF "
-     "SIGWINCH SIGIO SIGPWR SIGSYS").split(), start=1))
+LINUX_SIGNALS = dict(
+    enumerate(
+        (
+            "SIGHUP SIGINT SIGQUIT SIGILL SIGTRAP SIGABRT SIGBUS SIGFPE SIGKILL SIGUSR1 SIGSEGV SIGUSR2 SIGPIPE "
+            "SIGALRM "
+            "SIGTERM SIGSTKFLT SIGCHLD SIGCONT SIGSTOP SIGTSTP SIGTTIN SIGTTOU SIGURG SIGXCPU SIGXFSZ SIGVTALRM "
+            "SIGPROF "
+            "SIGWINCH SIGIO SIGPWR SIGSYS"
+        ).split(),
+        start=1,
+    )
+)
 RESULTS = {
     "exit-code": "exited with an error",
     "signal": "was ended by a signal",
@@ -61,7 +105,7 @@ RESULTS = {
     "oom-kill": "was killed because the computer ran out of memory",
     "watchdog": "stopped answering its watchdog",
     "start-limit-hit": "failed too often in a row, so systemd gave up (`systemctl reset-failed {unit}` lets it "
-                       "start again)",
+    "start again)",
     "exec-condition": "did not start: its start condition (ExecCondition) said no",
     "condition": "did not start: one of its conditions was not met",
     "resources": "could not get what it needs to run (a missing file, directory or user?)",
@@ -93,8 +137,17 @@ def environment() -> dict[str, str]:
 
 
 def _run(cmd: list[str], timeout: float = 15.0) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
-                          env=environment(), stdin=subprocess.DEVNULL, check=False)
+    return subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+        env=environment(),
+        stdin=subprocess.DEVNULL,
+        check=False,
+    )
 
 
 def _message(r: subprocess.CompletedProcess[str]) -> str:
@@ -132,8 +185,16 @@ class Unit:
 
     def journal_command(self, lines: int = 200) -> list[str]:
         which = ["--user-unit", self.name] if self.user else ["--unit", self.name]
-        return ["journalctl", *which, "--follow", f"--lines={lines}", "--output=json", "--output-fields=MESSAGE,_PID",
-                "--all", "--no-pager"]
+        return [
+            "journalctl",
+            *which,
+            "--follow",
+            f"--lines={lines}",
+            "--output=json",
+            "--output-fields=MESSAGE,_PID",
+            "--all",
+            "--no-pager",
+        ]
 
 
 def find(name: str) -> tuple[Unit, dict[str, str]]:
@@ -308,9 +369,12 @@ def failure(unit: Unit, props: dict[str, str]) -> str:
 
 def summary(unit: Unit, props: dict[str, str]) -> dict[str, Any]:
     active = props.get("ActiveState", "")
-    since = {"active": "ActiveEnterTimestamp", "activating": "InactiveExitTimestamp",
-             "reloading": "ActiveEnterTimestamp", "deactivating": "ActiveEnterTimestamp"}.get(
-        active, "InactiveEnterTimestamp")
+    since = {
+        "active": "ActiveEnterTimestamp",
+        "activating": "InactiveExitTimestamp",
+        "reloading": "ActiveEnterTimestamp",
+        "deactivating": "ActiveEnterTimestamp",
+    }.get(active, "InactiveEnterTimestamp")
     opts = options(props)
     expert_cache = _number(opts.get("--moe-expert-cache"), 0) > 0
     log_level = _number(opts.get("-lv"), DEFAULT_LOG_LEVEL)
@@ -345,9 +409,11 @@ def permission_help(unit: Unit) -> str:
         user = getpass.getuser()
     except (KeyError, OSError):
         user = "youruser"
-    return (f"FLE Studio may not start or stop {unit.name}. Allow it without a password, for example with this "
-            f"line in /etc/sudoers.d/fle-studio (edit it with: sudo visudo -f /etc/sudoers.d/fle-studio): "
-            f"{user} ALL=(root) NOPASSWD: {rule}")
+    return (
+        f"FLE Studio may not start or stop {unit.name}. Allow it without a password, for example with this "
+        f"line in /etc/sudoers.d/fle-studio (edit it with: sudo visudo -f /etc/sudoers.d/fle-studio): "
+        f"{user} ALL=(root) NOPASSWD: {rule}"
+    )
 
 
 def act(unit: Unit, action: str) -> str:

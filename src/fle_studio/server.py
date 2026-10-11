@@ -62,9 +62,20 @@ from .metrics import Live
 LOOPBACK_NAMES = {"127.0.0.1", "::1", "localhost"}
 MAX_JSON = 4 * 1024 * 1024
 MAX_PROXY = 64 * 1024 * 1024
-STATIC_TYPES = {".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css",
-                ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".webp": "image/webp",
-                ".woff2": "font/woff2", ".json": "application/json", ".txt": "text/plain", ".md": "text/markdown"}
+STATIC_TYPES = {
+    ".html": "text/html",
+    ".js": "text/javascript",
+    ".mjs": "text/javascript",
+    ".css": "text/css",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".ico": "image/x-icon",
+    ".webp": "image/webp",
+    ".woff2": "font/woff2",
+    ".json": "application/json",
+    ".txt": "text/plain",
+    ".md": "text/markdown",
+}
 
 
 class ApiError(Exception):
@@ -104,14 +115,27 @@ class Studio:
         self.live = Live(self.engine)
         self.chats = Chats(self.data_dir)
         self.bench = bench.Bench(self.engine, self.data_dir)
-        self.forge = Forge(self.data_dir, self.config.get, lambda: self.config.models_dir, self.forge_engine_paths,
-                           self.library, self.profiles)
+        self.forge = Forge(
+            self.data_dir,
+            self.config.get,
+            lambda: self.config.models_dir,
+            self.forge_engine_paths,
+            self.library,
+            self.profiles,
+        )
         self.quality = quality.Quality(self.data_dir)
         self.cache = CacheWatch()
         self.engine.line_listeners.append(self.cache.feed)
-        self.tuner = tuner.Tuner(tuner.Host(
-            engine=self.engine, bench=self.bench, profiles=self.profiles, data_dir=self.data_dir,
-            make_plan=self.make_plan, sysinfo=self.sysinfo))
+        self.tuner = tuner.Tuner(
+            tuner.Host(
+                engine=self.engine,
+                bench=self.bench,
+                profiles=self.profiles,
+                data_dir=self.data_dir,
+                make_plan=self.make_plan,
+                sysinfo=self.sysinfo,
+            )
+        )
         self.token = secrets.token_urlsafe(24)
         self.lan = False
         self._sys: tuple[float, dict[str, Any] | None] = (0.0, None)
@@ -173,8 +197,9 @@ class Studio:
                 if not model["complete"]:
                     raise ApiError(409, "This model is not completely downloaded yet")
                 eng = self.engine_for("auto", info)
-                return launch.auto_plan(model=model, engine=eng, settings=settings, sysinfo=info, port=port,
-                                        data_dir=self.data_dir)
+                return launch.auto_plan(
+                    model=model, engine=eng, settings=settings, sysinfo=info, port=port, data_dir=self.data_dir
+                )
             prof = self.profiles.get(prof_id)
             if not prof:
                 raise ApiError(404, f"No launch profile {prof_id}")
@@ -183,8 +208,15 @@ class Studio:
                 eng = self.engines.detect(prof.binary) if prof.binary and "{" not in prof.binary else None
             else:
                 eng = self.engine_for(prof.engine, info)
-            return launch.profile_plan(profile=prof, model=model, engine=eng, settings=settings, sysinfo=info,
-                                       port=port, data_dir=self.data_dir)
+            return launch.profile_plan(
+                profile=prof,
+                model=model,
+                engine=eng,
+                settings=settings,
+                sysinfo=info,
+                port=port,
+                data_dir=self.data_dir,
+            )
         except launch.PlanError as exc:
             raise ApiError(400, str(exc)) from None
 
@@ -215,10 +247,13 @@ class Studio:
         refs = list(model.files)
         if with_mtp and model.mtp:
             refs += [catalog.MTP_HEAD, catalog.MTP_VOCAB]
-        files = [{"url": hf.resolve_url(r.repo, r.path), "dest": root / r.repo / r.path, "size": r.size,
-                  "sha256": r.sha256} for r in refs]
-        return self.downloads.add(title=model.name, files=files, kind="model", dedupe=f"catalog:{ident}",
-                                  meta={"catalog_id": ident})
+        files = [
+            {"url": hf.resolve_url(r.repo, r.path), "dest": root / r.repo / r.path, "size": r.size, "sha256": r.sha256}
+            for r in refs
+        ]
+        return self.downloads.add(
+            title=model.name, files=files, kind="model", dedupe=f"catalog:{ident}", meta={"catalog_id": ident}
+        )
 
     def download_hf(self, repo: str, revision: str, wanted: list[str]) -> dict[str, Any]:
         token = self.config.get("hf_token")
@@ -231,11 +266,18 @@ class Studio:
         for p in wanted:
             f = tree[p]
             lfs = f.get("lfs") or {}
-            files.append({"url": hf.resolve_url(repo, p, revision), "dest": root / repo / p,
-                          "size": int(f.get("size") or 0), "sha256": lfs.get("oid")})
+            files.append(
+                {
+                    "url": hf.resolve_url(repo, p, revision),
+                    "dest": root / repo / p,
+                    "size": int(f.get("size") or 0),
+                    "sha256": lfs.get("oid"),
+                }
+            )
         title = f"{repo.split('/')[-1]} · {hf.quant_label(wanted[0].rsplit('/', 1)[-1])}"
-        return self.downloads.add(title=title, files=files, kind="model",
-                                  dedupe=f"hf:{repo}:{','.join(sorted(wanted))}")
+        return self.downloads.add(
+            title=title, files=files, kind="model", dedupe=f"hf:{repo}:{','.join(sorted(wanted))}"
+        )
 
     def state(self) -> dict[str, Any]:
         info = self.sysinfo()
@@ -262,60 +304,67 @@ class Studio:
 # ---------------------------------------------------------------------------------------------- HTTP
 
 
-ROUTES: list[tuple[str, re.Pattern[str], str]] = [(m, re.compile(p), n) for m, p, n in [
-    ("GET", r"^/api/ping$", "ping"),
-    ("GET", r"^/api/state$", "state"),
-    ("GET", r"^/api/system$", "system"),
-    ("GET", r"^/api/models$", "models"),
-    ("POST", r"^/api/models/add$", "models_add"),
-    ("POST", r"^/api/models/(?P<id>[0-9a-f]{12})/remove$", "models_remove"),
-    ("GET", r"^/api/catalog$", "catalog"),
-    ("POST", r"^/api/catalog/(?P<id>[\w.-]+)/download$", "catalog_download"),
-    ("GET", r"^/api/hf/search$", "hf_search"),
-    ("GET", r"^/api/hf/repo$", "hf_repo"),
-    ("POST", r"^/api/hf/download$", "hf_download"),
-    ("GET", r"^/api/downloads$", "downloads"),
-    ("POST", r"^/api/downloads/(?P<id>[0-9a-f]+)/(?P<action>pause|resume|cancel|remove)$", "download_action"),
-    ("GET", r"^/api/engines$", "engines"),
-    ("POST", r"^/api/engines/install$", "engines_install"),
-    ("POST", r"^/api/engines/check$", "engines_check"),
-    ("POST", r"^/api/engines/(?P<id>[\w.-]+)/remove$", "engines_remove"),
-    ("GET", r"^/api/engine$", "engine_status"),
-    ("GET", r"^/api/engine/log$", "engine_log"),
-    ("POST", r"^/api/engine/preview$", "engine_preview"),
-    ("POST", r"^/api/engine/start$", "engine_start"),
-    ("POST", r"^/api/engine/stop$", "engine_stop"),
-    ("POST", r"^/api/engine/attach$", "engine_attach"),
-    ("POST", r"^/api/engine/service/(?P<action>start|stop|restart)$", "engine_service"),
-    ("GET", r"^/api/live$", "live"),
-    ("GET", r"^/api/settings$", "settings"),
-    ("POST", r"^/api/settings$", "settings_update"),
-    ("GET", r"^/api/profiles$", "profiles"),
-    ("POST", r"^/api/profiles$", "profiles_save"),
-    ("POST", r"^/api/profiles/(?P<id>[\w.-]+)/delete$", "profiles_delete"),
-    ("GET", r"^/api/chats$", "chats"),
-    ("POST", r"^/api/chats$", "chat_create"),
-    ("GET", r"^/api/chats/(?P<id>[0-9a-f]{16})$", "chat_get"),
-    ("PUT", r"^/api/chats/(?P<id>[0-9a-f]{16})$", "chat_put"),
-    ("DELETE", r"^/api/chats/(?P<id>[0-9a-f]{16})$", "chat_delete"),
-    ("GET", r"^/api/bench$", "bench"),
-    ("POST", r"^/api/bench/start$", "bench_start"),
-    ("POST", r"^/api/bench/cancel$", "bench_cancel"),
-    ("POST", r"^/api/bench/(?P<id>[0-9a-f]+)/delete$", "bench_delete"),
-    ("GET", r"^/api/forge$", "forge"),
-    ("POST", r"^/api/forge/tools$", "forge_tools"),
-    ("POST", r"^/api/forge/inspect$", "forge_inspect"),
-    ("POST", r"^/api/forge/calculate$", "forge_calculate"),
-    ("POST", r"^/api/forge/corpus$", "forge_corpus"),
-    ("POST", r"^/api/forge/recipe/import$", "forge_recipe_import"),
-    ("POST", r"^/api/forge/recipe/share$", "forge_recipe_share"),
-    ("POST", r"^/api/forge/check$", "forge_check"),
-    ("POST", r"^/api/forge/jobs$", "forge_job_create"),
-    ("GET", r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})$", "forge_job"),
-    ("GET", r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})/log$", "forge_job_log"),
-    ("GET", r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})/recipe$", "forge_job_recipe"),
-    ("POST", r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})/(?P<action>cancel|resume|delete|publish)$", "forge_job_action"),
-]]
+ROUTES: list[tuple[str, re.Pattern[str], str]] = [
+    (m, re.compile(p), n)
+    for m, p, n in [
+        ("GET", r"^/api/ping$", "ping"),
+        ("GET", r"^/api/state$", "state"),
+        ("GET", r"^/api/system$", "system"),
+        ("GET", r"^/api/models$", "models"),
+        ("POST", r"^/api/models/add$", "models_add"),
+        ("POST", r"^/api/models/(?P<id>[0-9a-f]{12})/remove$", "models_remove"),
+        ("GET", r"^/api/catalog$", "catalog"),
+        ("POST", r"^/api/catalog/(?P<id>[\w.-]+)/download$", "catalog_download"),
+        ("GET", r"^/api/hf/search$", "hf_search"),
+        ("GET", r"^/api/hf/repo$", "hf_repo"),
+        ("POST", r"^/api/hf/download$", "hf_download"),
+        ("GET", r"^/api/downloads$", "downloads"),
+        ("POST", r"^/api/downloads/(?P<id>[0-9a-f]+)/(?P<action>pause|resume|cancel|remove)$", "download_action"),
+        ("GET", r"^/api/engines$", "engines"),
+        ("POST", r"^/api/engines/install$", "engines_install"),
+        ("POST", r"^/api/engines/check$", "engines_check"),
+        ("POST", r"^/api/engines/(?P<id>[\w.-]+)/remove$", "engines_remove"),
+        ("GET", r"^/api/engine$", "engine_status"),
+        ("GET", r"^/api/engine/log$", "engine_log"),
+        ("POST", r"^/api/engine/preview$", "engine_preview"),
+        ("POST", r"^/api/engine/start$", "engine_start"),
+        ("POST", r"^/api/engine/stop$", "engine_stop"),
+        ("POST", r"^/api/engine/attach$", "engine_attach"),
+        ("POST", r"^/api/engine/service/(?P<action>start|stop|restart)$", "engine_service"),
+        ("GET", r"^/api/live$", "live"),
+        ("GET", r"^/api/settings$", "settings"),
+        ("POST", r"^/api/settings$", "settings_update"),
+        ("GET", r"^/api/profiles$", "profiles"),
+        ("POST", r"^/api/profiles$", "profiles_save"),
+        ("POST", r"^/api/profiles/(?P<id>[\w.-]+)/delete$", "profiles_delete"),
+        ("GET", r"^/api/chats$", "chats"),
+        ("POST", r"^/api/chats$", "chat_create"),
+        ("GET", r"^/api/chats/(?P<id>[0-9a-f]{16})$", "chat_get"),
+        ("PUT", r"^/api/chats/(?P<id>[0-9a-f]{16})$", "chat_put"),
+        ("DELETE", r"^/api/chats/(?P<id>[0-9a-f]{16})$", "chat_delete"),
+        ("GET", r"^/api/bench$", "bench"),
+        ("POST", r"^/api/bench/start$", "bench_start"),
+        ("POST", r"^/api/bench/cancel$", "bench_cancel"),
+        ("POST", r"^/api/bench/(?P<id>[0-9a-f]+)/delete$", "bench_delete"),
+        ("GET", r"^/api/forge$", "forge"),
+        ("POST", r"^/api/forge/tools$", "forge_tools"),
+        ("POST", r"^/api/forge/inspect$", "forge_inspect"),
+        ("POST", r"^/api/forge/calculate$", "forge_calculate"),
+        ("POST", r"^/api/forge/corpus$", "forge_corpus"),
+        ("POST", r"^/api/forge/recipe/import$", "forge_recipe_import"),
+        ("POST", r"^/api/forge/recipe/share$", "forge_recipe_share"),
+        ("POST", r"^/api/forge/check$", "forge_check"),
+        ("POST", r"^/api/forge/jobs$", "forge_job_create"),
+        ("GET", r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})$", "forge_job"),
+        ("GET", r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})/log$", "forge_job_log"),
+        ("GET", r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})/recipe$", "forge_job_recipe"),
+        (
+            "POST",
+            r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})/(?P<action>cancel|resume|delete|publish)$",
+            "forge_job_action",
+        ),
+    ]
+]
 
 LOGIN_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>FLE Studio · sign in</title>
@@ -354,8 +403,9 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def send_json(self, status: int, data: Any) -> None:
-        self._send(status, json.dumps(data, ensure_ascii=False, default=str).encode("utf-8"),
-                   "application/json; charset=utf-8")
+        self._send(
+            status, json.dumps(data, ensure_ascii=False, default=str).encode("utf-8"), "application/json; charset=utf-8"
+        )
 
     def _body(self, limit: int) -> bytes:
         """The request body, read once. The page sends `{}` with every POST, also where the handler wants nothing."""
@@ -399,9 +449,15 @@ class Handler(BaseHTTPRequestHandler):
         if _is_ip(name):
             return True
         own = socket.gethostname().lower()
-        allowed = {own, own.split(".")[0], *(h.strip().lower() for h in
-                                            str(self.studio.config.get("server").get("allowed_hosts", "")).split(",")
-                                            if h.strip())}
+        allowed = {
+            own,
+            own.split(".")[0],
+            *(
+                h.strip().lower()
+                for h in str(self.studio.config.get("server").get("allowed_hosts", "")).split(",")
+                if h.strip()
+            ),
+        }
         return name in allowed or any(name.startswith(a + ".") for a in allowed if a)
 
     def _authed(self) -> bool:
@@ -439,11 +495,16 @@ class Handler(BaseHTTPRequestHandler):
             if origin == "null":
                 self.send_json(403, {"error": {"message": "Request from an opaque origin refused"}})
                 return False
-            if path.startswith("/api/") and not hmac.compare_digest(self.headers.get("X-FLE-Token", ""),
-                                                                    self.studio.token):
+            if path.startswith("/api/") and not hmac.compare_digest(
+                self.headers.get("X-FLE-Token", ""), self.studio.token
+            ):
                 # Usually a page from before a restart of Studio; the header tells it to reload for the new token.
-                self._send(403, json.dumps({"error": {"message": "Session expired; reload the page"}}).encode(),
-                           "application/json; charset=utf-8", {"X-FLE-Session": "expired"})
+                self._send(
+                    403,
+                    json.dumps({"error": {"message": "Session expired; reload the page"}}).encode(),
+                    "application/json; charset=utf-8",
+                    {"X-FLE-Session": "expired"},
+                )
                 return False
         return True
 
@@ -517,14 +578,26 @@ class Handler(BaseHTTPRequestHandler):
             data = data.replace(b"__FLE_TOKEN__", self.studio.token.encode())
         # Our own table first: on Windows `mimetypes` reads the registry, where .js is often text/plain, and
         # browsers refuse to run module scripts served like that.
-        ctype = (STATIC_TYPES.get(Path(name).suffix.lower()) or mimetypes.guess_type(name)[0]
-                 or "application/octet-stream")
+        ctype = (
+            STATIC_TYPES.get(Path(name).suffix.lower()) or mimetypes.guess_type(name)[0] or "application/octet-stream"
+        )
         if ctype.startswith("text/") or ctype in ("application/json", "image/svg+xml"):
             ctype += "; charset=utf-8"
-        csp = ("default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
-               "script-src 'self'; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'")
-        self._send(200, data, ctype, {"Content-Security-Policy": csp, "X-Frame-Options": "DENY",
-                                      "X-Content-Type-Options": "nosniff", "Cache-Control": "no-cache"})
+        csp = (
+            "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
+            "script-src 'self'; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'"
+        )
+        self._send(
+            200,
+            data,
+            ctype,
+            {
+                "Content-Security-Policy": csp,
+                "X-Frame-Options": "DENY",
+                "X-Content-Type-Options": "nosniff",
+                "Cache-Control": "no-cache",
+            },
+        )
 
     def login(self) -> None:
         if self.command == "POST":
@@ -532,8 +605,9 @@ class Handler(BaseHTTPRequestHandler):
             key = (form.get("key") or [""])[-1]
             real = self.studio.config.get("access_key")
             if real and hmac.compare_digest(key, real):
-                cookie = (f"fle_session={self.studio.session_cookie()}; Path=/; HttpOnly; SameSite=Strict; "
-                          "Max-Age=2592000")
+                cookie = (
+                    f"fle_session={self.studio.session_cookie()}; Path=/; HttpOnly; SameSite=Strict; Max-Age=2592000"
+                )
                 self._send(303, b"", "text/plain", {"Location": "/", "Set-Cookie": cookie})
                 return
             time.sleep(1.0)  # slow down guessing
@@ -548,20 +622,32 @@ class Handler(BaseHTTPRequestHandler):
         """Pass /v1/* to the engine; streams (SSE) are forwarded as they arrive."""
         state, base, headers = self.studio.engine.target()[:3]
         if state not in ("ready", "attached") or not base:
-            self.send_json(503, {"error": {"message": "No model is loaded. Load one in FLE Studio first.",
-                                           "type": "unavailable_error", "code": 503}})
+            self.send_json(
+                503,
+                {
+                    "error": {
+                        "message": "No model is loaded. Load one in FLE Studio first.",
+                        "type": "unavailable_error",
+                        "code": 503,
+                    }
+                },
+            )
             return
         body = self._body(MAX_PROXY) or None
         chat_api.screen_proxy_body(self.path, body)  # tools and a forced answer format must not share a request
         u = urlparse(base)
         if u.scheme == "https":
             conn: http.client.HTTPConnection = http.client.HTTPSConnection(
-                u.hostname or "", u.port or 443, timeout=900, context=net.ssl_context())
+                u.hostname or "", u.port or 443, timeout=900, context=net.ssl_context()
+            )
         else:
             conn = http.client.HTTPConnection(u.hostname or "", u.port or 80, timeout=900)
         prefix = u.path.rstrip("/")
-        fwd = {"Content-Type": self.headers.get("Content-Type", "application/json"),
-               "Accept": self.headers.get("Accept", "*/*"), **headers}
+        fwd = {
+            "Content-Type": self.headers.get("Content-Type", "application/json"),
+            "Accept": self.headers.get("Accept", "*/*"),
+            **headers,
+        }
         try:
             conn.request(self.command, prefix + self.path, body=body, headers=fwd)
             resp = conn.getresponse()
@@ -797,8 +883,14 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(200, {"ok": True})
 
     def api_bench(self, query: dict[str, str]) -> None:
-        self.send_json(200, {"current": self.studio.bench.status(), "results": self.studio.bench.results(),
-                             "tests": [t["name"] for t in bench.TESTS]})
+        self.send_json(
+            200,
+            {
+                "current": self.studio.bench.status(),
+                "results": self.studio.bench.results(),
+                "tests": [t["name"] for t in bench.TESTS],
+            },
+        )
 
     def api_bench_start(self, query: dict[str, str]) -> None:
         body = self.read_json()
@@ -806,13 +898,17 @@ class Handler(BaseHTTPRequestHandler):
         info = self.studio.sysinfo()
         gpu = ", ".join(f"{g['name']} {g['memory_total'] / 2**30:.0f} GB" for g in info.get("gpus", []))
         svc = st.get("service") or {}
-        context = {"model": st["model"].get("name"), "profile": (st.get("plan") or {}).get("profile") or
-                   (f"service {svc['unit']}" if svc else "attached" if st["attached"] else ""),
-                   "engine": (st.get("plan") or {}).get("engine") or "",
-                   "build": st.get("build"), "n_ctx": st.get("n_ctx"),
-                   "machine": f"{info['cpu']['name']}, {info['memory']['total'] / 2**30:.0f} GB RAM" +
-                              (f", {gpu}" if gpu else ""),
-                   "command": (st.get("plan") or {}).get("command") or svc.get("command")}
+        context = {
+            "model": st["model"].get("name"),
+            "profile": (st.get("plan") or {}).get("profile")
+            or (f"service {svc['unit']}" if svc else "attached" if st["attached"] else ""),
+            "engine": (st.get("plan") or {}).get("engine") or "",
+            "build": st.get("build"),
+            "n_ctx": st.get("n_ctx"),
+            "machine": f"{info['cpu']['name']}, {info['memory']['total'] / 2**30:.0f} GB RAM"
+            + (f", {gpu}" if gpu else ""),
+            "command": (st.get("plan") or {}).get("command") or svc.get("command"),
+        }
         probe = None
         if body.get("knowledge"):
             source, data_dir = str(body.get("knowledge_set") or quality.BUILTIN), self.studio.data_dir
@@ -821,10 +917,14 @@ class Handler(BaseHTTPRequestHandler):
 
             def probe(base: str, headers: dict[str, str], say: Any) -> dict[str, Any]:
                 return quality.run_probe(base, headers, say, source=source, data_dir=data_dir)
+
         try:
-            self.send_json(200, self.studio.bench.start(runs=int(body.get("runs") or 1),
-                                                       label=str(body.get("label") or ""), context=context,
-                                                       probe=probe))
+            self.send_json(
+                200,
+                self.studio.bench.start(
+                    runs=int(body.get("runs") or 1), label=str(body.get("label") or ""), context=context, probe=probe
+                ),
+            )
         except RuntimeError as exc:
             raise ApiError(409, str(exc)) from None
 
@@ -905,8 +1005,9 @@ class Handler(BaseHTTPRequestHandler):
                 gpus = info.get("gpus") or []
                 installed = {e["kind"] for e in self.studio.engines.installed()}
                 engine = "fle" if "fle" in installed else "upstream"
-                self.send_json(200, forge.publish(id, engine=engine, gpu=bool(gpus),
-                                                  unified=any(g.get("unified") for g in gpus)))
+                self.send_json(
+                    200, forge.publish(id, engine=engine, gpu=bool(gpus), unified=any(g.get("unified") for g in gpus))
+                )
         except RuntimeError as exc:
             raise ApiError(409, str(exc)) from None
 

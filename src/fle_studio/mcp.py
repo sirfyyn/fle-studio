@@ -115,9 +115,7 @@ def parse_servers(text: str) -> tuple[dict[str, dict[str, Any]], dict[str, str]]
                 }
                 oauth = entry.get("oauth") or {}
                 if oauth:
-                    spec["oauth"] = {
-                        k: str(oauth[k]) for k in ("client_id", "client_secret", "scope") if oauth.get(k)
-                    }
+                    spec["oauth"] = {k: str(oauth[k]) for k in ("client_id", "client_secret", "scope") if oauth.get(k)}
                 servers[name] = spec
         else:
             problems[name] = 'Needs a "command" (a program to start) or a "url" (a Streamable HTTP server)'
@@ -525,7 +523,8 @@ class SseTransport:
             if resp.status >= 400:
                 body = resp.read(1000).decode("utf-8", "replace").strip()
                 self._failure = McpHttpError(
-                    resp.status, f"HTTP {resp.status} from the server" + (f": {body[:300]}" if body else ""),
+                    resp.status,
+                    f"HTTP {resp.status} from the server" + (f": {body[:300]}" if body else ""),
                     resp.getheader("WWW-Authenticate") or "",
                 )
                 return
@@ -601,7 +600,8 @@ class SseTransport:
             body = resp.read(2000).decode("utf-8", "replace").strip()
             if resp.status >= 400:
                 raise McpHttpError(
-                    resp.status, f"HTTP {resp.status} from the server" + (f": {body[:300]}" if body else ""),
+                    resp.status,
+                    f"HTTP {resp.status} from the server" + (f": {body[:300]}" if body else ""),
                     resp.getheader("WWW-Authenticate") or "",
                 )
         except OSError as exc:

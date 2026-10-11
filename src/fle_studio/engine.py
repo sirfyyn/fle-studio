@@ -42,19 +42,34 @@ PHASES = (
 
 # Error lines and what to tell the user about them.
 HINTS = (
-    (re.compile(r"out of memory|cudaMalloc failed|failed to allocate .*buffer|ErrorOutOfDeviceMemory", re.I),
-     "The GPU ran out of memory. Lower the context or the GPU expert cache on the Engine page."),
-    (re.compile(r"error while loading shared libraries|cannot open shared object|\.dll was not found|"
-                r"Library not loaded|image not found", re.I),
-     "The engine misses a library. Reinstall the engine on the Engine page."),
-    (re.compile(r"CUDA driver version is insufficient|no CUDA-capable device|cudaGetDeviceCount", re.I),
-     "CUDA could not start. Update the NVIDIA driver, or use the Vulkan or CPU engine."),
-    (re.compile(r"failed to load model|error loading model|unable to load model", re.I),
-     "The engine could not load the model. Check that the download finished (Models page)."),
-    (re.compile(r"couldn't bind|address already in use|bind failed|only one usage of each socket address", re.I),
-     "The engine port is taken. Set the port to 0 (automatic) on the Engine page."),
-    (re.compile(r"error: (invalid|unknown) argument|unknown option|invalid value", re.I),
-     "The engine does not know one of the arguments. Is this profile meant for another engine?"),
+    (
+        re.compile(r"out of memory|cudaMalloc failed|failed to allocate .*buffer|ErrorOutOfDeviceMemory", re.I),
+        "The GPU ran out of memory. Lower the context or the GPU expert cache on the Engine page.",
+    ),
+    (
+        re.compile(
+            r"error while loading shared libraries|cannot open shared object|\.dll was not found|"
+            r"Library not loaded|image not found",
+            re.I,
+        ),
+        "The engine misses a library. Reinstall the engine on the Engine page.",
+    ),
+    (
+        re.compile(r"CUDA driver version is insufficient|no CUDA-capable device|cudaGetDeviceCount", re.I),
+        "CUDA could not start. Update the NVIDIA driver, or use the Vulkan or CPU engine.",
+    ),
+    (
+        re.compile(r"failed to load model|error loading model|unable to load model", re.I),
+        "The engine could not load the model. Check that the download finished (Models page).",
+    ),
+    (
+        re.compile(r"couldn't bind|address already in use|bind failed|only one usage of each socket address", re.I),
+        "The engine port is taken. Set the port to 0 (automatic) on the Engine page.",
+    ),
+    (
+        re.compile(r"error: (invalid|unknown) argument|unknown option|invalid value", re.I),
+        "The engine does not know one of the arguments. Is this profile meant for another engine?",
+    ),
 )
 
 CACHE_RE = re.compile(r"moe-cache:.*?(?:steps=(\d+).*?)?hits=(\d+).*?misses=(\d+).*?hit-rate=([\d.]+)\s*%")
@@ -135,8 +150,10 @@ class Engine:
         with self._lock:
             self._refuse_start_locked()
         if port_taken(plan.port):
-            raise EngineBusy(f"Port {plan.port} is already in use: another server answers there. Stop that server "
-                             "first, or give this start another port.")
+            raise EngineBusy(
+                f"Port {plan.port} is already in use: another server answers there. Stop that server "
+                "first, or give this start another port."
+            )
         with self._lock:
             self._refuse_start_locked()
             self.reachable = False
@@ -171,8 +188,10 @@ class Engine:
         if not url and found:
             url = service.address(found[1])
             if not url:
-                raise ValueError(f"Enter the server address too: the command of {found[0].name} does not say which "
-                                 "port it listens on.")
+                raise ValueError(
+                    f"Enter the server address too: the command of {found[0].name} does not say which "
+                    "port it listens on."
+                )
         if not url:
             raise ValueError("Enter the server address, e.g. http://127.0.0.1:8080")
         if not re.match(r"^https?://", url):
@@ -197,7 +216,7 @@ class Engine:
         return self.status()
 
     def bound(self) -> str:
-        """"service", "url" (attached without a unit) or ""."""
+        """ "service", "url" (attached without a unit) or ""."""
         with self._lock:
             return "service" if self.unit is not None else "url" if self.state == "attached" else ""
 
@@ -224,8 +243,11 @@ class Engine:
                     self.reachable = code == 200
                     if info:
                         self.props = info
-                    self.error = "" if code == 200 else ("The server is loading its model" if code == 503 else
-                                                         "The server does not answer")
+                    self.error = (
+                        ""
+                        if code == 200
+                        else ("The server is loading its model" if code == 503 else "The server does not answer")
+                    )
                 return
             if props is None:
                 self.error = problem
@@ -243,8 +265,9 @@ class Engine:
             self.ready_at, self.cache, self.accept_logged, self.props = 0.0, {}, None, {}
             self.load_total, self.load_read = service.model_bytes(props), 0
 
-    def _apply_service_locked(self, unit: service.Unit, props: dict[str, str], code: int,
-                              info: dict[str, Any] | None) -> None:
+    def _apply_service_locked(
+        self, unit: service.Unit, props: dict[str, str], code: int, info: dict[str, Any] | None
+    ) -> None:
         now = time.time()
         self._note_run_locked(props)
         read, rss = procutil.read_and_memory_pid(self._svc_pid)
@@ -382,8 +405,15 @@ class Engine:
                 total += part.stat().st_size
             except OSError:
                 pass
-        proc = subprocess.Popen(cmd, cwd=str(binary.parent), env=env, stdin=subprocess.DEVNULL,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **procutil.popen_kwargs())
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(binary.parent),
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            **procutil.popen_kwargs(),
+        )
         self._job.add(proc)
         with self._lock:
             self.proc, self.started, self.ready_at = proc, time.time(), 0.0
@@ -416,8 +446,14 @@ class Engine:
         with self._lock:
             if self.unit is not unit:
                 return
-        proc = subprocess.Popen(unit.journal_command(), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, env=service.environment(), **procutil.popen_kwargs())
+        proc = subprocess.Popen(
+            unit.journal_command(),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=service.environment(),
+            **procutil.popen_kwargs(),
+        )
         with self._lock:
             mine = self.unit is unit
             if mine:
@@ -518,7 +554,8 @@ class Engine:
                 pass
         try:
             self._log_file = (self.log_dir / time.strftime("engine-%Y%m%d-%H%M%S.log")).open(
-                "a", encoding="utf-8", errors="replace")
+                "a", encoding="utf-8", errors="replace"
+            )
         except OSError:
             self._log_file = None
 
@@ -562,8 +599,15 @@ class Engine:
                         break
             m = CACHE_RE.search(line)
             if m:
-                self.cache.update({"steps": int(m.group(1) or 0), "hits": int(m.group(2)), "misses": int(m.group(3)),
-                                   "hit_rate": float(m.group(4)), "at": time.time()})
+                self.cache.update(
+                    {
+                        "steps": int(m.group(1) or 0),
+                        "hits": int(m.group(2)),
+                        "misses": int(m.group(3)),
+                        "hit_rate": float(m.group(4)),
+                        "at": time.time(),
+                    }
+                )
             else:
                 m = CACHE_ON_RE.search(line)
                 if m:
@@ -637,8 +681,12 @@ class Engine:
                 "pid": self.proc.pid if self.proc else (self._svc_pid or None) if self.unit is not None else None,
                 "started": self.started,
                 "ready_at": self.ready_at,
-                "load": {"read": self.load_read, "total": self.load_total, "progress": progress,
-                         "elapsed": (time.time() - self.started) if starting else None},
+                "load": {
+                    "read": self.load_read,
+                    "total": self.load_total,
+                    "progress": progress,
+                    "elapsed": (time.time() - self.started) if starting else None,
+                },
                 "plan": plan.public() if plan else None,
                 "model": {k: model.get(k) for k in ("id", "name", "path", "catalog_id", "size")},
                 "n_ctx": dgs.get("n_ctx") or props.get("n_ctx"),

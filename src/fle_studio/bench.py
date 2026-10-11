@@ -29,18 +29,29 @@ def _long_prompt() -> str:
     for i in range(1, 241):
         level = (i * 37) % 389 + 120
         temp = 4 + (i * 13) % 17
-        rows.append(f"Station {i:03d} on the river records a water level of {level} centimetres, a water "
-                    f"temperature of {temp} degrees and {i % 7} boats passing before noon.")
-    return ("Here is a log of measuring stations.\n\n" + "\n".join(rows) +
-            "\n\nWhich station recorded the highest water level? Answer with the station number and the level.")
+        rows.append(
+            f"Station {i:03d} on the river records a water level of {level} centimetres, a water "
+            f"temperature of {temp} degrees and {i % 7} boats passing before noon."
+        )
+    return (
+        "Here is a log of measuring stations.\n\n"
+        + "\n".join(rows)
+        + "\n\nWhich station recorded the highest water level? Answer with the station number and the level."
+    )
 
 
 TESTS = (
-    {"name": "Short answer", "max_tokens": 256,
-     "prompt": "Explain in a few sentences why the sky is blue, for a curious ten-year-old."},
-    {"name": "Code", "max_tokens": 768,
-     "prompt": "Write a Python function that parses an ISO 8601 duration like P3DT4H12M into seconds, with a "
-               "docstring and three doctest examples. Then explain the edge cases."},
+    {
+        "name": "Short answer",
+        "max_tokens": 256,
+        "prompt": "Explain in a few sentences why the sky is blue, for a curious ten-year-old.",
+    },
+    {
+        "name": "Code",
+        "max_tokens": 768,
+        "prompt": "Write a Python function that parses an ISO 8601 duration like P3DT4H12M into seconds, with a "
+        "docstring and three doctest examples. Then explain the edge cases.",
+    },
     {"name": "Long prompt", "max_tokens": 128, "prompt": _long_prompt()},
 )
 GEN_TESTS = ("Short answer", "Code")  # the requests that measure generation speed
@@ -88,9 +99,18 @@ class Bench:
                 raise RuntimeError("Load a model first")
             runs = max(1, min(10, int(runs)))
             self._cancel.clear()
-            self.current = {"id": secrets.token_hex(4), "state": "running", "label": label.strip()[:80],
-                            "started": time.time(), "runs": runs, "done": 0, "total": runs * len(TESTS),
-                            "step": "", "tests": [], "context": context}
+            self.current = {
+                "id": secrets.token_hex(4),
+                "state": "running",
+                "label": label.strip()[:80],
+                "started": time.time(),
+                "runs": runs,
+                "done": 0,
+                "total": runs * len(TESTS),
+                "step": "",
+                "tests": [],
+                "context": context,
+            }
             cur = self.current
         threading.Thread(target=self._run, args=(cur, base, headers, probe), daemon=True).start()
         return dict(cur)
@@ -167,8 +187,12 @@ class Bench:
             "cache_prompt": False,
             "timings_per_token": False,
         }
-        req = urllib.request.Request(base + "/v1/chat/completions", data=json.dumps(body).encode(),
-                                     headers={"Content-Type": "application/json", **headers}, method="POST")
+        req = urllib.request.Request(
+            base + "/v1/chat/completions",
+            data=json.dumps(body).encode(),
+            headers={"Content-Type": "application/json", **headers},
+            method="POST",
+        )
         t0 = time.perf_counter()
         first = None
         timings: dict[str, Any] = {}

@@ -15,9 +15,18 @@ from fle_studio.config import DEFAULTS
 from fle_studio.launch import auto_plan
 from fle_studio.system import GiB
 
-MODEL = {"id": "m", "name": "M", "path": "/models/m.gguf",
-         "info": {"context_length": 32768, "gpu_bytes": 2 * GiB, "expert_bytes": 20 * GiB,
-                  "kv_bytes_per_token_q8": 1024, "moe": True}}
+MODEL = {
+    "id": "m",
+    "name": "M",
+    "path": "/models/m.gguf",
+    "info": {
+        "context_length": 32768,
+        "gpu_bytes": 2 * GiB,
+        "expert_bytes": 20 * GiB,
+        "kv_bytes_per_token_q8": 1024,
+        "moe": True,
+    },
+}
 GPU = {"vendor": "nvidia", "index": 0, "name": "RTX", "memory_total": 16 * GiB, "memory_used": 0}
 
 

@@ -28,15 +28,22 @@ def _running(port: int) -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="fle-studio", description="Local launcher for the FLE engine and llama.cpp: "
-                                 "chat, live inference data, model downloads and launch profiles.")
+    ap = argparse.ArgumentParser(
+        prog="fle-studio",
+        description="Local launcher for the FLE engine and llama.cpp: "
+        "chat, live inference data, model downloads and launch profiles.",
+    )
     ap.add_argument("--host", help="address to listen on (default 127.0.0.1; 0.0.0.0 opens it to the network)")
     ap.add_argument("--port", type=int, help="port (default 8642)")
     ap.add_argument("--no-browser", action="store_true", help="do not open the browser")
     ap.add_argument("--home", help="data folder (settings, chats, engines, models); default: per-user app data")
     ap.add_argument("--attach", metavar="URL", help="use an already running llama.cpp / FLE server")
-    ap.add_argument("--service", metavar="UNIT", help="use a llama-server that runs as a systemd service (Linux): "
-                    "its log, loading progress, start, stop and restart; the address comes from the unit")
+    ap.add_argument(
+        "--service",
+        metavar="UNIT",
+        help="use a llama-server that runs as a systemd service (Linux): "
+        "its log, loading progress, start, stop and restart; the address comes from the unit",
+    )
     ap.add_argument("--version", action="version", version=f"FLE Studio {__version__}")
     args = ap.parse_args(argv)
     if args.home:
@@ -81,6 +88,7 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:  # startup must go on; the page shows the state
             print(f"Could not connect to {attach_unit or attach_url}: {exc}", file=sys.stderr)
     elif cfg.get("launch.autostart") and cfg.get("last_model"):
+
         def autostart() -> None:
             try:
                 plan = studio.make_plan(cfg.get("last_model"), cfg.get("launch.profile"))

@@ -51,8 +51,15 @@ class Downloads:
 
     # ------------------------------------------------------------------------------------------ API
 
-    def add(self, *, title: str, files: list[dict[str, Any]], kind: str = "model", meta: dict[str, Any] | None = None,
-            dedupe: str = "") -> dict[str, Any]:
+    def add(
+        self,
+        *,
+        title: str,
+        files: list[dict[str, Any]],
+        kind: str = "model",
+        meta: dict[str, Any] | None = None,
+        dedupe: str = "",
+    ) -> dict[str, Any]:
         """Queue files [{url, dest, size, sha256}]. A job with the same dedupe key that is not finished is reused."""
         with self._cv:
             if dedupe:
@@ -72,8 +79,16 @@ class Downloads:
                 "error": "",
                 "created": time.time(),
                 "finished": None,
-                "files": [{"url": f["url"], "dest": str(f["dest"]), "size": int(f.get("size") or 0),
-                           "sha256": (f.get("sha256") or "").lower() or None, "done": 0} for f in files],
+                "files": [
+                    {
+                        "url": f["url"],
+                        "dest": str(f["dest"]),
+                        "size": int(f.get("size") or 0),
+                        "sha256": (f.get("sha256") or "").lower() or None,
+                        "done": 0,
+                    }
+                    for f in files
+                ],
                 "speed": 0.0,
             }
             self.jobs.append(job)
@@ -112,8 +127,9 @@ class Downloads:
     def active_for(self, dest_prefix: str) -> dict[str, Any] | None:
         with self._cv:
             for j in self.jobs:
-                if j["state"] in ("queued", "downloading", "verifying") and \
-                        any(f["dest"].startswith(dest_prefix) for f in j["files"]):
+                if j["state"] in ("queued", "downloading", "verifying") and any(
+                    f["dest"].startswith(dest_prefix) for f in j["files"]
+                ):
                     return self._public(j)
         return None
 
@@ -122,16 +138,21 @@ class Downloads:
         total = sum(f["size"] for f in job["files"])
         done = sum(f["done"] for f in job["files"])
         return {k: v for k, v in job.items() if not k.startswith("_")} | {
-            "bytes_total": total, "bytes_done": done,
-            "progress": (done / total) if total else (1.0 if job["state"] == "done" else 0.0)}
+            "bytes_total": total,
+            "bytes_done": done,
+            "progress": (done / total) if total else (1.0 if job["state"] == "done" else 0.0),
+        }
 
     # ------------------------------------------------------------------------------------------ worker
 
     def _save_locked(self) -> None:
         paths.ensure(self.file.parent)
         tmp = self.file.with_suffix(".tmp")
-        keep = [{k: v for k, v in j.items() if not k.startswith("_")} for j in self.jobs
-                if j["state"] != "done" or time.time() - (j.get("finished") or 0) < 7 * 86400]
+        keep = [
+            {k: v for k, v in j.items() if not k.startswith("_")}
+            for j in self.jobs
+            if j["state"] != "done" or time.time() - (j.get("finished") or 0) < 7 * 86400
+        ]
         tmp.write_text(json.dumps(keep, indent=1), encoding="utf-8")
         tmp.replace(self.file)
 
@@ -178,8 +199,9 @@ class Downloads:
             paths.ensure(target)
             free = system.disk_free(target)
             if need and free and free < need + 512 * 1024 * 1024:
-                raise RuntimeError(f"Not enough disk space in {target}: {need / 1e9:.1f} GB needed, "
-                                   f"{free / 1e9:.1f} GB free")
+                raise RuntimeError(
+                    f"Not enough disk space in {target}: {need / 1e9:.1f} GB needed, {free / 1e9:.1f} GB free"
+                )
         for f in job["files"]:
             self._fetch(job, f)
 
@@ -244,8 +266,10 @@ class Downloads:
                 break
             except urllib.error.HTTPError as exc:
                 if exc.code in (401, 403):
-                    raise RuntimeError("Access denied by the server. Gated repo? Accept its terms on Hugging Face "
-                                       "and add a token in Settings.") from None
+                    raise RuntimeError(
+                        "Access denied by the server. Gated repo? Accept its terms on Hugging Face "
+                        "and add a token in Settings."
+                    ) from None
                 if exc.code == 404:
                     raise RuntimeError(f"Not found: {f['url']}") from None
                 if exc.code == 416 and f["size"] and offset >= f["size"]:
@@ -257,8 +281,9 @@ class Downloads:
             bad = dest.with_name(dest.name + ".bad")
             part.replace(bad)
             f["done"] = 0
-            raise RuntimeError(f"{dest.name} is damaged (checksum mismatch); it was moved to {bad.name}. "
-                               "Resume to download it again.")
+            raise RuntimeError(
+                f"{dest.name} is damaged (checksum mismatch); it was moved to {bad.name}. Resume to download it again."
+            )
         part.replace(dest)
 
     def _backoff(self, job: dict[str, Any], tries: int, exc: Exception) -> int:

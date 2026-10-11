@@ -27,13 +27,18 @@ FAKE_SERVER = HERE / "fake_llama_server.py"
 FAKE_SYSTEMD = HERE / "fake_systemd.py"
 
 RHEA = {  # systemctl show rhea.service on the reference machine (shortened), plus an API key to hide
-    "ActiveState": "inactive", "SubState": "dead", "Result": "success", "MainPID": "0", "User": "sirfyyn",
+    "ActiveState": "inactive",
+    "SubState": "dead",
+    "Result": "success",
+    "MainPID": "0",
+    "User": "sirfyyn",
     "ExecStart": "{ path=/mnt/fastmodels/rhea-prod-20261007-p51/bin/llama-server ; argv[]=/mnt/fastmodels/"
-                 "rhea-prod-20261007-p51/bin/llama-server -m /mnt/fastmodels/rhea-hybrid-m2/G3.gguf --host 0.0.0.0 "
-                 "--port 18420 --alias rhea --parallel 2 --api-key sk-secret -md /mnt/fastmodels/mtp.gguf -t 16 "
-                 "-C 0x0000FFFF --cpu-strict 1 ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; "
-                 "code=(null) ; status=0/0 }",
-    "ActiveEnterTimestamp": "@1791629250", "InactiveEnterTimestamp": "@1791629250",
+    "rhea-prod-20261007-p51/bin/llama-server -m /mnt/fastmodels/rhea-hybrid-m2/G3.gguf --host 0.0.0.0 "
+    "--port 18420 --alias rhea --parallel 2 --api-key sk-secret -md /mnt/fastmodels/mtp.gguf -t 16 "
+    "-C 0x0000FFFF --cpu-strict 1 ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; "
+    "code=(null) ; status=0/0 }",
+    "ActiveEnterTimestamp": "@1791629250",
+    "InactiveEnterTimestamp": "@1791629250",
 }
 
 
@@ -53,8 +58,9 @@ def test_api_keys_never_reach_the_page() -> None:
     assert "sk-secret" not in line
     assert "--api-key <hidden>" in line
     assert "sk-secret" not in json.dumps(service.summary(service.Unit("rhea.service"), RHEA))
-    assert "<hidden>" in service.command_line({"ExecStart": "{ path=/x ; argv[]=/x/llama-server --api-key=abc ; "
-                                                             "ignore_errors=no }"})
+    assert "<hidden>" in service.command_line(
+        {"ExecStart": "{ path=/x ; argv[]=/x/llama-server --api-key=abc ; ignore_errors=no }"}
+    )
 
 
 def test_address_from_environment_or_none() -> None:
@@ -132,8 +138,17 @@ class FakeSystemd:
         self.home = home
 
     def add(self, name: str, argv: list[str], env: dict[str, str] | None = None, **props: str) -> None:
-        unit = {"LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead", "Description": "fake server",
-                "User": "tester", "UnitFileState": "enabled", "argv": argv, "env": env or {}, **props}
+        unit = {
+            "LoadState": "loaded",
+            "ActiveState": "inactive",
+            "SubState": "dead",
+            "Description": "fake server",
+            "User": "tester",
+            "UnitFileState": "enabled",
+            "argv": argv,
+            "env": env or {},
+            **props,
+        }
         (self.home / f"{name}.json").write_text(json.dumps(unit))
 
     def unit(self, name: str) -> dict[str, Any]:
@@ -182,17 +197,22 @@ def server_unit(fake: FakeSystemd, tmp_path: Path, name: str = "fake.service", *
     port = free_port()
     model = tmp_path / "fake-model.gguf"
     model.write_bytes(b"GGUF" + bytes(8192))
-    fake.add(name, [str(FAKE_SERVER), "-m", str(model), "--host", "0.0.0.0", "--port", str(port), "--alias", "fake"],
-             env={"FAKE_LOAD_SECONDS": "0.6", **env})
+    fake.add(
+        name,
+        [str(FAKE_SERVER), "-m", str(model), "--host", "0.0.0.0", "--port", str(port), "--alias", "fake"],
+        env={"FAKE_LOAD_SECONDS": "0.6", **env},
+    )
     return port
 
 
 def settle(engine: Engine, want: str, timeout: float = 30.0) -> dict[str, Any]:
     """Re-read the unit like the live sampler does, until the engine reaches `want`."""
+
     def probe() -> dict[str, Any] | None:
         engine.refresh_attached()
         st = engine.status()
         return st if st["state"] == want else None
+
     return wait_for(probe, f"state {want}", timeout)
 
 
@@ -243,8 +263,7 @@ def test_a_crash_reads_like_systemd_says_it(systemd: FakeSystemd, engine: Engine
     assert st["exit_code"] == 134
 
 
-def test_earlier_runs_fill_the_log_but_not_the_numbers(systemd: FakeSystemd, engine: Engine,
-                                                       tmp_path: Path) -> None:
+def test_earlier_runs_fill_the_log_but_not_the_numbers(systemd: FakeSystemd, engine: Engine, tmp_path: Path) -> None:
     server_unit(systemd, tmp_path)
     old = time.time() - 3600
     systemd.journal("fake.service", "moe-cache: steps=512 hits=900 misses=100 hit-rate=90.0 %", 4242, old)
@@ -255,8 +274,9 @@ def test_earlier_runs_fill_the_log_but_not_the_numbers(systemd: FakeSystemd, eng
     wait_for(lambda: engine.cache.get("hit_rate") == 80.0, "a fresh line to count")
 
 
-def test_without_permission_sudo_steps_in(systemd: FakeSystemd, engine: Engine, tmp_path: Path,
-                                          monkeypatch: pytest.MonkeyPatch) -> None:
+def test_without_permission_sudo_steps_in(
+    systemd: FakeSystemd, engine: Engine, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     server_unit(systemd, tmp_path)
     monkeypatch.setenv("FAKE_SYSTEMCTL_DENY", "1")
     engine.attach("", "", "fake.service")

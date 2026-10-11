@@ -26,8 +26,17 @@ EXPERT_RE = re.compile(r"\.ffn_(?:gate_up|gate|up|down)_exps\.")
 INPUT_PREFIXES = ("token_embd.", "per_layer_token_embd.")
 
 # Bytes per element of the KV cache types llama.cpp accepts for -ctk/-ctv.
-KV_TYPE_BYTES = {"f32": 4.0, "f16": 2.0, "bf16": 2.0, "q8_0": 34 / 32, "q5_1": 24 / 32, "q5_0": 22 / 32,
-                 "q4_1": 20 / 32, "q4_0": 18 / 32, "iq4_nl": 18 / 32}
+KV_TYPE_BYTES = {
+    "f32": 4.0,
+    "f16": 2.0,
+    "bf16": 2.0,
+    "q8_0": 34 / 32,
+    "q5_1": 24 / 32,
+    "q5_0": 22 / 32,
+    "q4_1": 20 / 32,
+    "q4_0": 18 / 32,
+    "iq4_nl": 18 / 32,
+}
 
 
 class GGUFError(ValueError):

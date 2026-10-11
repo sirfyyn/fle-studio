@@ -176,7 +176,9 @@ def _nvidia_smi() -> str | None:
         for candidate in (
             Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "nvidia-smi.exe",
             Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
-            / "NVIDIA Corporation" / "NVSMI" / "nvidia-smi.exe",
+            / "NVIDIA Corporation"
+            / "NVSMI"
+            / "nvidia-smi.exe",
         ):
             if candidate.exists():
                 return str(candidate)
@@ -271,16 +273,35 @@ def other_gpus() -> list[dict[str, Any]]:
                 continue
             vram = card / "device" / "mem_info_vram_total"
             total = int(vram.read_text()) if vram.exists() else 0
-            found.append({"vendor": vendors[vendor], "index": len(found), "name": f"{vendors[vendor].upper()} GPU",
-                          "memory_total": total})
+            found.append(
+                {
+                    "vendor": vendors[vendor],
+                    "index": len(found),
+                    "name": f"{vendors[vendor].upper()} GPU",
+                    "memory_total": total,
+                }
+            )
     elif IS_WIN:
-        out = _run(["powershell", "-NoProfile", "-Command",
-                    "Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name }"], timeout=8)
+        out = _run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name }",
+            ],
+            timeout=8,
+        )
         for name in out.splitlines():
             name = name.strip()
             if name and not name.lower().startswith(("nvidia", "microsoft")):
-                found.append({"vendor": "amd" if "amd" in name.lower() or "radeon" in name.lower() else "intel",
-                              "index": len(found), "name": name, "memory_total": 0})
+                found.append(
+                    {
+                        "vendor": "amd" if "amd" in name.lower() or "radeon" in name.lower() else "intel",
+                        "index": len(found),
+                        "name": name,
+                        "memory_total": 0,
+                    }
+                )
     return found
 
 

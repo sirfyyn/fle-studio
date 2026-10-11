@@ -13,7 +13,8 @@ from .gguf import SPLIT_RE
 HF = "https://huggingface.co"
 _REPO_RE = re.compile(r"^[A-Za-z0-9][\w.-]*/[\w.-]+$")
 _QUANT_RE = re.compile(
-    r"(?i)(?:^|[-_.])((?:UD-)?(?:I?Q\d(?:_[A-Z0-9]+)*|BF16|F16|F32|MXFP4(?:_MOE)?|TQ\d_\d)(?:-REAP\d+)?)(?=$|[-_.])")
+    r"(?i)(?:^|[-_.])((?:UD-)?(?:I?Q\d(?:_[A-Z0-9]+)*|BF16|F16|F32|MXFP4(?:_MOE)?|TQ\d_\d)(?:-REAP\d+)?)(?=$|[-_.])"
+)
 
 
 def parse_repo(text: str) -> tuple[str, str, str]:
@@ -100,5 +101,7 @@ def repo_info(repo: str, token: str = "") -> dict[str, Any]:
 def search(query: str, limit: int = 20, token: str = "") -> list[dict[str, Any]]:
     params = urlencode({"search": query, "filter": "gguf", "sort": "downloads", "direction": "-1", "limit": limit})
     data, _ = net.get_json(f"{HF}/api/models?{params}", token=token)
-    return [{"id": d.get("id"), "downloads": d.get("downloads"), "likes": d.get("likes"),
-             "updated": d.get("lastModified")} for d in data]
+    return [
+        {"id": d.get("id"), "downloads": d.get("downloads"), "likes": d.get("likes"), "updated": d.get("lastModified")}
+        for d in data
+    ]

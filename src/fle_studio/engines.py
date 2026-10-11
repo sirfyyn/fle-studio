@@ -72,19 +72,34 @@ def variants(sysinfo: dict[str, Any]) -> list[dict[str, Any]]:
 
     if osname == "macos":
         if arch == "arm64":
-            add("upstream-metal", "upstream", "metal", "llama.cpp for Apple Silicon (Metal)",
-                "Runs the model on the Apple GPU with unified memory.")
+            add(
+                "upstream-metal",
+                "upstream",
+                "metal",
+                "llama.cpp for Apple Silicon (Metal)",
+                "Runs the model on the Apple GPU with unified memory.",
+            )
         else:
             add("upstream-macos-x64", "upstream", "cpu", "llama.cpp for Intel Macs", "CPU build for Intel Macs.")
         return out
     if has_nvidia and arch == "x64":
         if avx2:
-            add("fle-cuda", "fle", "cuda", "FLE engine (NVIDIA CUDA)",
-                "The FLE build: GPU expert cache, MTP drafting, pinned expert loading.")
+            add(
+                "fle-cuda",
+                "fle",
+                "cuda",
+                "FLE engine (NVIDIA CUDA)",
+                "The FLE build: GPU expert cache, MTP drafting, pinned expert loading.",
+            )
         add("upstream-cuda", "upstream", "cuda", "llama.cpp (NVIDIA CUDA)", "Upstream llama.cpp on the NVIDIA GPU.")
     if others or has_nvidia:
-        add("upstream-vulkan", "upstream", "vulkan", "llama.cpp (Vulkan)",
-            "Works on AMD, Intel and NVIDIA GPUs." if others else "Fallback for GPUs without a CUDA build.")
+        add(
+            "upstream-vulkan",
+            "upstream",
+            "vulkan",
+            "llama.cpp (Vulkan)",
+            "Works on AMD, Intel and NVIDIA GPUs." if others else "Fallback for GPUs without a CUDA build.",
+        )
     add("upstream-cpu", "upstream", "cpu", "llama.cpp (CPU only)", "Works everywhere; slow for large models.")
     return out
 
@@ -182,19 +197,37 @@ class Engines:
                 raise RuntimeError(f"The CUDA {cuda} runtime package is missing from the release")
             if runtime:
                 files.append(runtime)
-        return {"variant": variant, "tag": rel.get("tag_name", ""), "source": source, "cuda": cuda,
-                "assets": [{"name": a["name"], "url": a["browser_download_url"], "size": a.get("size", 0),
-                            "sha256": (a.get("digest") or "").removeprefix("sha256:") or None} for a in files]}
+        return {
+            "variant": variant,
+            "tag": rel.get("tag_name", ""),
+            "source": source,
+            "cuda": cuda,
+            "assets": [
+                {
+                    "name": a["name"],
+                    "url": a["browser_download_url"],
+                    "size": a.get("size", 0),
+                    "sha256": (a.get("digest") or "").removeprefix("sha256:") or None,
+                }
+                for a in files
+            ],
+        }
 
     def install(self, variant: str, sysinfo: dict[str, Any]) -> dict[str, Any]:
         plan = self.plan_install(variant, sysinfo)
         stage = paths.ensure(self.dir / "_downloads")
-        files = [{"url": a["url"], "dest": stage / a["name"], "size": a["size"], "sha256": a["sha256"]}
-                 for a in plan["assets"]]
+        files = [
+            {"url": a["url"], "dest": stage / a["name"], "size": a["size"], "sha256": a["sha256"]}
+            for a in plan["assets"]
+        ]
         label = next((v["label"] for v in variants(sysinfo) if v["id"] == variant), variant)
-        return self.downloads.add(title=f"{label} {plan['tag']}", files=files, kind="engine",
-                                  meta={"variant": variant, "tag": plan["tag"], "cuda": plan["cuda"]},
-                                  dedupe=f"engine:{variant}:{plan['tag']}")
+        return self.downloads.add(
+            title=f"{label} {plan['tag']}",
+            files=files,
+            kind="engine",
+            meta={"variant": variant, "tag": plan["tag"], "cuda": plan["cuda"]},
+            dedupe=f"engine:{variant}:{plan['tag']}",
+        )
 
     def _install_downloaded(self, job: dict[str, Any]) -> None:
         """Download hook: unpack the archives into engines/<variant>-<tag>/ and register the engine."""
@@ -224,10 +257,19 @@ class Engines:
         path = target / rel
         info = self.detect(str(path))
         kind = "fle" if meta["variant"].startswith("fle") else "upstream"
-        entry = {"id": name, "variant": meta["variant"], "kind": kind,
-                 "flavor": info.get("flavor"), "backend": info.get("backend"), "tag": meta["tag"], "path": str(path),
-                 "version": info.get("version", ""), "installed": time.time(), "ok": info.get("ok", False),
-                 "problem": info.get("problem", "")}
+        entry = {
+            "id": name,
+            "variant": meta["variant"],
+            "kind": kind,
+            "flavor": info.get("flavor"),
+            "backend": info.get("backend"),
+            "tag": meta["tag"],
+            "path": str(path),
+            "version": info.get("version", ""),
+            "installed": time.time(),
+            "ok": info.get("ok", False),
+            "problem": info.get("problem", ""),
+        }
         with self._lock:
             self.items = [e for e in self.items if e["id"] != name] + [entry]
             self._save()
@@ -270,23 +312,51 @@ class Engines:
             env["LD_LIBRARY_PATH"] = os.pathsep.join(x for x in (str(p.parent), env.get("LD_LIBRARY_PATH")) if x)
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         try:
-            ver = subprocess.run([*cmd, "--version"], capture_output=True, text=True, timeout=60, env=env,
-                                 cwd=str(p.parent), creationflags=flags, errors="replace")
-            hlp = subprocess.run([*cmd, "--help"], capture_output=True, text=True, timeout=60, env=env,
-                                 cwd=str(p.parent), creationflags=flags, errors="replace")
+            ver = subprocess.run(
+                [*cmd, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                env=env,
+                cwd=str(p.parent),
+                creationflags=flags,
+                errors="replace",
+            )
+            hlp = subprocess.run(
+                [*cmd, "--help"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                env=env,
+                cwd=str(p.parent),
+                creationflags=flags,
+                errors="replace",
+            )
         except (OSError, subprocess.SubprocessError) as exc:
             return {"ok": False, "problem": str(exc)}
         out = (ver.stdout or "") + (ver.stderr or "")
         m = re.search(r"version:\s*(\S+)(?:\s*\(([0-9a-f]+)\))?", out)
         text = out.lower() + " " + " ".join(x.name.lower() for x in p.parent.iterdir())
-        backend = ("cuda" if "cuda" in text else "metal" if "metal" in text or paths.IS_MAC else
-                   "vulkan" if "vulkan" in text else "cpu")
+        backend = (
+            "cuda"
+            if "cuda" in text
+            else "metal"
+            if "metal" in text or paths.IS_MAC
+            else "vulkan"
+            if "vulkan" in text
+            else "cpu"
+        )
         help_text = (hlp.stdout or "") + (hlp.stderr or "")
         flavor = "fle" if "--moe-expert-cache-inserts" in help_text else "upstream"
         ok = ver.returncode == 0 and bool(m)
-        result = {"ok": ok, "version": (m.group(1) + (f" ({m.group(2)})" if m.group(2) else "")) if m else "",
-                  "backend": backend, "flavor": flavor, "log_verbosity": "--log-verbosity" in help_text,
-                  "problem": "" if ok else (out.strip().splitlines() or ["no output"])[-1][:300]}
+        result = {
+            "ok": ok,
+            "version": (m.group(1) + (f" ({m.group(2)})" if m.group(2) else "")) if m else "",
+            "backend": backend,
+            "flavor": flavor,
+            "log_verbosity": "--log-verbosity" in help_text,
+            "problem": "" if ok else (out.strip().splitlines() or ["no output"])[-1][:300],
+        }
         self._detect_cache[key] = result
         return result
 
@@ -300,22 +370,36 @@ class Engines:
             info = self.detect(path)
             if not info.get("ok"):
                 raise RuntimeError(f"Your llama-server does not start: {info.get('problem')}")
-            return {"kind": "custom", "flavor": info["flavor"], "backend": info["backend"],
-                    "path": str(Path(path).expanduser()), "version": info.get("version", ""),
-                    "log_verbosity": info.get("log_verbosity", False)}
+            return {
+                "kind": "custom",
+                "flavor": info["flavor"],
+                "backend": info["backend"],
+                "path": str(Path(path).expanduser()),
+                "version": info.get("version", ""),
+                "log_verbosity": info.get("log_verbosity", False),
+            }
         if want == "auto":
             want = eng.get("choice", "auto")
         order = [v["id"] for v in variants(sysinfo)]
-        have = sorted(self.installed(), key=lambda e: (order.index(e["variant"]) if e["variant"] in order else 99,
-                                                       -e.get("installed", 0)))
+        have = sorted(
+            self.installed(),
+            key=lambda e: (order.index(e["variant"]) if e["variant"] in order else 99, -e.get("installed", 0)),
+        )
         if want in ("fle", "upstream"):
             have = [e for e in have if e["kind"] == want]
         if not have:
             raise RuntimeError("Install an engine first (Engine page)")
         e = have[0]
         # Engines installed here are recent releases, which all know -lv.
-        return {"kind": e["kind"], "flavor": e.get("flavor") or e["kind"], "backend": e.get("backend"),
-                "path": e["path"], "version": e.get("version", ""), "id": e["id"], "log_verbosity": True}
+        return {
+            "kind": e["kind"],
+            "flavor": e.get("flavor") or e["kind"],
+            "backend": e.get("backend"),
+            "path": e["path"],
+            "version": e.get("version", ""),
+            "id": e["id"],
+            "log_verbosity": True,
+        }
 
 
 def _find_server(root: Path) -> Path | None:

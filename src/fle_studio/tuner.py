@@ -387,7 +387,9 @@ class Tuner:
                 trial_seconds=longest,
             )
             bench_tool = (
-                engine_tools.find_tool(base_plan.binary, "llama-bench") if screen and CACHE_ENV not in base_plan.env else None
+                engine_tools.find_tool(base_plan.binary, "llama-bench")
+                if screen and CACHE_ENV not in base_plan.env
+                else None
             )
             params = candidates(base_plan, sysinfo, keys)
             cur_notes: list[str] = []

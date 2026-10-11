@@ -58,18 +58,63 @@ REFERENCE_ENV = {
     "FLE_UBATCH_PREFETCH_SLOTS": "3",
 }
 REFERENCE_ARGS = [
-    "-m", "{model}", "-md", "{mtp_head}",
-    "--spec-type", "draft-mtp", "--spec-draft-n-max", "2", "--spec-draft-p-min", "0.5",
+    "-m",
+    "{model}",
+    "-md",
+    "{mtp_head}",
+    "--spec-type",
+    "draft-mtp",
+    "--spec-draft-n-max",
+    "2",
+    "--spec-draft-p-min",
+    "0.5",
     "--no-spec-draft-backend-sampling",
-    "-cmoed", "-c", "262144", "--parallel", "2", "--kv-unified", "--jinja",
-    "-b", "4096", "-ub", "4096", "-ctk", "q8_0", "-ctv", "q8_0",
-    "-fit", "on", "--fit-target", "1115", "--moe-expert-cache-inserts", "1",
-    "--cache-ram", "32768", "--load-mode", "none", "-t", "16", "-C", "0x0000FFFF", "--cpu-strict", "1",
-    "--temp", "0.6", "--top-p", "0.95", "--top-k", "20", "--min-p", "0", "--presence-penalty", "1.5",
+    "-cmoed",
+    "-c",
+    "262144",
+    "--parallel",
+    "2",
+    "--kv-unified",
+    "--jinja",
+    "-b",
+    "4096",
+    "-ub",
+    "4096",
+    "-ctk",
+    "q8_0",
+    "-ctv",
+    "q8_0",
+    "-fit",
+    "on",
+    "--fit-target",
+    "1115",
+    "--moe-expert-cache-inserts",
+    "1",
+    "--cache-ram",
+    "32768",
+    "--load-mode",
+    "none",
+    "-t",
+    "16",
+    "-C",
+    "0x0000FFFF",
+    "--cpu-strict",
+    "1",
+    "--temp",
+    "0.6",
+    "--top-p",
+    "0.95",
+    "--top-k",
+    "20",
+    "--min-p",
+    "0",
+    "--presence-penalty",
+    "1.5",
 ]
 # Cache policy and compute switches of the reference command that do not depend on the machine.
-FLE_POLICY_ENV = {k: v for k, v in REFERENCE_ENV.items()
-                  if k not in ("FLE_MOE_CACHE_BUDGET_MIB", "FLE_MOE_PROFILE", "FLE_MTP_VOCAB")}
+FLE_POLICY_ENV = {
+    k: v for k, v in REFERENCE_ENV.items() if k not in ("FLE_MOE_CACHE_BUDGET_MIB", "FLE_MOE_PROFILE", "FLE_MTP_VOCAB")
+}
 
 
 _PLACEHOLDER = re.compile(r"\{[a-z_]+\}")
@@ -226,8 +271,15 @@ def _round_mib(n_bytes: float, step: int = 256) -> int:
 # ------------------------------------------------------------------------------------------------ auto
 
 
-def auto_plan(*, model: dict[str, Any], engine: dict[str, Any], settings: dict[str, Any], sysinfo: dict[str, Any],
-              port: int, data_dir: Path) -> Plan:
+def auto_plan(
+    *,
+    model: dict[str, Any],
+    engine: dict[str, Any],
+    settings: dict[str, Any],
+    sysinfo: dict[str, Any],
+    port: int,
+    data_dir: Path,
+) -> Plan:
     """The command FLE Studio picks for this model on this machine."""
     launch, chat = settings["launch"], settings["chat"]
     kind = engine["kind"]
@@ -272,7 +324,8 @@ def auto_plan(*, model: dict[str, Any], engine: dict[str, Any], settings: dict[s
                 f"{gpu_weights / GiB:.1f} GiB of always-on weights, {kv / GiB:.1f} GiB KV cache, "
                 f"{overhead / GiB:.1f} GiB for compute buffers and the CUDA context (measured with the reference "
                 f"command) and {FIT_TARGET_MIB} MiB margin. Set it by hand on the Engine page if loading fails or "
-                "memory is left over.")
+                "memory is left over."
+            )
         if budget_mib < 1024:
             notes.append("Little GPU memory is left for the expert cache, so most experts run on the CPU.")
         if not launch.get("threads") and physical > 1 and int(sysinfo["cpu"].get("logical") or physical) <= physical:
@@ -280,14 +333,31 @@ def auto_plan(*, model: dict[str, Any], engine: dict[str, Any], settings: dict[s
             # cache's copy thread) wait for a free core. Measured with a small MoE model, 8 threads on 8 cores: decode
             # took 19-75 ms instead of 0.6-1.0 ms per token in 3 of 22 runs; with 6 threads none in 10 runs.
             threads = physical - 1
-            notes.append(f"{threads} threads: this processor runs one thread per core, so one core stays free for "
-                         "the engine's GPU and expert-cache threads.")
+            notes.append(
+                f"{threads} threads: this processor runs one thread per core, so one core stays free for "
+                "the engine's GPU and expert-cache threads."
+            )
         env.update(FLE_POLICY_ENV)
         env["FLE_MOE_CACHE_BUDGET_MIB"] = str(budget_mib)
         env["FLE_MOE_PROFILE"] = str(paths.ensure(data_dir / "expert-profiles") / f"{model['id']}.bin")
-        args += ["-b", str(ub), "-ub", str(ub), "-ctk", "q8_0", "-ctv", "q8_0",
-                 "-fit", "on", "--fit-target", str(FIT_TARGET_MIB), "--moe-expert-cache-inserts", "1",
-                 "-t", str(threads)]
+        args += [
+            "-b",
+            str(ub),
+            "-ub",
+            str(ub),
+            "-ctk",
+            "q8_0",
+            "-ctv",
+            "q8_0",
+            "-fit",
+            "on",
+            "--fit-target",
+            str(FIT_TARGET_MIB),
+            "--moe-expert-cache-inserts",
+            "1",
+            "-t",
+            str(threads),
+        ]
         expert = float(info.get("expert_bytes") or 0)
         pinned = launch.get("pinned_load", "auto")
         if pinned == "auto":
@@ -300,8 +370,18 @@ def auto_plan(*, model: dict[str, Any], engine: dict[str, Any], settings: dict[s
         mtp = model.get("mtp") or {}
         if launch.get("mtp", True) and mtp.get("head") and mtp.get("vocab"):
             draft = mtp["head"]
-            args += ["-md", mtp["head"], "--spec-type", "draft-mtp", "--spec-draft-n-max", "2",
-                     "--spec-draft-p-min", "0.5", "--no-spec-draft-backend-sampling", "-cmoed"]
+            args += [
+                "-md",
+                mtp["head"],
+                "--spec-type",
+                "draft-mtp",
+                "--spec-draft-n-max",
+                "2",
+                "--spec-draft-p-min",
+                "0.5",
+                "--no-spec-draft-backend-sampling",
+                "-cmoed",
+            ]
             env.update({"FLE_MTP_VOCAB": mtp["vocab"], "FLE_MTP_VOCAB_N": "32768", "FLE_MTP_PENALTIES": "1"})
         elif mtp.get("supported") and launch.get("mtp", True):
             notes.append("MTP is off: the MTP head or its vocabulary file is not downloaded (Models page).")
@@ -324,15 +404,32 @@ def auto_plan(*, model: dict[str, Any], engine: dict[str, Any], settings: dict[s
     sampling = model.get("sampling") or {}
     if chat.get("sampling") == "custom":
         sampling = {k: chat[k] for k in ("temperature", "top_p", "top_k", "min_p", "presence_penalty")}
-    flag = {"temperature": "--temp", "top_p": "--top-p", "top_k": "--top-k", "min_p": "--min-p",
-            "presence_penalty": "--presence-penalty"}
+    flag = {
+        "temperature": "--temp",
+        "top_p": "--top-p",
+        "top_k": "--top-k",
+        "min_p": "--min-p",
+        "presence_penalty": "--presence-penalty",
+    }
     for key, value in sampling.items():
         if key in flag:
             args += [flag[key], f"{value:g}" if isinstance(value, float) else str(value)]
     args += _words(launch.get("extra_args", ""))
     env.update(parse_env_lines(launch.get("extra_env", "")))
-    return _finish(Plan(engine=kind, binary=engine["path"], args=args, env=env, port=port, model=model,
-                        profile="auto", notes=notes, draft=draft), bool(engine.get("log_verbosity", True)))
+    return _finish(
+        Plan(
+            engine=kind,
+            binary=engine["path"],
+            args=args,
+            env=env,
+            port=port,
+            model=model,
+            profile="auto",
+            notes=notes,
+            draft=draft,
+        ),
+        bool(engine.get("log_verbosity", True)),
+    )
 
 
 def _words(text: str) -> list[str]:
@@ -345,8 +442,11 @@ def _finish(plan: Plan, log_verbosity: bool) -> Plan:
     log_verbosity: the engine knows -lv. llama.cpp logs its library lines (loading phases, the FLE expert-cache hit
     rate) at level 4 only, one above the default; without them the live panel shows neither."""
     a = plan.args
-    if log_verbosity and "LLAMA_ARG_LOG_VERBOSITY" not in plan.env and not _has(
-            a, "-v", "--verbose", "--log-verbose", "-lv", "--verbosity", "--log-verbosity"):
+    if (
+        log_verbosity
+        and "LLAMA_ARG_LOG_VERBOSITY" not in plan.env
+        and not _has(a, "-v", "--verbose", "--log-verbose", "-lv", "--verbosity", "--log-verbosity")
+    ):
         a += ["-lv", "4"]
     if not _has(a, "--host"):
         a += ["--host", "127.0.0.1"]
@@ -400,8 +500,8 @@ BUILTIN = (
         args=list(REFERENCE_ARGS),
         env=dict(REFERENCE_ENV),
         notes="The exact command from the model card: 262,144-token context shared by two slots, 16 threads pinned to "
-              "cores 0-15, a 17 GiB GPU expert cache for a 32 GB card. Needs the MTP head and about 54 GiB of free RAM "
-              "for FLE-IQ3_M. Measured only on an RTX PRO 4500 32 GB with 120 GB RAM.",
+        "cores 0-15, a 17 GiB GPU expert cache for a 32 GB card. Needs the MTP head and about 54 GiB of free RAM "
+        "for FLE-IQ3_M. Measured only on an RTX PRO 4500 32 GB with 120 GB RAM.",
         builtin=True,
     ),
 )
@@ -449,8 +549,16 @@ class Profiles:
             ident = f"{ident}-{int(time.time()) % 100000}"
         old = self.get(ident)
         meta = data["meta"] if isinstance(data.get("meta"), dict) else (old.meta if old else {})
-        prof = Profile(id=ident, name=name, engine=engine, binary=binary, args=args, env=env,
-                       notes=str(data.get("notes") or ""), meta=dict(meta))
+        prof = Profile(
+            id=ident,
+            name=name,
+            engine=engine,
+            binary=binary,
+            args=args,
+            env=env,
+            notes=str(data.get("notes") or ""),
+            meta=dict(meta),
+        )
         with self._lock:
             self.items = [p for p in self.items if p.id != ident] + [prof]
             self._write()
@@ -468,8 +576,16 @@ class Profiles:
         tmp.replace(self.file)
 
 
-def profile_plan(*, profile: Profile, model: dict[str, Any] | None, engine: dict[str, Any] | None,
-                 settings: dict[str, Any], sysinfo: dict[str, Any], port: int, data_dir: Path) -> Plan:
+def profile_plan(
+    *,
+    profile: Profile,
+    model: dict[str, Any] | None,
+    engine: dict[str, Any] | None,
+    settings: dict[str, Any],
+    sysinfo: dict[str, Any],
+    port: int,
+    data_dir: Path,
+) -> Plan:
     """A profile's command with its placeholders filled in."""
     model = model or {}
     mtp = model.get("mtp") or {}
@@ -521,7 +637,16 @@ def profile_plan(*, profile: Profile, model: dict[str, Any] | None, engine: dict
             raise PlanError(f"Install the {which} engine first (Engine page)")
         binary, kind = engine["path"], engine["kind"]
     draft = _arg_value(args, "-md", "--model-draft")
-    plan = Plan(engine=kind, binary=binary, args=args, env=env, port=port, model=model, profile=profile.id,
-                notes=notes, draft=draft)
+    plan = Plan(
+        engine=kind,
+        binary=binary,
+        args=args,
+        env=env,
+        port=port,
+        model=model,
+        profile=profile.id,
+        notes=notes,
+        draft=draft,
+    )
     # For a custom profile `engine` is the check of its own binary (None if that could not run): no -lv unless known.
     return _finish(plan, bool((engine or {}).get("log_verbosity", profile.engine != "custom")))

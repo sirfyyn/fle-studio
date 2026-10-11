@@ -29,8 +29,15 @@ FAKE = Path(__file__).with_name("fake_llama_server.py")
 STUB_NAME = "Fake-Model-IQ3_M-00001-of-00004.gguf"
 LINE_RE = re.compile(r"^\d+\.\d\d\.\d\d\d\.\d\d\d [IWED] \S")
 TIMING_KEYS = [
-    "cache_n", "prompt_n", "prompt_ms", "prompt_per_token_ms", "prompt_per_second",
-    "predicted_n", "predicted_ms", "predicted_per_token_ms", "predicted_per_second",
+    "cache_n",
+    "prompt_n",
+    "prompt_ms",
+    "prompt_per_token_ms",
+    "prompt_per_second",
+    "predicted_n",
+    "predicted_ms",
+    "predicted_per_token_ms",
+    "predicted_per_second",
 ]
 CHAT = {"messages": [{"role": "user", "content": "Say hello to the test suite."}]}
 TOK_PER_SEC = 400
@@ -54,7 +61,8 @@ def free_port() -> int:
 def clean_env(extra: dict[str, str] | None = None) -> dict[str, str]:
     """The current environment without anything that would change the fake's behaviour."""
     env = {
-        key: value for key, value in os.environ.items()
+        key: value
+        for key, value in os.environ.items()
         if not key.startswith(("FAKE_", "FLE_", "LLAMA_ARG_")) and key != "LLAMA_API_KEY"
     }
     env.update(extra or {})
@@ -101,8 +109,9 @@ class Server:
             time.sleep(0.02)
         return needle in self.log
 
-    def request(self, method: str, path: str, body: Any = None, raw: bytes | None = None,
-                timeout: float = 15.0) -> tuple[int, dict[str, str], bytes]:
+    def request(
+        self, method: str, path: str, body: Any = None, raw: bytes | None = None, timeout: float = 15.0
+    ) -> tuple[int, dict[str, str], bytes]:
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=timeout)
         try:
             payload = raw if raw is not None else (json.dumps(body).encode() if body is not None else None)
@@ -125,8 +134,12 @@ class Server:
         """POST a streaming chat request; returns the decoded events and whether [DONE] came last."""
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=30)
         try:
-            conn.request("POST", "/v1/chat/completions", body=json.dumps({**body, "stream": True}),
-                         headers={"Content-Type": "application/json"})
+            conn.request(
+                "POST",
+                "/v1/chat/completions",
+                body=json.dumps({**body, "stream": True}),
+                headers={"Content-Type": "application/json"},
+            )
             resp = conn.getresponse()
             assert resp.status == 200
             assert resp.getheader("Content-Type") == "text/event-stream"
@@ -189,8 +202,14 @@ class Server:
             self.proc.stdout.close()
 
 
-def start(tmp_path: Path, *args: str, env: dict[str, str] | None = None, wait: bool = True,
-          model: str | None = None, port: int | None = None) -> Server:
+def start(
+    tmp_path: Path,
+    *args: str,
+    env: dict[str, str] | None = None,
+    wait: bool = True,
+    model: str | None = None,
+    port: int | None = None,
+) -> Server:
     port = port if port is not None else free_port()
     model_path = model if model is not None else str(make_stub(tmp_path))
     cmd = [sys.executable, str(FAKE), "-m", model_path, "--host", "127.0.0.1", "--port", str(port), *args]
@@ -198,8 +217,16 @@ def start(tmp_path: Path, *args: str, env: dict[str, str] | None = None, wait: b
     flags: dict[str, Any] = {}
     if os.name == "nt":
         flags["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=environment, text=True,
-                            encoding="utf-8", errors="replace", **flags)
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=environment,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        **flags,
+    )
     srv = Server(proc, port)
     if wait:
         try:
@@ -233,9 +260,23 @@ def scrape(srv: Server) -> dict[str, float]:
 @pytest.fixture(scope="module")
 def server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Server]:
     """One server with the usual launcher flags (several of them unknown to the fake) for most tests."""
-    srv = start(tmp_path_factory.mktemp("fake"), "-c", "4096", "-a", "fake-model", "--metrics", "--jinja",
-                "-ngl", "99", "--flash-attn", "on", "--cache-type-k", "q8_0", "--no-mmap",
-                env={"FAKE_LOAD_SECONDS": "0.8"})
+    srv = start(
+        tmp_path_factory.mktemp("fake"),
+        "-c",
+        "4096",
+        "-a",
+        "fake-model",
+        "--metrics",
+        "--jinja",
+        "-ngl",
+        "99",
+        "--flash-attn",
+        "on",
+        "--cache-type-k",
+        "q8_0",
+        "--no-mmap",
+        env={"FAKE_LOAD_SECONDS": "0.8"},
+    )
     yield srv
     srv.close()
 
@@ -270,8 +311,14 @@ def test_default_log_has_the_real_shape_and_hides_library_lines(server: Server) 
 def test_props_has_the_real_keys(server: Server) -> None:
     status, props = server.get_json("/props")
     assert status == 200
-    assert list(props)[:6] == ["default_generation_settings", "total_slots", "model_alias", "model_ftype",
-                               "model_path", "modalities"]
+    assert list(props)[:6] == [
+        "default_generation_settings",
+        "total_slots",
+        "model_alias",
+        "model_ftype",
+        "model_path",
+        "modalities",
+    ]
     assert props["default_generation_settings"]["n_ctx"] == 4096
     assert props["default_generation_settings"]["params"]["temperature"] == 0.8
     assert props["total_slots"] == 1
@@ -300,8 +347,16 @@ def test_metrics_endpoint_names_and_header(server: Server) -> None:
     assert headers["content-type"] == "text/plain; version=0.0.4"
     assert "process-start-time-unix" in headers
     text = data.decode()
-    for name in ("prompt_tokens_total", "tokens_predicted_total", "tokens_predicted_seconds_total", "n_decode_total",
-                 "prompt_tokens_seconds", "predicted_tokens_seconds", "requests_processing", "requests_deferred"):
+    for name in (
+        "prompt_tokens_total",
+        "tokens_predicted_total",
+        "tokens_predicted_seconds_total",
+        "n_decode_total",
+        "prompt_tokens_seconds",
+        "predicted_tokens_seconds",
+        "requests_processing",
+        "requests_deferred",
+    ):
         assert f"# TYPE llamacpp:{name} " in text
         assert re.search(rf"^llamacpp:{name} \S+$", text, re.MULTILINE)
 
@@ -309,15 +364,17 @@ def test_metrics_endpoint_names_and_header(server: Server) -> None:
 def test_errors_use_the_real_bodies(server: Server) -> None:
     status, _, data = server.request("POST", "/v1/chat/completions", {"model": "x"})
     assert status == 400
-    assert json.loads(data) == {"error": {"code": 400, "message": "'messages' is required",
-                                          "type": "invalid_request_error"}}
+    assert json.loads(data) == {
+        "error": {"code": 400, "message": "'messages' is required", "type": "invalid_request_error"}
+    }
     status, _, data = server.request("POST", "/v1/chat/completions", raw=b"{not json")
     assert status == 400 and json.loads(data)["error"]["type"] == "invalid_request_error"
     status, _, data = server.request("GET", "/nope")
     assert status == 404
     assert json.loads(data) == {"error": {"message": "File Not Found", "type": "not_found_error", "code": 404}}
-    status, _, data = server.request("POST", "/v1/chat/completions",
-                                    {"messages": [{"role": "user", "content": "x" * 20000}]})
+    status, _, data = server.request(
+        "POST", "/v1/chat/completions", {"messages": [{"role": "user", "content": "x" * 20000}]}
+    )
     error = json.loads(data)["error"]
     assert status == 400 and error["type"] == "exceed_context_size_error" and error["n_ctx"] == 4096
     assert error["n_prompt_tokens"] > 4096 and "exceeds the available context size" in error["message"]
@@ -375,8 +432,9 @@ def test_non_streaming_chat_with_and_without_thinking(server: Server) -> None:
     assert message["reasoning_content"] and message["content"].startswith("Fake reply to")
     assert list(body["usage"]) == ["completion_tokens", "prompt_tokens", "total_tokens", "prompt_tokens_details"]
     assert list(body["timings"]) == TIMING_KEYS
-    status, body = server.post_json("/v1/chat/completions",
-                                    {**CHAT, "chat_template_kwargs": {"enable_thinking": False}})
+    status, body = server.post_json(
+        "/v1/chat/completions", {**CHAT, "chat_template_kwargs": {"enable_thinking": False}}
+    )
     assert status == 200 and "reasoning_content" not in body["choices"][0]["message"]
     assert body["choices"][0]["message"]["content"].startswith("Fake reply to")
 
@@ -414,17 +472,26 @@ def test_metrics_counters_follow_requests_and_log_has_print_timings(server: Serv
     assert after["llamacpp:n_decode_total"] > before["llamacpp:n_decode_total"]
     assert 0.75 * TOK_PER_SEC < after["llamacpp:predicted_tokens_seconds"] < 1.25 * TOK_PER_SEC
     new = "\n".join(server.lines()[mark:])
-    for expected in ("processing task, is_child = 0", "prompt eval time =", "       eval time =",
-                     "      total time =", "   graphs reused =", "stop processing: n_tokens = "):
+    for expected in (
+        "processing task, is_child = 0",
+        "prompt eval time =",
+        "       eval time =",
+        "      total time =",
+        "   graphs reused =",
+        "stop processing: n_tokens = ",
+    ):
         assert expected in new, new
 
 
 def test_client_disconnect_stops_generation_and_frees_the_slot(server: Server) -> None:
     mark = len(server.lines())
     conn = http.client.HTTPConnection("127.0.0.1", server.port, timeout=10)
-    conn.request("POST", "/v1/chat/completions",
-                 body=json.dumps({**CHAT, "stream": True, "ignore_eos": True, "max_tokens": 100000}),
-                 headers={"Content-Type": "application/json"})
+    conn.request(
+        "POST",
+        "/v1/chat/completions",
+        body=json.dumps({**CHAT, "stream": True, "ignore_eos": True, "max_tokens": 100000}),
+        headers={"Content-Type": "application/json"},
+    )
     resp = conn.getresponse()
     assert resp.status == 200
     for _ in range(6):
@@ -444,8 +511,11 @@ def test_one_slot_serves_one_request_at_a_time(server: Server) -> None:
     results: list[tuple[int, Any]] = []
 
     def worker(text: str) -> None:
-        body = {"messages": [{"role": "user", "content": text}], "max_tokens": 40,
-                "chat_template_kwargs": {"enable_thinking": False}}
+        body = {
+            "messages": [{"role": "user", "content": text}],
+            "max_tokens": 40,
+            "chat_template_kwargs": {"enable_thinking": False},
+        }
         results.append(server.post_json("/v1/chat/completions", body))
 
     threads = [threading.Thread(target=worker, args=(f"request number {i}",)) for i in range(2)]
@@ -466,9 +536,13 @@ def test_metrics_and_slots_can_be_switched_off(tmp_path: Path) -> None:
     with running(tmp_path, "--no-slots") as srv:
         status, _, data = srv.request("GET", "/metrics")
         assert status == 501
-        assert json.loads(data) == {"error": {
-            "code": 501, "type": "not_supported_error",
-            "message": "This server does not support metrics endpoint. Start it with `--metrics`"}}
+        assert json.loads(data) == {
+            "error": {
+                "code": 501,
+                "type": "not_supported_error",
+                "message": "This server does not support metrics endpoint. Start it with `--metrics`",
+            }
+        }
         status, _, data = srv.request("GET", "/slots")
         assert status == 501 and "Start it with `--slots`" in json.loads(data)["error"]["message"]
         props = srv.get_json("/props")[1]
@@ -477,10 +551,29 @@ def test_metrics_and_slots_can_be_switched_off(tmp_path: Path) -> None:
 
 def test_fle_mode_speculative_decoding_and_verbose_log(tmp_path: Path) -> None:
     draft = make_stub(tmp_path, "draft-mtp-IQ4_NL.gguf")
-    env = {"FLE_MOE_CACHE_BUDGET_MIB": "4096", "FLE_MOE_CACHE_BUDGET_FIT": "1", "FLE_SLOT_EARLY_SAVE": "1",
-           "FAKE_TOK_PER_SEC": "4000"}
-    args = ("-lv", "4", "-md", str(draft), "--spec-type", "draft-mtp", "--spec-draft-n-max", "2", "--metrics",
-            "--cache-ram", "1024", "-fit", "on", "-a", "fle")
+    env = {
+        "FLE_MOE_CACHE_BUDGET_MIB": "4096",
+        "FLE_MOE_CACHE_BUDGET_FIT": "1",
+        "FLE_SLOT_EARLY_SAVE": "1",
+        "FAKE_TOK_PER_SEC": "4000",
+    }
+    args = (
+        "-lv",
+        "4",
+        "-md",
+        str(draft),
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--metrics",
+        "--cache-ram",
+        "1024",
+        "-fit",
+        "on",
+        "-a",
+        "fle",
+    )
     with running(tmp_path, *args, env=env) as srv:
         log = srv.log
         assert "common_init_result: MoE cache budget 4096 MiB added to the fit margin of device 0 (now 5120 MiB)" in log
@@ -532,11 +625,19 @@ def test_port_in_use_fails_to_bind(tmp_path: Path) -> None:
 
 
 def test_version_output_has_the_real_shape() -> None:
-    expected = {"upstream": "version: 0.6.0-dev (build 11540, commit 1e6f04a75)",
-                "fle": "version: 0.4.0-dev (build 10825, commit 1efd83707)"}
+    expected = {
+        "upstream": "version: 0.6.0-dev (build 11540, commit 1e6f04a75)",
+        "fle": "version: 0.4.0-dev (build 10825, commit 1efd83707)",
+    }
     for engine, first_line in expected.items():
-        result = subprocess.run([sys.executable, str(FAKE), "--version"], capture_output=True, text=True,
-                                env=clean_env({"FAKE_ENGINE": engine}), timeout=30, check=False)
+        result = subprocess.run(
+            [sys.executable, str(FAKE), "--version"],
+            capture_output=True,
+            text=True,
+            env=clean_env({"FAKE_ENGINE": engine}),
+            timeout=30,
+            check=False,
+        )
         assert result.returncode == 0
         lines = result.stderr.splitlines()
         assert lines[0] == first_line and lines[1].startswith("built with ")
@@ -545,8 +646,14 @@ def test_version_output_has_the_real_shape() -> None:
 def test_help_names_what_fle_studio_detects() -> None:
     # engines.detect: "--log-verbosity" means the engine takes -lv, "--moe-expert-cache-inserts" means FLE.
     for engine in ("upstream", "fle"):
-        result = subprocess.run([sys.executable, str(FAKE), "--help"], capture_output=True, text=True,
-                                env=clean_env({"FAKE_ENGINE": engine}), timeout=30, check=False)
+        result = subprocess.run(
+            [sys.executable, str(FAKE), "--help"],
+            capture_output=True,
+            text=True,
+            env=clean_env({"FAKE_ENGINE": engine}),
+            timeout=30,
+            check=False,
+        )
         assert result.returncode == 0
         assert "--log-verbosity" in result.stdout
         assert ("--moe-expert-cache-inserts" in result.stdout) == (engine == "fle")
@@ -573,8 +680,30 @@ def test_terminate_during_the_load_exits_promptly(tmp_path: Path) -> None:
 
 def test_parse_args_accepts_and_ignores_unknown_flags() -> None:
     fake = load_fake_module()
-    argv = ["-m", "a.gguf", "--port=1234", "-c", "8192", "-a", "x,y", "--metrics", "--flash-attn", "on", "-ngl", "99",
-            "--no-mmap", "--cache-type-k", "q8_0", "--seed", "-1", "--spec-draft-n-max", "2", "-np", "2", "-v"]
+    argv = [
+        "-m",
+        "a.gguf",
+        "--port=1234",
+        "-c",
+        "8192",
+        "-a",
+        "x,y",
+        "--metrics",
+        "--flash-attn",
+        "on",
+        "-ngl",
+        "99",
+        "--no-mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--seed",
+        "-1",
+        "--spec-draft-n-max",
+        "2",
+        "-np",
+        "2",
+        "-v",
+    ]
     cfg = fake.parse_args(argv, {})
     assert (cfg.model, cfg.port, cfg.ctx, cfg.alias) == ("a.gguf", 1234, 8192, "x,y")
     assert cfg.metrics is True and cfg.parallel == 2
@@ -618,13 +747,25 @@ def test_gguf_reader_skips_arrays_and_reads_what_follows(tmp_path: Path) -> None
         return struct.pack("<I", 8) + struct.pack("<Q", len(value)) + value.encode()
 
     strings = b"".join(struct.pack("<Q", len(s)) + s.encode() for s in ("a", "bb", "ccc"))
-    body = (key("general.architecture") + text("qwen35moe")
-            + key("tokenizer.ggml.tokens") + struct.pack("<I", 9) + struct.pack("<IQ", 8, 3) + strings
-            + key("qwen35moe.block_count") + struct.pack("<I", 4) + struct.pack("<I", 48)
-            + key("general.name") + text("Fake Model"))
+    body = (
+        key("general.architecture")
+        + text("qwen35moe")
+        + key("tokenizer.ggml.tokens")
+        + struct.pack("<I", 9)
+        + struct.pack("<IQ", 8, 3)
+        + strings
+        + key("qwen35moe.block_count")
+        + struct.pack("<I", 4)
+        + struct.pack("<I", 48)
+        + key("general.name")
+        + text("Fake Model")
+    )
     path = tmp_path / "meta.gguf"
     path.write_bytes(b"GGUF" + struct.pack("<IQQ", 3, 0, 4) + body)
     assert fake.read_gguf_meta(str(path)) == {
-        "general.architecture": "qwen35moe", "qwen35moe.block_count": 48, "general.name": "Fake Model"}
+        "general.architecture": "qwen35moe",
+        "qwen35moe.block_count": 48,
+        "general.name": "Fake Model",
+    }
     assert fake.read_gguf_meta(str(tmp_path / "missing.gguf")) == {}
     assert fake.ModelInfo(str(path)).n_layer == 48

@@ -53,9 +53,23 @@ class Live:
 
     def record_response(self, timings: dict[str, Any], usage: dict[str, Any] | None = None) -> None:
         """Called by the chat proxy with the `timings` of every finished answer."""
-        entry = {"t": time.time(), **{k: timings.get(k) for k in (
-            "prompt_n", "prompt_ms", "prompt_per_second", "predicted_n", "predicted_ms", "predicted_per_second",
-            "draft_n", "draft_n_accepted", "cache_n")}}
+        entry = {
+            "t": time.time(),
+            **{
+                k: timings.get(k)
+                for k in (
+                    "prompt_n",
+                    "prompt_ms",
+                    "prompt_per_second",
+                    "predicted_n",
+                    "predicted_ms",
+                    "predicted_per_second",
+                    "draft_n",
+                    "draft_n_accepted",
+                    "cache_n",
+                )
+            },
+        }
         if usage:
             entry["usage"] = usage
         with self._lock:
@@ -91,8 +105,13 @@ class Live:
         mem = system.memory()
         s["ram_used"], s["ram_total"] = mem["total"] - mem["available"], mem["total"]
         if self._has_nvidia and (tick % 2 == 0 or not self._gpus):
-            self._gpus = [{k: g.get(k) for k in ("index", "name", "utilization", "memory_used", "memory_total",
-                                                 "power_w", "temperature_c")} for g in system.nvidia()]
+            self._gpus = [
+                {
+                    k: g.get(k)
+                    for k in ("index", "name", "utilization", "memory_used", "memory_total", "power_w", "temperature_c")
+                }
+                for g in system.nvidia()
+            ]
         s["gpus"] = self._gpus
         if proc is not None:
             rss = procutil.read_and_memory(proc)[1]
@@ -112,9 +131,11 @@ class Live:
                 self.metrics_available = True
                 cur = parse_prometheus(text)
                 s.update(self._rates(cur))
-                self.totals = {"generated": cur.get(P + "tokens_predicted_total", 0.0),
-                               "prompt": cur.get(P + "prompt_tokens_total", 0.0),
-                               "decode_calls": cur.get(P + "n_decode_total", 0.0)}
+                self.totals = {
+                    "generated": cur.get(P + "tokens_predicted_total", 0.0),
+                    "prompt": cur.get(P + "prompt_tokens_total", 0.0),
+                    "decode_calls": cur.get(P + "n_decode_total", 0.0),
+                }
             elif code in (404, 501):
                 self.metrics_available = False
             if tick % 2 == 0:
@@ -143,8 +164,10 @@ class Live:
 
     def _rates(self, cur: dict[str, float]) -> dict[str, Any]:
         prev, self._prev = self._prev, cur
-        out: dict[str, Any] = {"busy": cur.get(P + "requests_processing", 0) > 0,
-                               "deferred": int(cur.get(P + "requests_deferred", 0))}
+        out: dict[str, Any] = {
+            "busy": cur.get(P + "requests_processing", 0) > 0,
+            "deferred": int(cur.get(P + "requests_deferred", 0)),
+        }
         if prev is None:
             return out
 

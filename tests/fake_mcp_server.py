@@ -326,9 +326,14 @@ class HttpHandler(BaseHTTPRequestHandler):
     def oauth_get(self, u: Any) -> bool:
         path = u.path
         if path == "/.well-known/oauth-protected-resource/mcp":
-            self.json(200, {
-                "resource": f"{self.base}/mcp", "authorization_servers": [self.base], "scopes_supported": [SCOPE],
-            })
+            self.json(
+                200,
+                {
+                    "resource": f"{self.base}/mcp",
+                    "authorization_servers": [self.base],
+                    "scopes_supported": [SCOPE],
+                },
+            )
             return True
         if path == "/.well-known/oauth-authorization-server":
             doc: dict[str, Any] = {
@@ -362,7 +367,9 @@ class HttpHandler(BaseHTTPRequestHandler):
             code = AUTH.new("code")
             with AUTH.lock:
                 AUTH.codes[code] = {
-                    "challenge": q["code_challenge"], "redirect": q["redirect_uri"], "client": q.get("client_id")
+                    "challenge": q["code_challenge"],
+                    "redirect": q["redirect_uri"],
+                    "client": q.get("client_id"),
                 }
             sep = "&" if "?" in q["redirect_uri"] else "?"
             back = q["redirect_uri"] + sep + urlencode({"code": code, "state": q.get("state", "")})
@@ -415,10 +422,16 @@ class HttpHandler(BaseHTTPRequestHandler):
             with AUTH.lock:
                 AUTH.access[access] = time.time() + expires
                 AUTH.refresh[refresh] = f.get("client_id", "")
-            self.json(200, {
-                "access_token": access, "token_type": "Bearer", "expires_in": expires, "refresh_token": refresh,
-                "scope": SCOPE,
-            })
+            self.json(
+                200,
+                {
+                    "access_token": access,
+                    "token_type": "Bearer",
+                    "expires_in": expires,
+                    "refresh_token": refresh,
+                    "scope": SCOPE,
+                },
+            )
             return True
         if path == "/revoke":
             f = self.form()

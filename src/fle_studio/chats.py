@@ -49,9 +49,15 @@ class Chats:
             if d is None:
                 continue
             nodes, leaf = chat_tree.normalize(d.get("messages") or [], d.get("leaf"))
-            out.append({"id": d.get("id", p.stem), "title": d.get("title") or "New chat",
-                        "updated": d.get("updated", 0), "model": d.get("model", ""),
-                        "messages": len(chat_tree.active_path(nodes, leaf))})
+            out.append(
+                {
+                    "id": d.get("id", p.stem),
+                    "title": d.get("title") or "New chat",
+                    "updated": d.get("updated", 0),
+                    "model": d.get("model", ""),
+                    "messages": len(chat_tree.active_path(nodes, leaf)),
+                }
+            )
         out.sort(key=lambda c: c["updated"], reverse=True)
         return out
 
@@ -117,9 +123,15 @@ class Chats:
                 continue
             title = str(d.get("title") or "New chat")
             in_title = needle.casefold() in title.casefold()
-            out.append({"id": d.get("id", p.stem), "title": title, "updated": d.get("updated", 0),
-                        "snippet": chat_tree.snippet(text, needle) if not in_title else "",
-                        "in_title": in_title})
+            out.append(
+                {
+                    "id": d.get("id", p.stem),
+                    "title": title,
+                    "updated": d.get("updated", 0),
+                    "snippet": chat_tree.snippet(text, needle) if not in_title else "",
+                    "in_title": in_title,
+                }
+            )
         out.sort(key=lambda c: (not c["in_title"], -float(c["updated"] or 0)))
         return out[:limit]
 

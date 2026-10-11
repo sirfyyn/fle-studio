@@ -15,16 +15,23 @@ from . import __version__
 
 USER_AGENT = f"fle-studio/{__version__} (+https://github.com/sirfyyn/fle-studio)"
 HF_HOSTS = ("huggingface.co", "hf.co")
-_CA_FILES = ("/etc/ssl/cert.pem", "/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt",
-             "/etc/ssl/ca-bundle.pem", "/usr/local/etc/openssl/cert.pem")
+_CA_FILES = (
+    "/etc/ssl/cert.pem",
+    "/etc/ssl/certs/ca-certificates.crt",
+    "/etc/pki/tls/certs/ca-bundle.crt",
+    "/etc/ssl/ca-bundle.pem",
+    "/usr/local/etc/openssl/cert.pem",
+)
 
 
 @lru_cache(maxsize=1)
 def ssl_context() -> ssl.SSLContext:
     ctx = ssl.create_default_context()
     found = ssl.get_default_verify_paths()
-    has_default = bool((found.cafile and os.path.exists(found.cafile)) or
-                       (found.capath and os.path.isdir(found.capath) and os.listdir(found.capath)))
+    has_default = bool(
+        (found.cafile and os.path.exists(found.cafile))
+        or (found.capath and os.path.isdir(found.capath) and os.listdir(found.capath))
+    )
     if not has_default and not os.environ.get("SSL_CERT_FILE"):
         # python.org builds on macOS ship without CA certificates until "Install Certificates" runs.
         for cand in _CA_FILES:
@@ -40,8 +47,15 @@ def ssl_context() -> ssl.SSLContext:
     return ctx
 
 
-def open_url(url: str, *, headers: dict[str, str] | None = None, token: str = "", timeout: float = 60,
-             method: str = "GET", data: bytes | None = None) -> Any:
+def open_url(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    token: str = "",
+    timeout: float = 60,
+    method: str = "GET",
+    data: bytes | None = None,
+) -> Any:
     req = Request(url, data=data, method=method, headers={"User-Agent": USER_AGENT, **(headers or {})})
     host = (urlparse(url).hostname or "").lower()
     if token and (host in HF_HOSTS or host.endswith(".huggingface.co")):
@@ -49,7 +63,8 @@ def open_url(url: str, *, headers: dict[str, str] | None = None, token: str = ""
     return urlopen(req, timeout=timeout, context=ssl_context())
 
 
-def get_json(url: str, *, token: str = "", timeout: float = 30,
-             headers: dict[str, str] | None = None) -> tuple[Any, Any]:
+def get_json(
+    url: str, *, token: str = "", timeout: float = 30, headers: dict[str, str] | None = None
+) -> tuple[Any, Any]:
     with open_url(url, token=token, timeout=timeout, headers=headers) as r:
         return json.loads(r.read().decode("utf-8")), r.headers
