@@ -16,6 +16,7 @@ import os
 import secrets
 import socket
 import ssl
+import threading
 from pathlib import Path
 
 from . import paths
@@ -195,17 +196,48 @@ def normalize(fp: str) -> str:
     return "".join(c for c in fp.lower() if c in "0123456789abcdef")
 
 
+RESOLVE_TIMEOUT = 2.0
+
+
+def _route_addresses() -> set[str]:
+    """The addresses this machine sends from, found without DNS (a UDP connect sends nothing)."""
+    found = set()
+    for family, probe in ((socket.AF_INET, "192.0.2.1"), (socket.AF_INET6, "2001:db8::1")):
+        try:
+            with socket.socket(family, socket.SOCK_DGRAM) as s:
+                s.connect((probe, 9))
+                found.add(str(s.getsockname()[0]).split("%", 1)[0])
+        except OSError:
+            continue
+    return found
+
+
+def _resolved_addresses(host: str) -> set[str]:
+    """The addresses the host name resolves to, or nothing when the lookup takes too long.
+
+    An unresolvable own host name can block for many seconds (seen on macOS), so the lookup runs aside with a limit.
+    """
+    found: set[str] = set()
+
+    def look() -> None:
+        try:
+            for info in socket.getaddrinfo(host, None):
+                found.add(str(info[4][0]).split("%", 1)[0])
+        except OSError:
+            pass
+
+    worker = threading.Thread(target=look, daemon=True)
+    worker.start()
+    worker.join(RESOLVE_TIMEOUT)
+    return set(found) if not worker.is_alive() else set()
+
+
 def _local_names() -> list[str]:
     names = {"localhost", "127.0.0.1", "::1"}
     host = socket.gethostname()
     names.add(host)
-    try:
-        for info in socket.getaddrinfo(host, None):
-            addr = str(info[4][0]).split("%", 1)[0]
-            if addr:
-                names.add(addr)
-    except OSError:
-        pass
+    names |= _route_addresses()
+    names |= _resolved_addresses(host)
     return sorted(n for n in names if n and n.isascii())
 
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from typing import Any
 
@@ -175,9 +174,10 @@ def test_aba_tells_a_real_difference_from_noise(setup: Setup) -> None:
     assert cur["state"] == "done", cur.get("error")
     assert [t["phase"] for t in cur["trials"]] == ["A1", "B", "A2"]
     assert cur["result"]["decode"]["verdict"] == "worse"
-    time.sleep(0)
+    wait_for(lambda: setup.engine.state in ("stopped", "crashed"), 30, "the engine to stop")
     setup.tuner.start_aba(model_id="m", profile_a="six", profile_b="six", runs=3)
     same = setup.finished()
+    assert same["state"] == "done", same.get("error")
     assert same["result"]["decode"]["verdict"] == "within noise"
 
 
