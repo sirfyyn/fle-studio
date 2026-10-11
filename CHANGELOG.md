@@ -1,10 +1,11 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.0] - unreleased
 
-Version `0.2.0.dev0`. Not released.
+Not released yet. Studio 0.2 adds Forge, a chat with attachments, tools, MCP and apps, tuning and quality
+measurements, an expert cache page and an update check.
 
-### Added
+### Forge: build your own quant
 
 - Forge accepts the named quantization mixtures of `llama-quantize` (`q3_k_m`, `q4_k_m`, ...) as the default type.
 - **Forge**, a new page for building your own quant (see [docs/FORGE.md](docs/FORGE.md)):
@@ -23,16 +24,9 @@ Version `0.2.0.dev0`. Not released.
   as the default, split into a calibration and a held-out comparison part.
 - Tests with synthetic mini GGUF files and stand-in llama.cpp tools; the browser test walks through Forge.
 
-### Changed
+### Chat, tools and MCP
 
-- The release test accepts a development version: installers and README name the last release until the new one
-  is cut.
-
-## Unreleased
-
-Chat 0.2: attachments, tools and MCP, and the comforts of a daily chat. See [docs/CHAT.md](docs/CHAT.md).
-
-### Added
+Details in [docs/CHAT.md](docs/CHAT.md) and [docs/MCP.md](docs/MCP.md).
 
 - Attachments in the chat: text and code files, PDFs (optional `pypdf`, `pip install "fle-studio[pdf]"`) and pictures
   (only when the loaded model reports vision; otherwise a clear message). Choose, drop or paste files. A token
@@ -64,17 +58,9 @@ Chat 0.2: attachments, tools and MCP, and the comforts of a daily chat. See [doc
   (`tests/fake_mcp_server.py`), unit and integration tests for all of it, a Node check of the request builder, and
   browser steps for attachments, versions, export and import, search, tool cards and MCP approval.
 
-### Changed
+### Start, tuning and measuring
 
-- Chats are stored as a tree of messages (version 2 of the file). Older chat files open unchanged. Pictures are kept
-  as files next to the chats, not inside them. The size limit of one saved chat is 32 MB (was 4 MB).
-- A request that carries tools and a forced answer format (`response_format`, `json_schema` or `grammar`) is refused
-  by the proxy with HTTP 400, and the page never sends both: the model would not call the tools and would answer
-  with substitute JSON. A test keeps this.
-
-Start, tuning and measuring (branch `feature/tuning-0.2`).
-
-### Added
+Details in [docs/TUNING-AND-QUALITY.md](docs/TUNING-AND-QUALITY.md).
 
 - **Simple and advanced Engine page.** Simple (the default) shows the model, "Best for my machine" and Start; Advanced
   shows everything as before. Under the command, every flag and environment variable has a one-line explanation (also as a
@@ -91,9 +77,7 @@ Start, tuning and measuring (branch `feature/tuning-0.2`).
 - Catalog: gpt-oss-20b and gpt-oss-120b (a second mixture-of-experts family, unmeasured).
 - [docs/HARDWARE-TESTS.md](docs/HARDWARE-TESTS.md), [docs/TUNING-AND-QUALITY.md](docs/TUNING-AND-QUALITY.md).
 
-## Unreleased
-
-### Added
+### Updates
 
 - Update check: about once a day (and with **Check now**) FLE Studio asks GitHub for the latest release, without
   identifiers or telemetry. A discreet card in the sidebar says "FLE Studio X.Y.Z is available", with the release notes
@@ -103,6 +87,17 @@ Start, tuning and measuring (branch `feature/tuning-0.2`).
   same command line. A failed install keeps the old version running and shows the log. On Windows a helper script does
   the install after Studio has ended. Other installs get the fitting command to copy.
 - The same notice reports a newer FLE engine build for the engines you installed.
+
+### Changed
+
+- Chats are stored as a tree of messages (version 2 of the file). Older chat files open unchanged. Pictures are kept
+  as files next to the chats, not inside them. The size limit of one saved chat is 32 MB (was 4 MB).
+- A request that carries tools and a forced answer format (`response_format`, `json_schema` or `grammar`) is refused
+  by the proxy with HTTP 400, and the page never sends both: the model would not call the tools and would answer
+  with substitute JSON. A test keeps this.
+- The `tools.py` of the tuning work (the programs that ship with llama.cpp) is `engine_tools.py` now; `tools.py`
+  holds the tools the model can call.
+- `ruff format` is checked in CI, with a pinned ruff version.
 
 ## [0.1.1] - 2026-10-11
 
