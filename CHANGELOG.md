@@ -44,6 +44,14 @@ Chat 0.2: attachments, tools and MCP, and the comforts of a daily chat. See [doc
 - An MCP client for stdio and Streamable HTTP servers, configured in Settings → Tools with the usual `mcpServers`
   JSON. Their tools appear in the chat. A tool of an MCP server asks for approval before every call unless you allow
   that server; the server side enforces this too. A `autoApprove` entry in the JSON is ignored on purpose.
+- MCP, complete (see [docs/MCP.md](docs/MCP.md)): web servers that need a sign-in get a **Sign in** button (OAuth per
+  the MCP authorization specification 2025-11-25: 401 challenge, protected resource metadata, authorization server
+  metadata, dynamic client registration or a client id you enter, PKCE S256, resource indicators, refresh, sign out).
+  Tokens live in the data folder with mode 0600 and never in settings, logs or exports. The older HTTP+SSE transport is
+  the fallback when Streamable HTTP is refused with a 4xx (or `"type": "sse"`). MCP Apps (SEP-1865, 2026-01-26): a tool
+  with a `ui://` resource shows an app under its card in a sandboxed iframe (no allow-same-origin, own CSP from the
+  resource metadata) with the postMessage bridge: tool input and result, light/dark, resize, `tools/call` to its own
+  server with the usual confirmation, a message into the chat and links only after you agree.
 - Edit your own messages: the edit becomes another version and the model answers it. "Answer again" keeps the
   previous answer as a version too. A `< 2 / 3 >` switch moves between versions.
 - Search over the titles and the text of all chats (every version, attachment names and attachment text).

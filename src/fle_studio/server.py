@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from . import __version__, bench, catalog, chat_api, chats, hf, launch, net, paths, service, system
+from . import __version__, bench, catalog, chat_api, chats, hf, launch, mcp_api, net, paths, service, system
 from .chats import Chats
 from .config import Config
 from .downloads import Downloads
@@ -872,6 +872,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 chat_api.install(Handler, ROUTES, ApiError)  # attachments, tools, chat search/export/import (chat_api.py)
+mcp_api.install(Handler, ROUTES, ApiError)  # MCP sign-in (OAuth) and MCP Apps frames (mcp_api.py)
 
 
 class Server(ThreadingHTTPServer):

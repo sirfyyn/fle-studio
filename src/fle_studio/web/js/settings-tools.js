@@ -4,9 +4,12 @@ import { get, post } from "./api.js";
 import { h, icon, toast } from "./ui.js";
 
 let timer = 0;
+let authTimer = 0;
 export function stopToolsPolling() {
   clearTimeout(timer);
+  clearTimeout(authTimer);
   timer = 0;
+  authTimer = 0;
 }
 
 const EXAMPLE = `{
@@ -16,8 +19,15 @@ const EXAMPLE = `{
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/a/folder"]
     },
     "remote": {
-      "url": "https://example.com/mcp",
+      "url": "https://example.com/mcp"
+    },
+    "with-token": {
+      "url": "https://example.com/other/mcp",
       "headers": { "Authorization": "Bearer …" }
+    },
+    "needs-client-id": {
+      "url": "https://example.com/third/mcp",
+      "oauth": { "client_id": "…" }
     }
   }
 }`;
@@ -49,12 +59,14 @@ export function toolsSection(s, ui) {
     status.replaceChildren(...servers.map((sv) => {
       const trusted = (t.mcp_trusted || []).includes(sv.name);
       const pill = sv.status === "ready" ? ["good", `${sv.tools} tool${sv.tools === 1 ? "" : "s"}`] :
+        sv.status === "auth_required" ? ["warn", "Sign-in needed"] :
         sv.status === "error" ? ["bad", "Not connected"] : ["info live", "Connecting…"];
       return h("div", { class: "mcp-row", "data-server": sv.name },
         h("div", { class: "row between" },
-          h("div", null, h("b", null, sv.name), h("span", { class: "muted small" }, sv.transport ? ` ${sv.transport === "stdio" ? "program" : "web address"}${sv.info ? ` · ${sv.info}` : ""}` : "")),
+          h("div", null, h("b", null, sv.name), h("span", { class: "muted small" }, sv.transport ? ` ${sv.transport === "stdio" ? "program" : "web address"}${sv.legacy_sse ? " (older HTTP+SSE)" : ""}${sv.info ? ` · ${sv.info}` : ""}` : "")),
           h("span", { class: `pill ${pill[0]}` }, pill[1])),
-        sv.error ? h("div", { class: "small bad-text" }, sv.error) : null,
+        sv.error && sv.status !== "auth_required" ? h("div", { class: "small bad-text" }, sv.error) : null,
+        sv.auth?.remote ? authRow(sv) : null,
         sv.status === "ready" ? h("label", { class: "row top" },
           ui.toggle(trusted, async (v) => {
             const list = new Set(t.mcp_trusted || []);
@@ -63,6 +75,68 @@ export function toolsSection(s, ui) {
           }),
           h("span", null, "Run its tools without asking ", h("span", { class: "muted small" }, "(otherwise every call waits for your click in the chat)"))) : null);
     }));
+  }
+
+  // Sign in / out of a web server (OAuth). The page never sees a token: Studio keeps it in its data folder.
+  function authRow(sv) {
+    const signedIn = !!sv.auth.signed_in;
+    const out = h("div", { class: "mcp-auth", "data-auth": sv.name });
+    if (sv.status === "auth_required" || !signedIn) {
+      out.append(h("button", { class: "btn primary sm", "data-act": "signin", onclick: () => signIn(sv.name) }, icon("link", "sm"), "Sign in"),
+        h("span", { class: "small muted" }, "This server asks you to sign in. A page of the server opens in your browser."));
+      if (!sv.auth.client_id_set) out.append(clientIdForm(sv.name));
+    } else {
+      out.append(h("span", { class: "small good-text" }, "Signed in"),
+        h("button", { class: "btn ghost sm", "data-act": "signout", onclick: () => signOut(sv.name) }, "Sign out"));
+    }
+    return out;
+  }
+
+  function clientIdForm(name) {
+    const input = h("input", { class: "input mono sm", placeholder: "client id, if the server has no automatic registration", "aria-label": `Client ID for ${name}` });
+    return h("details", { class: "small" }, h("summary", { class: "muted" }, "Client ID"),
+      h("div", { class: "row" }, input, h("button", { class: "btn sm", onclick: () => setClientId(name, input.value.trim()) }, "Save")),
+      h("span", { class: "faint" }, "Studio's redirect address is http://127.0.0.1:<this port>/oauth/callback; register that with the server."));
+  }
+
+  async function setClientId(name, id) {
+    let doc;
+    try { doc = JSON.parse(t.mcp_json); } catch { toast("The servers text is not valid JSON", "bad"); return; }
+    const servers = doc.mcpServers && typeof doc.mcpServers === "object" ? doc.mcpServers : doc;
+    if (!servers[name]) return;
+    servers[name].oauth = { ...(servers[name].oauth || {}), ...(id ? { client_id: id } : {}) };
+    const text = JSON.stringify(doc, null, 2);
+    if (!(await ui.save({ tools: { mcp_json: text } }))) return;
+    t.mcp_json = text;
+    json.value = text;
+    toast("Saved. Press Sign in.", "good");
+    refresh(true);
+  }
+
+  async function signIn(name) {
+    try {
+      const r = await post("/api/mcp/signin", { server: name });
+      window.open(r.auth_url, "_blank", "noopener");
+      toast("A sign-in page opened in your browser. Come back here when you are done.", "info", 8000);
+      watchSignIn();
+    } catch (e) { toast(e.message, "bad", 12000); }
+  }
+
+  async function signOut(name) {
+    try { await post("/api/mcp/signout", { server: name }); } catch (e) { toast(e.message, "bad"); }
+    refresh(true);
+  }
+
+  // After the browser went to the sign-in page: look at the servers until one changed, for two minutes at most.
+  function watchSignIn(left = 80) {
+    clearTimeout(authTimer);
+    authTimer = setTimeout(async () => {
+      let info;
+      try { info = await get("/api/tools"); } catch { return; }
+      draw(info);
+      if (info.servers.some((sv) => sv.status === "auth_required") && left > 0 && document.body.contains(status)) watchSignIn(left - 1);
+      else refresh(true);
+    }, 1500);
   }
 
   const json = h("textarea", { class: "textarea mono", rows: 9, spellcheck: "false", value: t.mcp_json, placeholder: EXAMPLE,
@@ -99,7 +173,7 @@ export function toolsSection(s, ui) {
     h("h4", { class: "sub" }, "MCP servers"),
     row(t.mcp_enabled, (v) => ui.save({ tools: { mcp_enabled: v } }, true).then(() => refresh()), "Use MCP servers",
       "programs and web addresses that offer tools in the Model Context Protocol"),
-    ui.field("Servers", json, "The usual mcpServers JSON. A program (\"command\") is started on this computer when you save; a \"url\" must be a Streamable HTTP server."),
+    ui.field("Servers", json, "The usual mcpServers JSON. A program (\"command\") is started on this computer when you save; a \"url\" is a web server (Streamable HTTP; the older HTTP+SSE is tried when that fails) and, if it asks for a sign-in, gets a Sign in button below."),
     h("div", { class: "row" },
       h("button", { class: "btn primary", onclick: async () => {
         if (!(await ui.save({ tools: { mcp_json: json.value } }))) return;

@@ -741,6 +741,13 @@ svg.i.flip { transform: scaleX(-1); }
 .toolcard .targs { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--faint); font-family: var(--mono); font-size: 12px; }
 .toolcard .tbody { padding: 0 12px 12px; border-top: 1px solid var(--line); display: grid; gap: 6px; }
 .toolcard .tlabel { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); margin-top: 8px; }
+.toolwrap { display: grid; gap: 6px; }
+.app-panel { border: 1px solid var(--line); border-radius: 12px; background: var(--card); overflow: hidden; }
+.app-panel .app-head { padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.app-panel .app-status { padding: 10px 12px; }
+.app-panel iframe.mcp-app { display: block; width: 100%; border: 0; background: transparent; color-scheme: normal; max-height: 800px; }
+.app-open { justify-self: start; }
+.mcp-row .mcp-auth { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
 .toolcard pre { margin: 0; padding: 8px 10px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; max-height: 300px;
   overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
 .toolcard .approve { display: grid; gap: 8px; padding-top: 10px; font-size: 13px; }
@@ -749,6 +756,7 @@ svg.i.flip { transform: scaleX(-1); }
 .card h4.sub { margin: 6px 0 0; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); font-weight: 600; }
 .mcp-row { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
 .bad-text { color: var(--bad); overflow-wrap: anywhere; }
+.good-text { color: var(--good); }
 
 @media (max-width: 960px) {
   .cat-grid, .grid.two, .grid.three { grid-template-columns: minmax(0, 1fr); }

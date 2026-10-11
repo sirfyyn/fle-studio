@@ -103,7 +103,10 @@ the everyday things (details in [docs/CHAT.md](docs/CHAT.md)):
   window is full. The largest upload is a setting.
 - **Tools and MCP.** The model can call a calculator, the clock, read files in one folder you pick, and search the web
   (off by default), and the tools of any MCP server you add in the usual `mcpServers` JSON (stdio or Streamable HTTP).
-  Every call is a card you can open. Anything that writes or starts a program asks first.
+  Every call is a card you can open. Anything that writes or starts a program asks first. Web servers can ask you to
+  sign in (OAuth with PKCE; the token stays in Studio's data folder, mode 0600), older HTTP+SSE servers work as a
+  fallback, and MCP Apps (`ui://` pages) show their result in a sandboxed frame in the chat. See
+  [docs/MCP.md](docs/MCP.md): MCP: local, remote, sign-in, apps.
 - **Edit, branch, search, export.** Edit a message of yours and the old version stays, with a `< 2 / 3 >` switch.
   Search all chats, export one as JSON or Markdown, import it again.
 

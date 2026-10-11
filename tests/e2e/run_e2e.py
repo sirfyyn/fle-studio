@@ -467,6 +467,9 @@ class Session:
         for scheme in ("light", "dark"):
             self.page.emulate_media(color_scheme=scheme)
             wait_for_look(self.page, scheme, f"{name} with a {scheme} system setting")
+            if self.page.locator("iframe.mcp-app").count():  # an MCP App follows the setting a moment later
+                self.expect(self.page.frame_locator("iframe.mcp-app").locator("#theme")).to_have_text(
+                    scheme, timeout=WAIT_MS)
             path = self.out / f"{name}-{scheme}.png"
             full_page_screenshot(self.page, path)
             data = path.read_bytes()
@@ -817,6 +820,156 @@ class Session:
             offered = sum(1 for body in self.sent if body.get("tools"))
             step.note = f"{len(self.sent)} chat requests checked, {offered} offered tools"
 
+    def mcp_remote(self) -> None:
+        """A web MCP server that wants a sign-in (OAuth), and an MCP App in the chat."""
+        page, studio = self.page, self.studio
+        port = free_port()
+        proc = subprocess.Popen([sys.executable, str(FAKE_MCP), "--http", str(port), "--oauth"],
+                                env={k: v for k, v in os.environ.items() if not k.startswith("FAKE_")},
+                                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        try:
+            assert proc.stderr is not None
+            proc.stderr.readline()
+            remote = f"http://127.0.0.1:{port}"
+            card = page.locator(".toolcard")
+            row = page.locator(".mcp-row[data-server='web']")
+
+            with self.step("A web MCP server asks for a sign-in, and Sign in connects it") as step:
+                config = json.dumps({"mcpServers": {
+                    "fake": {"command": sys.executable, "args": [str(FAKE_MCP)]},
+                    "web": {"url": remote + "/mcp"}}})
+                studio.api("POST", "/api/settings", {"tools": {"mcp_enabled": True, "mcp_json": config,
+                                                               "mcp_trusted": []}})
+                studio.api("POST", "/api/tools/reload")
+                wait_until(lambda: any(sv["name"] == "web" and sv["status"] == "auth_required"
+                                       for sv in studio.api("GET", "/api/tools")["servers"]), 30,
+                           "the web server to ask for a sign-in")
+                self.go("Settings", "/settings", "Settings")
+                self.expect(row.locator(".pill")).to_have_text("Sign-in needed", timeout=WAIT_MS)
+                self.expect(row.locator("[data-act='signin']")).to_be_visible(timeout=WAIT_MS)
+                needed = self.shoot("settings-mcp-signin-needed")
+                with page.context.expect_page() as popup_info:
+                    row.locator("[data-act='signin']").click()
+                popup = popup_info.value
+                popup.wait_for_url(re.compile(r"/oauth/callback\?"), timeout=WAIT_MS)
+                self.expect(popup.locator("h1")).to_have_text("Signed in", timeout=WAIT_MS)
+                popup.close()
+                self.expect(row.locator(".pill")).to_contain_text("tool", timeout=WAIT_MS)
+                self.expect(row.locator("[data-act='signout']")).to_be_visible(timeout=WAIT_MS)
+                files = list((studio.home / "oauth").glob("*.json"))
+                if len(files) != 1:
+                    raise E2EError(f"expected one token file in the data folder, found {files}")
+                if os.name != "nt" and (files[0].stat().st_mode & 0o777) != 0o600:
+                    raise E2EError(f"the token file has mode {oct(files[0].stat().st_mode & 0o777)}, not 0600")
+                page_text = page.content() + json.dumps(studio.api("GET", "/api/tools"))
+                token = json.loads(files[0].read_text(encoding="utf-8"))["access_token"]
+                if token in page_text or token in json.dumps(studio.api("GET", "/api/settings")):
+                    raise E2EError("the access token reached the page or the settings")
+                step.note = ("the 401 led to discovery, registration and PKCE; token file mode 0600; " + needed + "; "
+                             + self.shoot("settings-mcp-signed-in"))
+
+            with self.step("The tool of an MCP App shows its app in the chat, inside a sandboxed frame") as step:
+                wait_until(lambda: any(t["name"] == "web__show_chart"
+                                       for t in studio.api("GET", "/api/tools")["tools"]), 30,
+                           "the web server's tools to be listed")
+                self.new_chat()
+                self.expect(page.locator("button.chip", has_text="Tools ·")).to_be_visible(timeout=WAIT_MS)
+                self.send('CALL_TOOL web__show_chart {"title": "E2E chart"}')
+                self.expect(card.locator(".pill")).to_contain_text("Waiting for you", timeout=WAIT_MS)
+                card.get_by_role("button", name="Allow once").click()
+                frame_el = page.locator("iframe.mcp-app")
+                self.expect(frame_el).to_have_count(1, timeout=WAIT_MS)
+                self.expect(frame_el).to_have_attribute("sandbox", "allow-scripts", timeout=WAIT_MS)
+                app = page.frame_locator("iframe.mcp-app")
+                self.expect(app.locator("#title")).to_have_text("E2E chart", timeout=WAIT_MS)
+                self.expect(app.locator("#bars i")).to_have_count(3, timeout=WAIT_MS)
+                self.expect(app.locator("#input")).to_contain_text("E2E chart", timeout=WAIT_MS)
+                inside = next(f for f in page.frames if "/app-frame/" in f.url)
+                origin = inside.evaluate("() => window.origin")
+                reach = inside.evaluate(
+                    "() => { try { return typeof parent.document.title; } catch (e) { return 'blocked'; } }")
+                storage = inside.evaluate(
+                    "() => { try { return typeof localStorage; } catch (e) { return 'blocked'; } }")
+                fetched = inside.evaluate("() => fetch('/api/tools').then(() => 'reached', () => 'blocked')")
+                blocked = [e for e in self.watch.errors if "Content Security Policy" in e]
+                if not blocked:
+                    raise E2EError("the browser did not report that the app's fetch broke the frame's CSP")
+                self.watch.errors = [e for e in self.watch.errors if "Content Security Policy" not in e]  # expected
+                if origin != "null" or reach != "blocked" or storage != "blocked" or fetched != "blocked":
+                    raise E2EError(f"the app is not isolated: origin {origin}, parent {reach}, storage {storage}, "
+                                   f"fetch {fetched}")
+                self.idle()
+                step.note = "iframe sandbox=allow-scripts; origin null; no access to the page, storage or Studio's API"
+
+            with self.step("The app follows the light and dark setting") as step:
+                self.expect(app.locator("#theme")).to_have_text("light", timeout=WAIT_MS)
+                page.emulate_media(color_scheme="dark")
+                self.expect(app.locator("#theme")).to_have_text("dark", timeout=WAIT_MS)
+                dark_bg = inside.evaluate("() => getComputedStyle(document.body).backgroundColor")
+                page.emulate_media(color_scheme="light")
+                self.expect(app.locator("#theme")).to_have_text("light", timeout=WAIT_MS)
+                light_bg = inside.evaluate("() => getComputedStyle(document.body).backgroundColor")
+                if dark_bg == light_bg:
+                    raise E2EError(f"the app looks the same in both themes ({dark_bg})")
+                step.note = f"dark {dark_bg}, light {light_bg}; " + self.shoot("chat-mcp-app")
+
+            with self.step("The app calls a tool of its own server, and the confirmation rule applies") as step:
+                dialog = page.locator(".modal")
+                app.locator("#b1").click()
+                self.expect(dialog).to_contain_text("web", timeout=WAIT_MS)
+                dialog.get_by_role("button", name="Cancel").click()
+                self.expect(app.locator("#bump")).to_contain_text("declined", timeout=WAIT_MS)
+                app.locator("#b1").click()
+                dialog.get_by_role("button", name="Allow once").click()
+                self.expect(app.locator("#bump")).to_have_text("1", timeout=WAIT_MS)
+                app.locator("#b4").click()  # a writing tool, from the app
+                dialog.get_by_role("button", name="Allow once").click()
+                self.expect(app.locator("#reply")).to_contain_text("saved note", timeout=WAIT_MS)
+                step.note = "declined once (nothing ran), allowed once (count 1), writing call asked too; " + \
+                    self.shoot("chat-mcp-app-call")
+
+            with self.step("The app can put a message into the chat only after you agree; links ask too") as step:
+                app.locator("#b3").click()
+                self.expect(dialog).to_contain_text("example.com", timeout=WAIT_MS)
+                dialog.get_by_role("button", name="Cancel").click()
+                self.expect(app.locator("#reply")).to_have_text("refused", timeout=WAIT_MS)
+                app.locator("#b2").click()
+                self.expect(dialog).to_contain_text("Hello from the app", timeout=WAIT_MS)
+                dialog.get_by_role("button", name="Send").click()
+                self.expect(page.locator(".msg.user .bubble").last).to_have_text("Hello from the app", timeout=WAIT_MS)
+                self.idle()
+                step.note = "the app's text became a user message after 'Send'; the link was declined"
+
+            with self.step("After a reload the app starts with a click, and signing out ends the access") as step:
+                page.reload(wait_until="domcontentloaded")
+                self.expect(page.locator(".toolcard").first).to_be_visible(timeout=WAIT_MS)
+                self.expect(page.locator("iframe.mcp-app")).to_have_count(0, timeout=WAIT_MS)
+                page.locator(".app-open").first.click()
+                self.expect(page.frame_locator("iframe.mcp-app").locator("#title")).to_have_text("E2E chart",
+                                                                                                  timeout=WAIT_MS)
+                self.go("Settings", "/settings", "Settings")
+                self.expect(row.locator("[data-act='signout']")).to_be_visible(timeout=WAIT_MS)
+                row.locator("[data-act='signout']").click()
+                self.expect(row.locator(".pill")).to_have_text("Sign-in needed", timeout=WAIT_MS)
+                left = list((studio.home / "oauth").glob("*.json"))
+                if left:
+                    raise E2EError(f"signing out left token files behind: {left}")
+                step.note = "reloaded app shown on request; token file gone after Sign out"
+
+            with self.step("Put the settings back for the next steps") as step:
+                config = json.dumps({"mcpServers": {"fake": {"command": sys.executable, "args": [str(FAKE_MCP)]}}})
+                studio.api("POST", "/api/settings", {"tools": {"mcp_json": config}})
+                studio.api("POST", "/api/tools/reload")
+                wait_until(lambda: any(t["name"] == "fake__write_note"
+                                       for t in studio.api("GET", "/api/tools")["tools"]), 30,
+                           "the stdio server to be back")
+                step.note = "only the stdio server is left"
+        finally:
+            proc.kill()
+            proc.wait(timeout=10)
+            if proc.stderr:
+                proc.stderr.close()
+
     def settings_tools(self) -> None:
         page = self.page
         with self.step("Settings lists the tools and the connected MCP server") as step:
@@ -1046,6 +1199,7 @@ def run_browser(args: argparse.Namespace, report: Report, studio: StudioProcess,
             session.export_import()
             session.search()
             session.tools()
+            session.mcp_remote()
             session.settings_tools()
             session.models()
             session.engine()

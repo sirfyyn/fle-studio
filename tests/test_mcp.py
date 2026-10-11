@@ -50,7 +50,7 @@ def test_parse_servers_names_each_problem() -> None:
     servers, problems = mcp.parse_servers(
         json.dumps(
             {
-                "a": {"type": "sse", "url": "http://x/sse"},
+                "a": {"type": "sse"},
                 "b": {"url": "ftp://x"},
                 "c": {},
                 "d": {"command": "x", "args": "no"},
@@ -60,6 +60,20 @@ def test_parse_servers_names_each_problem() -> None:
         )
     )
     assert set(servers) == {"ok"} and set(problems) == {"a", "b", "c", "d", "e"}
+
+
+def test_parse_servers_accepts_the_old_sse_type_and_oauth_settings() -> None:
+    servers, problems = mcp.parse_servers(
+        json.dumps(
+            {
+                "old": {"type": "sse", "url": "https://x.example/sse"},
+                "web": {"url": "https://x.example/mcp", "oauth": {"client_id": "abc", "scope": "a b", "junk": 1}},
+            }
+        )
+    )
+    assert problems == {}
+    assert servers["old"]["transport"] == "sse"
+    assert servers["web"]["transport"] == "http" and servers["web"]["oauth"] == {"client_id": "abc", "scope": "a b"}
 
 
 def test_stdio_connect_lists_tools(server: mcp.McpServer) -> None:
