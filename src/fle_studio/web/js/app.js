@@ -1,6 +1,7 @@
 // FLE Studio web app: shared state, the polling loop, the router and the sidebar.
 
 import { del, get } from "./api.js";
+import { initChatSearch, searchActive } from "./chat-search.js";
 import { clear, confirmDialog, fmt, h, icon, stateBadge, toast } from "./ui.js";
 
 // ----------------------------------------------------------------------------------------------- store
@@ -184,6 +185,7 @@ function chatGroup(ts) {
 }
 
 function renderChatList() {
+  if (searchActive()) return; // the search box shows its hits in this list
   const list = document.getElementById("chat-list");
   const active = (location.pathname.match(/^\/c\/([0-9a-f]{16})$/) || [])[1];
   if (!store.chats.length) {
@@ -247,6 +249,7 @@ async function start() {
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "o") { e.preventDefault(); navigate("/"); }
   });
   window.addEventListener("popstate", route);
+  initChatSearch({ onClear: () => refreshChats().catch(() => {}) });
   try {
     await refreshState();
   } catch (e) {

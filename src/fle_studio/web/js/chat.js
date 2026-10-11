@@ -1,9 +1,14 @@
-// The chat page: conversation, composer, and the live panel with the engine's numbers.
+// The chat page: conversation (a tree of messages with versions), composer with attachments, the tool loop,
+// and the live panel with the engine's numbers.
 
-import { get, post, put, streamChat } from "./api.js";
+import { get, post, put, streamChat, upload } from "./api.js";
 import { emit, engineModelName, engineUp, navigate, on, refreshChats, store, topbar } from "./app.js";
+import { attachmentsEl, createAttach } from "./attach.js";
+import { buildRequest, estimateRequest, usedImages } from "./chat-request.js";
+import { addChild, ensureTree, indexOf, newId, pathOf, removeBranch, siblingsOf, switchTo } from "./chat-tree.js";
 import { renderMarkdown } from "./md.js";
-import { clear, copyText, debounce, fmt, h, icon, mark, meter, openMenu, ring, sparkline, stateBadge, toast } from "./ui.js";
+import { toolCardEl, waitForApproval } from "./tools-ui.js";
+import { clear, confirmDialog, copyText, debounce, fmt, h, icon, mark, meter, openMenu, ring, sparkline, stateBadge, toast } from "./ui.js";
 
 const SUGGESTIONS = [
   ["Explain mixture-of-experts", "and why only a few experts run for each token"],
@@ -12,11 +17,35 @@ const SUGGESTIONS = [
   ["Plan three days in Lisbon", "on a budget, with one day trip"],
 ];
 
+const imageCache = new Map(); // picture file name → data URL, for requests
+
+async function loadImages(nodes) {
+  for (const blob of usedImages(nodes)) {
+    if (imageCache.has(blob)) continue;
+    const res = await fetch(`/api/attachments/${blob}`);
+    if (!res.ok) continue;
+    const file = await res.blob();
+    const data = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+    if (data) imageCache.set(blob, data);
+  }
+  return imageCache;
+}
+
 export function mount(main, chatId) {
   let chat = newChat();
-  let streaming = null;
+  let streaming = null; // the message that is being written right now
+  let turn = null; // the whole answer: streaming, running tools, streaming again. {ctrl}
   let pinned = true;
   let liveOpen = false;
+  let caps = { vision: false, tools: null, n_ctx: null, max_upload_mb: 25, pdf: true };
+  let toolInfo = { enabled: false, tools: [], servers: [], max_rounds: 8, connecting: false };
+  let toolPolls = 0;
+  let alive = true;
   const unsub = [];
 
   // ------------------------------------------------------------------------------------------- layout
@@ -27,6 +56,11 @@ export function mount(main, chatId) {
   modelChip.addEventListener("click", () => modelMenu(modelChip));
   const liveBtn = h("button", { class: "btn ghost icon", title: "Live data", "aria-label": "Live data",
     onclick: () => { liveOpen = !liveOpen; live.classList.toggle("open", liveOpen); } }, icon("panel"));
+  const moreBtn = h("button", { class: "btn ghost icon", title: "Export or import chats", "aria-label": "Chat menu",
+    onclick: () => chatMenu(moreBtn) }, icon("more"));
+  const importInput = h("input", { type: "file", hidden: true, accept: ".json,.md,.markdown,application/json,text/markdown,text/plain",
+    "aria-label": "Import a chat file" });
+  importInput.addEventListener("change", async () => { const f = importInput.files[0]; importInput.value = ""; if (f) await importChat(f); });
 
   const inner = h("div", { class: "messages-inner" });
   const messages = h("div", { class: "messages" }, inner);
@@ -35,32 +69,44 @@ export function mount(main, chatId) {
   });
   messages.addEventListener("click", onMessagesClick);
 
+  const attach = createAttach({ getCaps: () => caps, onChange: () => renderComposer() });
   const ta = h("textarea", { rows: 1, placeholder: "Message the model", "aria-label": "Message" });
   const sendBtn = h("button", { class: "send", "aria-label": "Send", title: "Send (Enter)" }, icon("send"));
   const thinkChip = h("button", { class: "chip", title: "Let the model think before it answers" });
   const sampChip = h("button", { class: "chip", title: "Sampling settings" });
+  const toolsChip = h("button", { class: "chip", title: "Tools the model may call" });
   const ctxMeter = h("span", { class: "ctx-meter num" });
-  const composer = h("div", { class: "composer" }, ta,
-    h("div", { class: "bar-row" }, thinkChip, sampChip, h("span", { class: "grow" }), ctxMeter, sendBtn));
+  const ctxWarn = h("div", { class: "ctx-warn", role: "status", hidden: true });
+  const composer = h("div", { class: "composer" }, attach.chips, ta,
+    h("div", { class: "bar-row" }, attach.button, thinkChip, toolsChip, sampChip, h("span", { class: "grow" }), ctxMeter, sendBtn), attach.input);
   const note = h("div", { class: "composer-note" });
   const live = h("aside", { class: "live-panel", "aria-label": "Live data" });
 
   main.replaceChildren(
-    topbar(title, modelChip, liveBtn),
+    topbar(title, modelChip, liveBtn, moreBtn),
     h("div", { class: "chat" },
-      h("div", { class: "chat-col" }, messages, h("div", { class: "composer-wrap" }, composer, note)),
-      live));
+      h("div", { class: "chat-col" }, messages, h("div", { class: "composer-wrap" }, ctxWarn, composer, note)),
+      live),
+    importInput);
 
   ta.addEventListener("input", autosize);
   ta.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); }
-    if (e.key === "Escape" && streaming) stop();
+    if (e.key === "Escape" && turn) stop();
   });
-  sendBtn.addEventListener("click", () => (streaming ? stop() : submit()));
+  ta.addEventListener("paste", (e) => attach.onPaste(e));
+  const dropTarget = main.querySelector(".chat-col");
+  for (const name of ["dragenter", "dragover"]) {
+    dropTarget.addEventListener(name, (e) => { if (e.dataTransfer?.types?.includes("Files")) { e.preventDefault(); dropTarget.classList.add("dropping"); } });
+  }
+  dropTarget.addEventListener("dragleave", (e) => { if (!dropTarget.contains(e.relatedTarget)) dropTarget.classList.remove("dropping"); });
+  dropTarget.addEventListener("drop", (e) => { dropTarget.classList.remove("dropping"); attach.onDrop(e); });
+  sendBtn.addEventListener("click", () => (turn ? stop() : submit()));
   thinkChip.addEventListener("click", toggleThinking);
   sampChip.addEventListener("click", () => samplingMenu(sampChip));
+  toolsChip.addEventListener("click", () => toolsMenu(toolsChip));
 
-  unsub.push(on("engine", () => { renderHeader(); renderComposer(); if (!chat.messages.length) renderMessages(); }));
+  unsub.push(on("engine", () => { renderHeader(); renderComposer(); if (!chat.messages.length) renderMessages(); fetchCaps(); }));
   unsub.push(on("state", () => { renderComposer(); if (!chat.messages.length) renderMessages(); }));
   unsub.push(on("live", renderLive));
 
@@ -68,20 +114,30 @@ export function mount(main, chatId) {
   renderHeader();
   renderComposer();
   renderLive();
+  fetchCaps();
+  fetchTools();
 
   // ------------------------------------------------------------------------------------------- data
 
   function newChat() {
-    return { id: null, title: "", created: 0, model: "", system: "", messages: [] };
+    return { id: null, title: "", created: 0, model: "", system: "", leaf: null, messages: [] };
   }
+
+  const newAssistant = () => ({ role: "assistant", content: "", reasoning: "", model: engineModelName(), t: Date.now() / 1000 });
+  const nowSec = () => Date.now() / 1000;
 
   async function load(id) {
     try {
-      chat = await get(`/api/chats/${id}`);
+      chat = ensureTree(await get(`/api/chats/${id}`));
     } catch {
       toast("That chat no longer exists", "bad");
       navigate("/", { replace: true });
       return;
+    }
+    for (const m of chat.messages) {  // a page reload ended these calls
+      for (const c of m.tool_calls || []) {
+        if (["streaming", "pending", "waiting", "running"].includes(c.status)) { c.status = "error"; c.result = c.result || "Interrupted before it finished."; }
+      }
     }
     renderHeader();
     renderMessages();
@@ -89,6 +145,25 @@ export function mount(main, chatId) {
     scrollBottom(true);
     ta.focus();
   }
+
+  async function fetchCaps() {
+    try {
+      caps = await get("/api/chat/capabilities");
+      renderComposer();
+    } catch { /* the next engine change asks again */ }
+  }
+
+  async function fetchTools() {
+    try {
+      toolInfo = await get("/api/tools");
+    } catch { return; }
+    renderComposer();
+    if (toolInfo.connecting && alive && toolPolls < 60) { toolPolls += 1; setTimeout(fetchTools, 1500); } else toolPolls = 0;
+  }
+
+  // Function declarations, not consts: the first render above runs before this point is reached.
+  function toolsActive() { return toolInfo.enabled && toolInfo.tools.length > 0 && caps.tools !== false; }
+  function infoFor(name) { return toolInfo.tools.find((t) => t.name === name); }
 
   // Saves run one after another: the first one creates the chat, so a second one must wait for its id.
   let saving = Promise.resolve();
@@ -165,14 +240,54 @@ export function mount(main, chatId) {
     openMenu(anchor, items);
   }
 
+  // ------------------------------------------------------------------------------------------- export and import
+
+  function chatMenu(anchor) {
+    const has = !!chat.id;
+    openMenu(anchor, [
+      { head: "This chat" },
+      { label: "Export as JSON (all versions)", icon: "download", onclick: () => exportChat("json") },
+      { label: "Export as Markdown (the version on screen)", icon: "download", onclick: () => exportChat("md") },
+      "sep",
+      { head: "Chats" },
+      { label: "Import a chat (JSON or Markdown)", icon: "upload", onclick: () => importInput.click() },
+    ].filter((it) => has || !/Export/.test(it.label || "")));
+  }
+
+  async function exportChat(format) {
+    if (!chat.id) { toast("Nothing to export yet"); return; }
+    await save();
+    const a = h("a", { href: `/api/chats/${chat.id}/export?format=${format}`, download: "" });
+    document.body.append(a);
+    a.click();
+    a.remove();
+  }
+
+  async function importChat(file) {
+    try {
+      const made = await upload("/api/chats/import", file);
+      await refreshChats();
+      toast(`Imported “${made.title}” (${made.messages} messages)`, "good");
+      navigate(`/c/${made.id}`);
+    } catch (e) {
+      toast(`Could not import ${file.name}: ${e.message}`, "bad", 9000);
+    }
+  }
+
   // ------------------------------------------------------------------------------------------- messages
+
+  function view() {
+    const idx = indexOf(chat);
+    return { idx, path: pathOf(chat, idx) };
+  }
 
   function renderMessages() {
     if (!chat.messages.length) {
       clear(inner, welcome());
       return;
     }
-    clear(inner, chat.messages.map((m, i) => msgEl(m, i)));
+    const v = view();
+    clear(inner, v.path.map((m, i) => msgEl(m, i, v)));
   }
 
   function welcome() {
@@ -184,7 +299,7 @@ export function mount(main, chatId) {
       box.append(
         h("div", { style: { width: "44px", height: "44px" } }, mark(44)),
         h("h2", null, "What should ", h("span", { class: "grad" }, engineModelName() || "the model"), " work on?"),
-        h("p", { class: "lead" }, "Answers stream from the engine on this computer. Speed, MTP acceptance and the expert cache show in the live panel."),
+        h("p", { class: "lead" }, "Answers stream from the engine on this computer. Speed, MTP acceptance and the expert cache show in the live panel. Attach files with the paperclip or drop them here."),
         h("div", { class: "suggest" }, SUGGESTIONS.map(([a, b]) => h("button", { onclick: () => { ta.value = `${a} ${b}`; autosize(); submit(); } },
           h("b", null, a), h("span", null, b)))));
       return box;
@@ -243,35 +358,59 @@ export function mount(main, chatId) {
       h("div", null, h("b", null, titleText), h("span", null, sub)), action || h("span"));
   }
 
-  function msgEl(m, i) {
-    const last = i === chat.messages.length - 1;
+  // "2 / 3" with arrows, for a message that exists in more than one version.
+  function switcherEl(m, idx) {
+    const sibs = siblingsOf(m, idx);
+    if (sibs.length < 2) return null;
+    const at = sibs.indexOf(m);
+    const go = (to) => () => { if (turn) return; switchTo(chat, to); renderMessages(); scrollBottom(); if (chat.id) save(); };
+    return h("div", { class: "switcher", role: "group", "aria-label": "Versions of this message" },
+      h("button", { class: "btn ghost icon sm", title: "Previous version", "aria-label": "Previous version", disabled: at === 0 || !!turn,
+        onclick: go(sibs[at - 1]) }, icon("chevron", "sm flip")),
+      h("span", { class: "num" }, `${at + 1} / ${sibs.length}`),
+      h("button", { class: "btn ghost icon sm", title: "Next version", "aria-label": "Next version", disabled: at === sibs.length - 1 || !!turn,
+        onclick: go(sibs[at + 1]) }, icon("chevron", "sm")));
+  }
+
+  function msgEl(m, i, v) {
+    const last = i === v.path.length - 1;
+    const switcher = switcherEl(m, v.idx);
     if (m.role === "user") {
-      const bubble = h("div", { class: "bubble" }, m.content);
-      return h("div", { class: `msg user${last ? " last" : ""}`, "data-i": i }, bubble,
-        h("div", { class: "actions" },
-          h("button", { class: "btn ghost icon sm", title: "Edit", "aria-label": "Edit", onclick: () => editUser(i) }, icon("edit", "sm")),
-          h("button", { class: "btn ghost icon sm", title: "Copy", "aria-label": "Copy", onclick: (e) => copyText(m.content, e.currentTarget) }, icon("copy", "sm"))));
+      const bubble = m.content ? h("div", { class: "bubble" }, m.content) : null;
+      return h("div", { class: `msg user${last ? " last" : ""}`, "data-id": m.id, "data-i": i },
+        attachmentsEl(m.attachments), bubble,
+        h("div", { class: "foot" }, switcher,
+          h("div", { class: "actions" },
+            h("button", { class: "btn ghost icon sm", title: "Edit and send again", "aria-label": "Edit", disabled: !!turn, onclick: () => editUser(m) }, icon("edit", "sm")),
+            h("button", { class: "btn ghost icon sm", title: "Copy", "aria-label": "Copy", onclick: (e) => copyText(m.content, e.currentTarget) }, icon("copy", "sm")),
+            h("button", { class: "btn ghost icon sm", title: "Delete this message and what follows", "aria-label": "Delete", disabled: !!turn, onclick: () => removeMsg(m) }, icon("trash", "sm")))));
     }
     const isLive = streaming && streaming.msg === m;
+    const cont = v.idx.byId.get(m.parent)?.role === "assistant"; // the answer goes on after a tool call
     const body = h("div", { class: "body", style: { display: "grid", gap: "8px", minWidth: 0 } });
-    body.append(h("div", { class: "who" }, m.model || "Assistant", m.t ? h("span", { class: "faint", style: { fontWeight: 400 } }, fmt.ago(m.t)) : null));
+    if (!cont) body.append(h("div", { class: "who" }, m.model || "Assistant", m.t ? h("span", { class: "faint", style: { fontWeight: 400 } }, fmt.ago(m.t)) : null));
     if (m.reasoning || (isLive && streaming.thinking)) body.append(thinkEl(m, isLive));
-    const md = h("div", { class: `md${isLive ? " streaming" : ""}` });
-    md.innerHTML = renderMarkdown(m.content) + (isLive && !streaming.thinking ? '<span class="cursor"></span>' : "");
-    if (!m.content && !isLive && !m.error) md.innerHTML = '<p class="faint">(no text)</p>';
-    body.append(md);
+    const hasCalls = (m.tool_calls || []).length > 0;
+    if (m.content || isLive || !hasCalls) { // a step that only calls tools shows just its tool cards
+      const md = h("div", { class: `md${isLive ? " streaming" : ""}` });
+      md.innerHTML = renderMarkdown(m.content) + (isLive && !streaming.thinking && !hasCalls ? '<span class="cursor"></span>' : "");
+      if (!m.content && !isLive && !m.error) md.innerHTML = '<p class="faint">(no text)</p>';
+      body.append(md);
+    }
+    for (const call of m.tool_calls || []) body.append(toolCardEl(call, infoFor(call.name)));
     if (m.error) body.append(h("div", { class: "callout bad" }, icon("alert"), h("div", null, m.error)));
     if (m.stopped) body.append(h("div", { class: "small faint" }, "Stopped."));
     const stats = statsEl(m);
     if (stats) body.append(stats);
     if (!isLive) {
-      body.append(h("div", { class: "actions" },
+      body.append(h("div", { class: "foot" }, switcher, h("div", { class: "actions" },
         h("button", { class: "btn ghost icon sm", title: "Copy", "aria-label": "Copy", onclick: (e) => copyText(m.content, e.currentTarget) }, icon("copy", "sm")),
-        last ? h("button", { class: "btn ghost icon sm", title: "Regenerate", "aria-label": "Regenerate", onclick: () => regenerate() }, icon("refresh", "sm")) : null,
-        h("button", { class: "btn ghost icon sm", title: "Delete", "aria-label": "Delete", onclick: () => removeMsg(i) }, icon("trash", "sm"))));
+        last ? h("button", { class: "btn ghost icon sm", title: "Answer again (keeps this answer as another version)", "aria-label": "Regenerate",
+          disabled: !!turn, onclick: () => regenerate() }, icon("refresh", "sm")) : null,
+        h("button", { class: "btn ghost icon sm", title: "Delete this message and what follows", "aria-label": "Delete", disabled: !!turn, onclick: () => removeMsg(m) }, icon("trash", "sm")))));
     }
-    return h("div", { class: `msg assistant${last ? " last" : ""}`, "data-i": i },
-      h("div", { class: "avatar" }, mark(20)), body);
+    return h("div", { class: `msg assistant${last ? " last" : ""}${cont ? " cont" : ""}`, "data-id": m.id, "data-i": i },
+      h("div", { class: "avatar" }, cont ? null : mark(20)), body);
   }
 
   function thinkEl(m, isLive) {
@@ -314,7 +453,16 @@ export function mount(main, chatId) {
     if (force || pinned) messages.scrollTop = messages.scrollHeight;
   }
 
-  // ------------------------------------------------------------------------------------------- sending
+  function repaint(node) { // one message again, for example a tool card that changed
+    const v = view();
+    const i = v.path.indexOf(node);
+    const old = inner.querySelector(`.msg[data-id="${node.id}"]`);
+    if (i < 0 || !old) { renderMessages(); return; }
+    old.replaceWith(msgEl(node, i, v));
+    scrollBottom();
+  }
+
+  // ------------------------------------------------------------------------------------------- composer
 
   function autosize() {
     ta.style.height = "auto";
@@ -322,25 +470,65 @@ export function mount(main, chatId) {
     renderComposer();
   }
 
+  // How full the context window is: the engine's own count up to the last answer, an estimate for the rest.
+  function contextUse() {
+    const c = store.state?.settings?.chat || {};
+    const nctx = caps.n_ctx || store.engine?.n_ctx;
+    const nodes = pathOf(chat);
+    const draft = ta.value.trim();
+    if (draft || attach.items.length) nodes.push({ role: "user", content: draft, attachments: attach.items });
+    const images = new Map(usedImages(nodes).map((b) => [b, "x"]));
+    const opts = { system: chat.system || c.system_prompt, settings: c, tools: toolsActive() ? toolInfo.tools.map((t) => t.schema) : [], images };
+    let used = estimateRequest(buildRequest({ nodes, ...opts }));
+    let exact = false;
+    for (let k = nodes.length - 1; k >= 0; k -= 1) {
+      const s = nodes[k].stats;
+      if (s?.predicted_n) {
+        used = used - estimateRequest(buildRequest({ nodes: nodes.slice(0, k + 1), ...opts })) + (s.cache_n || 0) + (s.prompt_n || 0) + (s.predicted_n || 0);
+        exact = k === nodes.length - 1;
+        break;
+      }
+    }
+    return { used: Math.max(0, Math.round(used)), nctx, exact };
+  }
+
   function renderComposer() {
     const up = engineUp();
     const c = store.state?.settings?.chat || {};
-    sendBtn.classList.toggle("stop", !!streaming);
-    sendBtn.disabled = !streaming && (!up || !ta.value.trim());
-    clear(sendBtn, icon(streaming ? "stop" : "send"));
-    sendBtn.title = streaming ? "Stop (Esc)" : "Send (Enter)";
+    const busy = !!turn;
+    sendBtn.classList.toggle("stop", busy);
+    sendBtn.disabled = !busy && (!up || (!ta.value.trim() && !attach.items.length) || attach.busy());
+    clear(sendBtn, icon(busy ? "stop" : "send"));
+    sendBtn.title = busy ? "Stop (Esc)" : "Send (Enter)";
     ta.placeholder = up ? `Message ${engineModelName() || "the model"}` : "Load a model to start chatting";
     thinkChip.classList.toggle("on", c.thinking !== false);
     clear(thinkChip, icon("brain", "sm"), c.thinking !== false ? "Thinking on" : "Thinking off");
     clear(sampChip, icon("sliders", "sm"), c.sampling === "custom" ? `T ${c.temperature} · top-p ${c.top_p}` : "Model defaults");
-    const lastStats = [...chat.messages].reverse().find((m) => m.stats?.predicted_n)?.stats;
-    const nctx = store.engine?.n_ctx;
-    if (lastStats && nctx) {
-      const used = (lastStats.cache_n || 0) + (lastStats.prompt_n || 0) + (lastStats.predicted_n || 0);
-      ctxMeter.textContent = `${fmt.tokens(used)} / ${fmt.ctx(nctx)} tokens`;
-      ctxMeter.title = "Context used by this conversation, of the engine's context window";
+    const count = toolInfo.tools.length;
+    toolsChip.classList.toggle("on", toolsActive());
+    clear(toolsChip, icon("wrench", "sm"), caps.tools === false ? "Tools: not in this model" : !toolInfo.enabled ? "Tools off" :
+      toolInfo.connecting && !count ? "Tools: connecting…" : `Tools · ${count}`);
+    attach.button.disabled = !up;
+
+    const { used, nctx, exact } = contextUse();
+    if (nctx && (used || exact)) {
+      const share = used / nctx;
+      ctxMeter.textContent = `${exact ? "" : "~"}${fmt.tokens(used)} / ${fmt.ctx(nctx)} tokens`;
+      ctxMeter.title = exact ? "Context used by this conversation, of the engine's context window"
+        : "An estimate (about 3.6 characters per token) of what the next request needs, of the engine's context window";
+      ctxMeter.classList.toggle("warn", share >= 0.8 && share <= 1);
+      ctxMeter.classList.toggle("bad", share > 1);
+      ctxWarn.hidden = share < 0.8;
+      if (share >= 0.8) {
+        ctxWarn.className = `ctx-warn ${share > 1 ? "bad" : "warn"}`;
+        ctxWarn.textContent = share > 1
+          ? `This is about ${fmt.tokens(used)} tokens and the context window holds ${fmt.ctx(nctx)}. The engine will refuse it. Remove an attachment, start a new chat, or raise the context on the Engine page.`
+          : `About ${fmt.tokens(used)} of ${fmt.ctx(nctx)} tokens are used. Long answers may not fit; consider a shorter attachment or a new chat.`;
+      }
     } else {
       ctxMeter.textContent = nctx ? `${fmt.ctx(nctx)} context` : "";
+      ctxMeter.classList.remove("warn", "bad");
+      ctxWarn.hidden = true;
     }
     note.textContent = up ? "Runs on this computer. Answers can be wrong; check what matters." : "";
   }
@@ -360,6 +548,33 @@ export function mount(main, chatId) {
     }
   }
 
+  async function saveToolSettings(patch) {
+    try {
+      store.state.settings = await post("/api/settings", { tools: patch });
+      emit("state");
+      await fetchTools();
+    } catch (e) {
+      toast(e.message, "bad");
+    }
+  }
+
+  function toolsMenu(anchor) {
+    const s = store.state?.settings?.tools || {};
+    const items = [{ head: toolInfo.enabled ? "Tools the model can call" : "Tools are off" }];
+    if (caps.tools === false) items.push({ head: "The loaded model's chat template has no tool support" });
+    for (const t of toolInfo.tools) {
+      items.push({ label: t.name, hint: t.confirm ? "asks first" : "", icon: t.source === "mcp" ? "link" : "wrench", onclick: () => navigate("/settings") });
+    }
+    if (!toolInfo.tools.length && toolInfo.enabled) items.push({ head: "No tool is switched on" });
+    for (const sv of toolInfo.servers || []) {
+      if (sv.status === "error") items.push({ head: `${sv.name}: ${sv.error}`.slice(0, 120) });
+    }
+    items.push("sep");
+    items.push({ label: s.enabled === false ? "Turn tools on" : "Turn tools off", icon: "power", onclick: () => saveToolSettings({ enabled: s.enabled === false }) });
+    items.push({ label: "Choose tools and MCP servers", icon: "settings", onclick: () => navigate("/settings") });
+    openMenu(anchor, items);
+  }
+
   function samplingMenu(anchor) {
     const c = store.state?.settings?.chat || {};
     openMenu(anchor, [
@@ -373,87 +588,143 @@ export function mount(main, chatId) {
     ]);
   }
 
-  function requestBody(upTo) {
-    const c = store.state?.settings?.chat || {};
-    const msgs = chat.messages.slice(0, upTo).filter((m) => m.content || m.role === "user")
-      .map((m) => ({ role: m.role, content: m.content }));
-    const system = chat.system || c.system_prompt;
-    if (system) msgs.unshift({ role: "system", content: system });
-    const body = { messages: msgs, stream_options: { include_usage: true }, chat_template_kwargs: { enable_thinking: c.thinking !== false } };
-    if (c.sampling === "custom") {
-      Object.assign(body, { temperature: c.temperature, top_p: c.top_p, top_k: c.top_k, min_p: c.min_p, presence_penalty: c.presence_penalty });
-    }
-    if (c.max_tokens > 0) body.max_tokens = c.max_tokens;
-    return body;
+  // ------------------------------------------------------------------------------------------- sending
+
+  function leafNode() {
+    return indexOf(chat).byId.get(chat.leaf) || null;
   }
 
   async function submit() {
     const text = ta.value.trim();
-    if (!text || streaming) return;
+    if ((!text && !attach.items.length) || turn) return;
+    if (attach.busy()) { toast("Wait until the files are read"); return; }
     if (!engineUp()) { toast("Load a model first", "bad"); return; }
+    const atts = attach.take();
     ta.value = "";
     autosize();
-    chat.messages.push({ role: "user", content: text, t: Date.now() / 1000 });
-    const asst = { role: "assistant", content: "", reasoning: "", model: engineModelName(), t: Date.now() / 1000 };
-    chat.messages.push(asst);
+    const msg = { role: "user", content: text, t: nowSec() };
+    if (atts.length) msg.attachments = atts;
+    const user = addChild(chat, leafNode(), msg);
+    const asst = addChild(chat, user, newAssistant());
     pinned = true;
     renderMessages();
     scrollBottom(true);
     save();
-    await generate(asst);
+    await runTurn(asst);
   }
 
+  // Ask again: the new answer is another version next to the old one.
   async function regenerate() {
-    const m = chat.messages[chat.messages.length - 1];
-    if (!m || m.role !== "assistant" || streaming) return;
+    if (turn) return;
     if (!engineUp()) { toast("Load a model first", "bad"); return; }
-    Object.assign(m, { content: "", reasoning: "", stats: null, error: "", stopped: false, think_s: null,
-      model: engineModelName(), t: Date.now() / 1000 });
+    const v = view();
+    let k = v.path.length - 1;
+    while (k > 0 && v.path[k].role !== "user") k -= 1;
+    const user = v.path[k];
+    if (!user || user.role !== "user") return;
+    const asst = addChild(chat, user, newAssistant());
     renderMessages();
     scrollBottom(true);
-    await generate(m);
+    await runTurn(asst);
   }
 
-  function editUser(i) {
-    if (streaming) return;
-    const m = chat.messages[i];
-    const el = inner.querySelector(`.msg[data-i="${i}"]`);
-    const box = h("textarea", { class: "textarea", rows: 3, value: m.content });
+  // Edit your own message: the edited text becomes another version of it, with a fresh answer; the old branch stays.
+  function editUser(node) {
+    if (turn) return;
+    const el = inner.querySelector(`.msg[data-id="${node.id}"]`);
+    const box = h("textarea", { class: "textarea", rows: 3, value: node.content, "aria-label": "Edit your message" });
     const form = h("div", { class: "edit-box" }, box, h("div", { class: "row end" },
       h("button", { class: "btn ghost", onclick: () => renderMessages() }, "Cancel"),
-      h("button", { class: "btn primary", onclick: async () => {
+      h("button", { class: "btn primary", "data-act": "send-edit", onclick: async () => {
         const text = box.value.trim();
-        if (!text) return;
+        if (!text && !(node.attachments || []).length) return;
         if (!engineUp()) { toast("Load a model first", "bad"); return; }
-        m.content = text;
-        chat.messages.splice(i + 1);
-        const asst = { role: "assistant", content: "", reasoning: "", model: engineModelName(), t: Date.now() / 1000 };
-        chat.messages.push(asst);
+        const parent = node.parent ? indexOf(chat).byId.get(node.parent) : null;
+        const msg = { role: "user", content: text, t: nowSec() };
+        if (node.attachments?.length) msg.attachments = node.attachments;
+        const user = addChild(chat, parent, msg);
+        const asst = addChild(chat, user, newAssistant());
         renderMessages();
         scrollBottom(true);
-        await generate(asst);
-      } }, "Send")));
+        save();
+        await runTurn(asst);
+      } }, "Send as new version")));
     el.replaceChildren(form);
     box.focus();
   }
 
-  async function removeMsg(i) {
-    chat.messages.splice(i, 1);
+  async function removeMsg(node) {
+    if (turn) return;
+    const idx = indexOf(chat);
+    let below = -1;
+    const stack = [node];
+    while (stack.length) { below += 1; stack.push(...(idx.kids.get(stack.pop().id) || [])); }
+    if (below > 0) {
+      const ok = await confirmDialog({ title: "Delete this message?", ok: "Delete", danger: true,
+        body: `It and the ${below} message${below === 1 ? "" : "s"} after it (in every version) will be removed from this chat.` });
+      if (!ok) return;
+    }
+    removeBranch(chat, node);
     renderMessages();
+    renderComposer();
     if (chat.id) await save();
   }
 
-  async function generate(asst) {
-    const upTo = chat.messages.indexOf(asst);
+  function requestFor(node, useTools, images) {
+    const c = store.state?.settings?.chat || {};
+    const idx = indexOf(chat);
+    const nodes = [];
+    for (let cur = node.parent ? idx.byId.get(node.parent) : null; cur; cur = cur.parent ? idx.byId.get(cur.parent) : null) nodes.unshift(cur);
+    return buildRequest({ nodes, system: chat.system || c.system_prompt, settings: c,
+      tools: useTools ? toolInfo.tools.map((t) => t.schema) : [], images: caps.vision ? images : new Map() });
+  }
+
+  // One answer, which may take several steps: the model asks for tools, the tools run, the model goes on.
+  async function runTurn(first) {
     const ctrl = new AbortController();
+    turn = { ctrl };
+    renderComposer();
+    let node = first;
+    try {
+      for (let round = 0; ; round += 1) {
+        const useTools = toolsActive() && round < (toolInfo.max_rounds || 8);
+        await generateInto(node, useTools, ctrl);
+        if (ctrl.signal.aborted || node.error || !(node.tool_calls || []).length) break;
+        await save();
+        await executeCalls(node, ctrl);
+        if (ctrl.signal.aborted) break;
+        node = addChild(chat, node, newAssistant());
+        renderMessages();
+        scrollBottom();
+      }
+    } finally {
+      turn = null;
+      streaming = null;
+      renderMessages();
+      renderComposer();
+      scrollBottom();
+      await save();
+      ta.focus();
+    }
+  }
+
+  async function generateInto(asst, useTools, ctrl) {
+    const images = await loadImages(pathOf(chat).filter((m) => m !== asst));
     streaming = { msg: asst, ctrl, t0: performance.now(), tFirst: 0, thinking: false, thinkStart: 0, raw: "", split: false,
       openThink: new Set(), frame: 0 };
+    renderMessages();
+    scrollBottom();
     renderComposer();
     try {
-      await streamChat(requestBody(upTo), { signal: ctrl.signal, onChunk });
+      await streamChat(requestFor(asst, useTools, images), { signal: ctrl.signal, onChunk });
     } catch (e) {
       if (e.name === "AbortError") asst.stopped = true;
-      else asst.error = e.message;
+      else {
+        asst.error = e.message;
+        if (useTools && e.status === 400 && /tool|jinja/i.test(e.message)) {
+          asst.error += " If this model cannot call tools, turn them off with the Tools button in the message box.";
+        }
+      }
     }
     const s = streaming;
     if (s.thinking) asst.think_s = (performance.now() - s.thinkStart) / 1000;
@@ -462,13 +733,65 @@ export function mount(main, chatId) {
       asst.stats.total_s = total;
       asst.stats.ttft_ms = s.tFirst ? s.tFirst - s.t0 : null;
     }
+    const calls = (asst.tool_calls || []).filter((c) => c && c.name);
+    for (const c of calls) { if (!c.id) c.id = `call_${newId()}`; c.status = "pending"; }
+    if (calls.length) asst.tool_calls = calls; else delete asst.tool_calls;
     streaming = null;
     cancelAnimationFrame(s.frame);
     renderMessages();
     renderComposer();
     scrollBottom();
-    await save();
-    ta.focus();
+  }
+
+  // Run the tools one after another. Calls that need approval wait for a click on their card.
+  async function executeCalls(node, ctrl) {
+    for (const call of node.tool_calls) {
+      if (ctrl.signal.aborted) { call.status = "error"; call.result = call.result || "Stopped before it ran."; continue; }
+      const info = infoFor(call.name);
+      let args;
+      try { args = call.arguments ? JSON.parse(call.arguments) : {}; } catch (e) {
+        call.status = "error";
+        call.result = `The arguments are not valid JSON (${e.message}). Call the tool again with a valid JSON object.`;
+        continue;
+      }
+      if (!info) {
+        call.status = "error";
+        call.result = `There is no tool named "${call.name}". Available: ${toolInfo.tools.map((t) => t.name).join(", ") || "none"}.`;
+        continue;
+      }
+      let approved = false;
+      if (info.confirm) {
+        call.status = "waiting";
+        repaint(node);
+        const answer = await waitForApproval(call.id, ctrl.signal);
+        if (answer === "deny") {
+          call.status = "denied";
+          call.result = "The user declined to run this tool.";
+          repaint(node);
+          continue;
+        }
+        if (answer === "trust") await trustServer(info.server);
+        approved = true;
+      }
+      call.status = "running";
+      repaint(node);
+      try {
+        const r = await post("/api/tools/call", { name: call.name, arguments: args, approved });
+        call.result = r.content;
+        call.ms = r.ms;
+        call.status = r.is_error ? "error" : "done";
+      } catch (e) {
+        call.status = "error";
+        call.result = e.message;
+      }
+      repaint(node);
+    }
+  }
+
+  async function trustServer(name) {
+    const have = store.state?.settings?.tools?.mcp_trusted || [];
+    await saveToolSettings({ mcp_trusted: [...new Set([...have, name])] });
+    toast(`Tools of “${name}” run without asking from now on. Settings → Tools can take that back.`, "info", 7000);
   }
 
   function onChunk(chunk) {
@@ -503,6 +826,15 @@ export function mount(main, chatId) {
         m.think_s = (now - s.thinkStart) / 1000;
       }
     }
+    for (const tc of delta.tool_calls || []) { // tool calls arrive in pieces: the name once, the arguments bit by bit
+      if (!s.tFirst) s.tFirst = now;
+      if (s.thinking) { s.thinking = false; m.think_s = (now - s.thinkStart) / 1000; }
+      const list = m.tool_calls || (m.tool_calls = []);
+      const call = list[tc.index ?? 0] || (list[tc.index ?? 0] = { id: "", name: "", arguments: "", status: "streaming" });
+      if (tc.id) call.id = tc.id;
+      if (tc.function?.name && !call.name) call.name = tc.function.name;
+      if (tc.function?.arguments) call.arguments += tc.function.arguments;
+    }
     if (chunk.timings) {
       const t = chunk.timings;
       m.stats = {
@@ -521,9 +853,10 @@ export function mount(main, chatId) {
 
   function paintStreaming() {
     const s = streaming;
-    const i = chat.messages.indexOf(s.msg);
-    const old = inner.querySelector(`.msg[data-i="${i}"]`);
-    const fresh = msgEl(s.msg, i);
+    const v = view();
+    const i = v.path.indexOf(s.msg);
+    const old = inner.querySelector(`.msg[data-id="${s.msg.id}"]`);
+    const fresh = msgEl(s.msg, i, v);
     if (old) {
       const thinkBody = old.querySelector(".think-body");
       const keepScroll = thinkBody ? thinkBody.scrollTop : 0;
@@ -535,7 +868,7 @@ export function mount(main, chatId) {
   }
 
   function stop() {
-    streaming?.ctrl.abort();
+    turn?.ctrl.abort();
   }
 
   // ------------------------------------------------------------------------------------------- engine actions
@@ -643,9 +976,10 @@ export function mount(main, chatId) {
 
   return {
     unmount() {
+      alive = false;
       unsub.forEach((u) => u());
       window.removeEventListener("resize", resizeOnce);
-      if (streaming) streaming.ctrl.abort();
+      if (turn) turn.ctrl.abort();
     },
   };
 }

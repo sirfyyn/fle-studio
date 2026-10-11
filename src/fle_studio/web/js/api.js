@@ -23,7 +23,10 @@ function reloadForNewSession(res) {
 
 async function api(method, path, body) {
   const opts = { method, headers: { "X-FLE-Token": TOKEN } };
-  if (body !== undefined) {
+  if (body instanceof Blob) { // a file: sent as it is
+    opts.headers["Content-Type"] = body.type || "application/octet-stream";
+    opts.body = body;
+  } else if (body !== undefined) {
     opts.headers["Content-Type"] = "application/json";
     opts.body = JSON.stringify(body);
   }
@@ -49,6 +52,7 @@ export const get = (p) => api("GET", p);
 export const post = (p, b = {}) => api("POST", p, b);
 export const put = (p, b) => api("PUT", p, b);
 export const del = (p) => api("DELETE", p);
+export const upload = (p, file) => api("POST", p, file); // a File or Blob as the request body
 
 // Streams an OpenAI-style chat completion through Studio's /v1 proxy. onDelta gets every parsed chunk.
 export async function streamChat(body, { signal, onChunk }) {
