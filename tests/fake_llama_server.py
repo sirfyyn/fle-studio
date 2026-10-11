@@ -44,6 +44,15 @@ FAKE_ENGINE=fle|upstream force the engine identity
 FAKE_STRICT_GGUF=1       refuse model files that do not start with the GGUF magic
 FAKE_REJECT_ARGS=a,b     refuse these flags with ``error: invalid argument``, like a server that does not know them
 FAKE_LOAD_DOTS=1         print the loader's progress dots (visible with -lv 4 only)
+FAKE_SPEED_MODEL=1       decode and prompt speed depend on -t, -b, --n-cpu-moe and the FLE expert cache budget, with a
+                         sweet spot each (FAKE_BEST_THREADS=6, FAKE_BEST_NCMOE=8, FAKE_CACHE_LIMIT_MIB=12000), so a
+                         tuner has something to find
+FAKE_RUN_NOISE=0.03      every request runs 0..3 % faster or slower (deterministic per request number): the spread
+                         that repeated runs, intervals and the A/B/A test have to deal with
+FAKE_MAX_CTX=N           the load fails with an out-of-memory error above N tokens of context
+FAKE_CACHE_LIMIT_MIB=N   with FAKE_SPEED_MODEL: the cache budget where more stops helping; the load fails above 1.3 x N
+FAKE_CACHE_DETAIL=0      FLE mode only: do not print the per-layer ``moe-layer`` / ``moe-hot`` lines (default: print
+                         them next to every ``moe-cache:`` line; the format is docs/EXPERT-CACHE-DATA.md)
 """
 
 from __future__ import annotations
@@ -173,6 +182,9 @@ class Config:
         self.log_disable = False
         self.api_keys: list[str] = []
         self.threads = 0
+        self.batch = 2048
+        self.ubatch = 512
+        self.n_cpu_moe = 0
         self.cache_ram = 8192
         self.fit = True
         self.fit_target = 1024
@@ -198,6 +210,8 @@ VALUE_FLAGS = {
     "--spec-type": "spec_type", "--spec-draft-n-max": "draft_max", "--draft-max": "draft_max", "--draft": "draft_max",
     "--draft-n": "draft_max", "-lv": "verbosity", "--verbosity": "verbosity", "--log-verbosity": "verbosity",
     "--api-key": "api_keys", "-t": "threads", "--threads": "threads", "--cache-ram": "cache_ram",
+    "-b": "batch", "--batch-size": "batch", "-ub": "ubatch", "--ubatch-size": "ubatch",
+    "-ncmoe": "n_cpu_moe", "--n-cpu-moe": "n_cpu_moe",
     "-cram": "cache_ram", "-fit": "fit", "--fit": "fit", "--fit-target": "fit_target", "-fitt": "fit_target",
     "--temp": "temp", "--temperature": "temp", "--top-k": "top_k", "--top-p": "top_p", "--min-p": "min_p",
     "--presence-penalty": "presence_penalty", "--repeat-penalty": "repeat_penalty",
@@ -708,10 +722,58 @@ class Fake:
         self.moe_steps = 0
         self.moe_hits = 0.0
         self.moe_misses = 0.0
+        self.cache_detail = self.is_fle and os.environ.get("FAKE_CACHE_DETAIL", "1").lower() in TRUTHY
+        n_layer = self.model.n_layer
+        self.layer_hits = [0.0] * n_layer
+        self.layer_misses = [0.0] * n_layer
+        self.requests = 0
+        self.run_noise = max(0.0, min(0.5, env_float("FAKE_RUN_NOISE", 0.0)))
+        self.speed_model = os.environ.get("FAKE_SPEED_MODEL", "").lower() in TRUTHY
+        if self.speed_model:
+            decode_factor, prefill_factor = self.speed_factors()
+            self.tok_rate *= decode_factor
+            self.prompt_rate *= prefill_factor
         self.early_n = 0
         self.early_ms = 0.0
         self.t_ready = 0.0
         self.http: ThreadingServer | None = None
+
+    # -------------------------------------------------------------------------------------- speed model
+
+    def speed_factors(self) -> tuple[float, float]:
+        """FAKE_SPEED_MODEL=1: decode and prompt speed that depend on the flags, so that a tuner has something to find.
+
+        Threads have a sweet spot (FAKE_BEST_THREADS, default 6); the FLE expert cache gets faster up to
+        FAKE_CACHE_LIMIT_MIB (default 12000); ``--n-cpu-moe`` has a sweet spot (FAKE_BEST_NCMOE, default 8); a larger
+        batch speeds up the prompt. The numbers are made up, only their shape matters."""
+        cfg = self.cfg
+        threads = cfg.threads if cfg.threads > 0 else (os.cpu_count() or 1)
+        f_threads = max(0.3, 1.0 - 0.05 * abs(threads - int(env_float("FAKE_BEST_THREADS", 6))))
+        f_decode = f_threads
+        if self.is_fle:
+            limit = max(1.0, env_float("FAKE_CACHE_LIMIT_MIB", 12000))
+            f_decode *= 0.7 + 0.3 * min(self.cache_budget, limit) / limit
+        else:
+            f_decode *= max(0.4, 1.0 - 0.02 * abs(cfg.n_cpu_moe - int(env_float("FAKE_BEST_NCMOE", 8))))
+        f_prefill = f_threads * (min(max(cfg.batch, 64), 2048) / 2048) ** 0.25
+        return f_decode, f_prefill
+
+    def over_budget(self) -> bool:
+        """FAKE_CACHE_LIMIT_MIB / FAKE_MAX_CTX set: fail the load like a GPU that is too small for the settings."""
+        limit = env_float("FAKE_CACHE_LIMIT_MIB", 0)
+        if limit and self.cache_budget > limit * 1.3:
+            return True
+        max_ctx = env_float("FAKE_MAX_CTX", 0)
+        return bool(max_ctx and self.n_ctx_total > max_ctx)
+
+    def request_noise(self) -> float:
+        """FAKE_RUN_NOISE=0.03: every request gets its own factor of 1 +/- 3 % (deterministic per request number)."""
+        with self.cv:
+            self.requests += 1
+            count = self.requests
+        if not self.run_noise:
+            return 1.0
+        return 1.0 + self.run_noise * (2 * random.Random(7919 * count).random() - 1)
 
     # -------------------------------------------------------------------------------------- small helpers
 
@@ -852,7 +914,7 @@ class Fake:
         log.trc(f"print_info: model params          = {m.n_params * 1e-9:.2f} B")
         log.trc(f"print_info: general.name          = {m.name}")
         self.at(t0, 0.2)
-        if os.environ.get("FAKE_FAIL") == "oom":
+        if os.environ.get("FAKE_FAIL") == "oom" or self.over_budget():
             self.at(t0, 0.4)
             size = max(int(m.size_pretended * 0.9), 1 << 30)
             log.err(f"ggml_backend_cuda_buffer_type_alloc_buffer: allocating {size / 1048576:.2f} MiB on device 0: "
@@ -1118,14 +1180,38 @@ class Fake:
             return
         with self.cv:
             self.moe_steps += 1
-            lookups = self.model.n_layer * self.model.n_expert_used
+            used = self.model.n_expert_used
             miss_rate = 0.12 + 0.43 * 2.718281828 ** (-self.moe_steps / 6000)
-            self.moe_misses += lookups * miss_rate
-            self.moe_hits += lookups * (1 - miss_rate)
+            for layer in range(self.model.n_layer):
+                # Early layers miss more than late ones, a made-up shape for the per-layer view.
+                layer_miss = min(0.95, miss_rate * (1.35 - 0.7 * layer / max(1, self.model.n_layer - 1)))
+                self.layer_misses[layer] += used * layer_miss
+                self.layer_hits[layer] += used * (1 - layer_miss)
+            self.moe_misses = sum(self.layer_misses)
+            self.moe_hits = sum(self.layer_hits)
             if self.moe_steps % 512 == 0:
                 hits, misses = int(self.moe_hits), int(self.moe_misses)
                 rate = 100.0 * hits / (hits + misses) if hits + misses else 0.0
                 self.log.trc(f"moe-cache: steps={self.moe_steps} hits={hits} misses={misses} hit-rate={rate:.1f}%")
+                if self.cache_detail:
+                    self.log_cache_detail()
+
+    def log_cache_detail(self) -> None:
+        """The per-layer lines of docs/EXPERT-CACHE-DATA.md: what the FLE engine would have to print for the Cache
+        page. Cumulative counts since the start, one ``moe-layer`` line and one ``moe-hot`` line per layer."""
+        m = self.model
+        slots = max(1, min(m.n_expert, int(self.cache_budget / (m.n_layer * self.cache_slot_mib))))
+        for layer in range(m.n_layer):
+            filled = min(slots, int(self.moe_steps * (0.4 + 0.02 * layer)))  # the cache fills by inserts per step
+            self.log.trc(
+                f"moe-layer: steps={self.moe_steps} layer={layer} hits={int(self.layer_hits[layer])} "
+                f"misses={int(self.layer_misses[layer])} filled={filled} slots={slots}"
+            )
+            top = []
+            for rank in range(16):  # a Zipf-like popularity, a different set of experts in every layer
+                expert = (layer * 37 + rank * 101 + 11) % m.n_expert
+                top.append(f"{expert}:{int(self.moe_steps * m.n_expert_used / (rank + 1) ** 1.1 / 4)}")
+            self.log.trc(f"moe-hot: steps={self.moe_steps} layer={layer} top={','.join(top)}")
 
     def add_prompt_metrics(self, cache_n: int, prompt_n: int, t_prompt: float) -> None:
         with self.cv:
@@ -1438,8 +1524,9 @@ class Completion:
         limit = room if opts.cap < 0 else min(opts.cap, room)
         self.tokens, self.finish_reason = make_tokens(self.seed, self.last_user, opts.think, limit, opts.ignore_eos)
         rng = random.Random(self.seed ^ 0x9E3779B97F4A7C15)
-        self.t_prompt = self.prompt_n / fake.prompt_rate * (1 + fake.jitter * (2 * rng.random() - 1))
-        self.times, self.rounds = plan_timeline(len(self.tokens), self.t_prompt, fake.tok_rate, fake.jitter,
+        noise = fake.request_noise()
+        self.t_prompt = self.prompt_n / (fake.prompt_rate * noise) * (1 + fake.jitter * (2 * rng.random() - 1))
+        self.times, self.rounds = plan_timeline(len(self.tokens), self.t_prompt, fake.tok_rate * noise, fake.jitter,
                                                 fake.draft_width, rng)
 
     def generate(self, view: dict[str, Any]) -> None:

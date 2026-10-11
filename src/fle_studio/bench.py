@@ -16,10 +16,11 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from . import paths
+from . import paths, stats
 from .engine import Engine
 
 
@@ -42,6 +43,10 @@ TESTS = (
                "docstring and three doctest examples. Then explain the edge cases."},
     {"name": "Long prompt", "max_tokens": 128, "prompt": _long_prompt()},
 )
+GEN_TESTS = ("Short answer", "Code")  # the requests that measure generation speed
+PREFILL_TESTS = ("Long prompt",)
+# What the tuner and the A/B/A comparison run per measurement: no 768-token code answer, which takes the most time.
+QUICK_TESTS = tuple(t for t in TESTS if t["name"] != "Code")
 
 
 class Bench:
@@ -65,7 +70,16 @@ class Bench:
         for p in self.dir.glob(f"*-{ident}.json"):
             p.unlink()
 
-    def start(self, *, runs: int, label: str, context: dict[str, Any]) -> dict[str, Any]:
+    def start(
+        self,
+        *,
+        runs: int,
+        label: str,
+        context: dict[str, Any],
+        probe: Callable[[str, dict[str, str], Callable[[str], None]], dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Start the speed test in a thread. ``probe(base, headers, progress)`` runs after the speed requests and
+        returns the quality result (the knowledge probe) that is stored in the same record, next to the speed."""
         with self._lock:
             if self.current and self.current["state"] == "running":
                 raise RuntimeError("A speed test is already running")
@@ -78,7 +92,7 @@ class Bench:
                             "started": time.time(), "runs": runs, "done": 0, "total": runs * len(TESTS),
                             "step": "", "tests": [], "context": context}
             cur = self.current
-        threading.Thread(target=self._run, args=(cur, base, headers), daemon=True).start()
+        threading.Thread(target=self._run, args=(cur, base, headers, probe), daemon=True).start()
         return dict(cur)
 
     def cancel(self) -> None:
@@ -88,19 +102,37 @@ class Bench:
         with self._lock:
             return json.loads(json.dumps(self.current)) if self.current else None
 
-    def _run(self, cur: dict[str, Any], base: str, headers: dict[str, str]) -> None:
+    def _run(
+        self,
+        cur: dict[str, Any],
+        base: str,
+        headers: dict[str, str],
+        probe: Callable[[str, dict[str, str], Callable[[str], None]], dict[str, Any]] | None = None,
+    ) -> None:
+        def step(run: int, test: dict[str, Any]) -> None:
+            with self._lock:
+                cur["step"] = f"Run {run + 1}/{cur['runs']}: {test['name']}"
+
+        def result(res: dict[str, Any]) -> None:
+            with self._lock:
+                cur["tests"].append(res)
+                cur["done"] += 1
+
+        def say(text: str) -> None:
+            if self._cancel.is_set():  # the probe reports every question, so Cancel reaches it
+                raise InterruptedError
+            with self._lock:
+                cur["step"] = text
+
         try:
-            for run in range(cur["runs"]):
-                for i, test in enumerate(TESTS):
-                    if self._cancel.is_set():
-                        raise InterruptedError
-                    with self._lock:
-                        cur["step"] = f"Run {run + 1}/{cur['runs']}: {test['name']}"
-                    res = self._one(base, headers, test, seed=1000 * run + i)
-                    res.update({"run": run + 1, "name": test["name"]})
-                    with self._lock:
-                        cur["tests"].append(res)
-                        cur["done"] += 1
+            self.measure(base, headers, cur["runs"], TESTS, step, result)
+            if probe is not None:
+                if self._cancel.is_set():
+                    raise InterruptedError
+                say("Knowledge probe")
+                quality = probe(base, headers, say)
+                with self._lock:
+                    cur["quality"] = quality
             with self._lock:
                 cur["state"] = "done"
         except InterruptedError:
@@ -118,7 +150,15 @@ class Bench:
             name = time.strftime("%Y%m%d-%H%M%S", time.localtime(record["started"])) + f"-{record['id']}.json"
             (self.dir / name).write_text(json.dumps(record, indent=1), encoding="utf-8")
 
-    def _one(self, base: str, headers: dict[str, str], test: dict[str, Any], seed: int) -> dict[str, Any]:
+    def _one(
+        self,
+        base: str,
+        headers: dict[str, str],
+        test: dict[str, Any],
+        seed: int,
+        cancel: threading.Event | None = None,
+    ) -> dict[str, Any]:
+        cancel = cancel or self._cancel
         body = {
             "messages": [{"role": "user", "content": test["prompt"]}],
             "max_tokens": test["max_tokens"],
@@ -134,7 +174,7 @@ class Bench:
         timings: dict[str, Any] = {}
         with urllib.request.urlopen(req, timeout=600) as r:
             for raw in r:
-                if self._cancel.is_set():
+                if cancel.is_set():
                     raise InterruptedError
                 line = raw.decode("utf-8", "replace").strip()
                 if not line.startswith("data:"):
@@ -163,6 +203,37 @@ class Bench:
             "wall_s": round(wall, 2),
         }
 
+    def measure(
+        self,
+        base: str,
+        headers: dict[str, str],
+        runs: int,
+        tests: tuple[dict[str, Any], ...] = TESTS,
+        on_step: Callable[[int, dict[str, Any]], None] | None = None,
+        on_result: Callable[[dict[str, Any]], None] | None = None,
+        cancel: threading.Event | None = None,
+        run_offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """Run ``tests`` ``runs`` times against the engine at ``base``, one after the other, and return the results.
+
+        Blocking; raises InterruptedError when ``cancel`` (default: this speed test's Cancel button) is set and the
+        usual urllib errors when the engine fails. Used by the speed test thread here and by the tuner and the A/B/A
+        comparison, which restart the engine between their measurements."""
+        cancel = cancel or self._cancel
+        out: list[dict[str, Any]] = []
+        for run in range(runs):
+            for i, test in enumerate(tests):
+                if cancel.is_set():
+                    raise InterruptedError
+                if on_step:
+                    on_step(run, test)
+                res = self._one(base, headers, test, seed=1000 * (run + run_offset) + i, cancel=cancel)
+                res.update({"run": run + run_offset + 1, "name": test["name"]})
+                out.append(res)
+                if on_result:
+                    on_result(res)
+        return out
+
     @staticmethod
     def _summary(tests: list[dict[str, Any]]) -> dict[str, Any]:
         def med(key: str, names: tuple[str, ...]) -> float | None:
@@ -176,7 +247,32 @@ class Bench:
             "ttft_ms": med("ttft_ms", gen_tests),
             "accept": med("accept", gen_tests),
             "n": len(tests),
+            **run_stats(tests),
         }
+
+
+def per_run(tests: list[dict[str, Any]], key: str, names: tuple[str, ...]) -> list[float]:
+    """One value per run: the median of ``key`` over the requests of that run that are named in ``names``."""
+    by_run: dict[int, list[float]] = {}
+    for t in tests:
+        if t.get(key) is not None and t.get("name") in names:
+            by_run.setdefault(int(t.get("run") or 0), []).append(float(t[key]))
+    return [round(statistics.median(v), 4) for _, v in sorted(by_run.items())]
+
+
+def run_stats(tests: list[dict[str, Any]]) -> dict[str, Any]:
+    """The repeated runs of a result: one decode and one prefill speed per run, with the median and 95 % interval.
+
+    ``decode_runs``/``prefill_runs`` are what the comparisons (stats.compare, A/B/A) work with; the interval needs at
+    least 3 runs (``decode_ci.lo`` is None before)."""
+    decode = per_run(tests, "decode", GEN_TESTS)
+    prefill = per_run(tests, "prefill", PREFILL_TESTS)
+    return {
+        "decode_runs": decode,
+        "prefill_runs": prefill,
+        "decode_ci": stats.summarize(decode),
+        "prefill_ci": stats.summarize(prefill),
+    }
 
 
 def check_reachable(base: str, headers: dict[str, str]) -> bool:

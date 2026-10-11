@@ -20,6 +20,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -105,6 +106,9 @@ class Engine:
         self.rss: int | None = None
         self.cache: dict[str, Any] = {}
         self.accept_logged: float | None = None
+        # Called with every engine log line of the current run (not with lines of earlier runs of a service); the
+        # expert-cache view (cachewatch.py) reads the engine's cache lines this way. Keep them quick.
+        self.line_listeners: list[Callable[[str], object]] = []
         self.restart_on_crash = False
         self._crashes: collections.deque[float] = collections.deque(maxlen=10)
         self._stop_requested = False
@@ -365,7 +369,13 @@ class Engine:
         if binary.suffix == ".py":  # development and test engines
             cmd = [sys.executable, str(binary), *plan.args]
         self._open_log()
-        self._append("$ " + plan.command_line().replace("\n", " "))
+        start_line = "$ " + plan.command_line().replace("\n", " ")
+        self._append(start_line)
+        for listener in self.line_listeners:
+            try:
+                listener(start_line)
+            except Exception:
+                pass
         total = 0
         for part in [*gguf.split_parts(Path(plan.model.get("path", ""))), *([Path(plan.draft)] if plan.draft else [])]:
             try:
@@ -537,6 +547,11 @@ class Engine:
         self._append(line)
         if not parse:
             return
+        for listener in self.line_listeners:
+            try:
+                listener(line)
+            except Exception:  # a listener must never break the log reader
+                pass
         low = line.lower()
         with self._lock:
             # A service can begin a run before the next look at its unit says so.

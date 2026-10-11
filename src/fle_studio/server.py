@@ -29,7 +29,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from . import __version__, bench, catalog, hf, launch, net, paths, service, system
+from . import __version__, bench, catalog, hf, launch, net, paths, quality, service, system, tuner, tuning_api
+from .cachewatch import CacheWatch
 from .chats import Chats
 from .config import Config
 from .downloads import Downloads
@@ -83,6 +84,12 @@ class Studio:
         self.live = Live(self.engine)
         self.chats = Chats(self.data_dir)
         self.bench = bench.Bench(self.engine, self.data_dir)
+        self.quality = quality.Quality(self.data_dir)
+        self.cache = CacheWatch()
+        self.engine.line_listeners.append(self.cache.feed)
+        self.tuner = tuner.Tuner(tuner.Host(
+            engine=self.engine, bench=self.bench, profiles=self.profiles, data_dir=self.data_dir,
+            make_plan=self.make_plan, sysinfo=self.sysinfo))
         self.token = secrets.token_urlsafe(24)
         self.lan = False
         self._sys: tuple[float, dict[str, Any] | None] = (0.0, None)
@@ -418,6 +425,13 @@ class Handler(BaseHTTPRequestHandler):
                 if m and method == self.command:
                     query = {k: v[-1] for k, v in parse_qs(url.query).items()}
                     getattr(self, "api_" + name)(query=query, **m.groupdict())
+                    return
+            for method, rx, func in tuning_api.ROUTES:
+                m = rx.match(path)
+                if m and method == self.command:
+                    query = {k: v[-1] for k, v in parse_qs(url.query).items()}
+                    status, data = func(self.studio, query, self.read_json, **m.groupdict())
+                    self.send_json(status, data)
                     return
             if self.command in ("GET", "HEAD") and not path.startswith("/api/"):
                 self.static(path)
@@ -755,9 +769,18 @@ class Handler(BaseHTTPRequestHandler):
                    "machine": f"{info['cpu']['name']}, {info['memory']['total'] / 2**30:.0f} GB RAM" +
                               (f", {gpu}" if gpu else ""),
                    "command": (st.get("plan") or {}).get("command") or svc.get("command")}
+        probe = None
+        if body.get("knowledge"):
+            source, data_dir = str(body.get("knowledge_set") or quality.BUILTIN), self.studio.data_dir
+            quality.load_questions(source, data_dir)  # fail now, not after the speed requests
+            context["knowledge_set"] = source
+
+            def probe(base: str, headers: dict[str, str], say: Any) -> dict[str, Any]:
+                return quality.run_probe(base, headers, say, source=source, data_dir=data_dir)
         try:
             self.send_json(200, self.studio.bench.start(runs=int(body.get("runs") or 1),
-                                                       label=str(body.get("label") or ""), context=context))
+                                                       label=str(body.get("label") or ""), context=context,
+                                                       probe=probe))
         except RuntimeError as exc:
             raise ApiError(409, str(exc)) from None
 
