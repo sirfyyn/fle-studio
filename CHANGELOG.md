@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Update check: about once a day (and with **Check now**) FLE Studio asks GitHub for the latest release, without
+  identifiers or telemetry. A discreet card in the sidebar says "FLE Studio X.Y.Z is available", with the release notes
+  as plain text, a link and **Later**. Switchable in Settings → Updates, with a switch for pre-releases. Offline it stays
+  silent.
+- One-click update for installs made with uv tool (not in service mode): installs the release, then restarts with the
+  same command line. A failed install keeps the old version running and shows the log. On Windows a helper script does
+  the install after Studio has ended. Other installs get the fitting command to copy.
+- The same notice reports a newer FLE engine build for the engines you installed.
+
 ## [0.1.1] - 2026-10-11
 
 Installers, CI and docs. The app itself does not change in this release.
