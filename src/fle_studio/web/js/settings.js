@@ -2,6 +2,7 @@
 
 import { post } from "./api.js";
 import { applyTheme, on, refreshState, store, topbar } from "./app.js";
+import { remoteSections } from "./hosts.js";
 import { clear, fmt, h, icon, toast } from "./ui.js";
 
 export function mount(main) {
@@ -28,7 +29,7 @@ export function mount(main) {
     clear(page,
       h("div", { class: "page-head" }, h("div", null, h("h2", null, "Settings"),
         h("p", null, `Stored in ${store.state.data_dir}. Start settings for the engine live on the Engine page.`))),
-      look(s), models(s), chat(s), hub(s), network(s), about());
+      look(s), models(s), chat(s), hub(s), network(s), ...remoteSections({ section, toggle }), about());
   }
 
   // ------------------------------------------------------------------------------------------- sections
