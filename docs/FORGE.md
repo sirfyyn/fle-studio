@@ -65,6 +65,23 @@ and tail KL divergence, top-1 agreement, perplexity and its ratio. The stored pr
 vocabulary, so the default is short (20 chunks). Compare only runs with the same text, context, chunks, tool build
 and hardware. The FLE figures shown for orientation were measured on the FLE project's own texts.
 
+### A measured end-to-end run
+
+OLMoE-1B-7B (16 expert layers, 64 experts), CPU only, bundled evaluation text, 40 chunks of 512 tokens, reference F16.
+One model and one text, so read it as an example, not a benchmark.
+
+| File | Size (bytes) | KLD | Top-1 |
+|---|---|---|---|
+| Q4_K_M | 4,213,511,776 | 0.0387 | 91.5 % |
+| Q3_K_M | 3,343,928,928 | 0.0849 | 86.4 % |
+| Hybrid, 10 layers Q4 + 6 layers Q3 | 3,791,984,224 (predicted: the same) | 0.0563 | 89.7 % |
+| Own Q3_K_M with a Forge matrix | 3,343,929,216 | 0.0696 | 87.9 % |
+| Hybrid, REAP 48 of 64 experts | 2,920,093,280 (predicted: the same) | 0.2600 | 77.8 % |
+
+Linear interpolation by size between the two donors would give a KLD of 0.0611, so the hybrid is about 8 % better.
+A cancelled hybrid build resumed at 39 of 195 tensors and produced a byte-identical file; a cancelled quantize job
+kept its finished matrix step and produced the same SHA-256 as a clean run (`llama-quantize` itself restarts).
+
 ## Calibration text
 
 A mixture-of-experts model needs plenty of varied text: a short one never reaches many experts. Studio ships a

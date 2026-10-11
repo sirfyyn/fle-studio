@@ -6,6 +6,7 @@ Version `0.2.0.dev0`. Not released.
 
 ### Added
 
+- Forge accepts the named quantization mixtures of `llama-quantize` (`q3_k_m`, `q4_k_m`, ...) as the default type.
 - **Forge**, a new page for building your own quant (see [docs/FORGE.md](docs/FORGE.md)):
   - a hybrid builder that takes whole expert layers from several quants of the same model, with a size-budget
     calculator (exact knapsack over the layers), the exact file size and a RAM/VRAM preview before anything is written;
