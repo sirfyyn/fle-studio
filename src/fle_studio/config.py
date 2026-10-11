@@ -23,6 +23,10 @@ DEFAULTS: dict[str, Any] = {
         "port": 8642,
         "open_browser": True,
         "allowed_hosts": "",  # LAN mode: extra host names the page may be opened under (IP addresses always work)
+        "tls": True,  # beyond this machine (host mode): TLS with a self-made certificate; --no-tls turns it off
+    },
+    "remote": {
+        "name": "",  # how this machine calls itself to clients and hosts; empty: its host name
     },
     "access_key": "",  # required from other machines whenever host is not loopback
     "hf_token": "",  # optional, only for gated Hugging Face repos

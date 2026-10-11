@@ -19,6 +19,7 @@ import mimetypes
 import re
 import secrets
 import socket
+import ssl
 import sys
 import threading
 import time
@@ -29,7 +30,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from . import __version__, bench, catalog, hf, launch, net, paths, service, system
+from . import __version__, bench, catalog, hf, launch, net, paths, remote, service, system, tlsgen
 from .chats import Chats
 from .config import Config
 from .downloads import Downloads
@@ -85,6 +86,8 @@ class Studio:
         self.bench = bench.Bench(self.engine, self.data_dir)
         self.token = secrets.token_urlsafe(24)
         self.lan = False
+        self.tls_fingerprint = ""  # host mode: SHA-256 of the certificate the server shows (see remote.py)
+        self.listen: dict[str, Any] = {}
         self._sys: tuple[float, dict[str, Any] | None] = (0.0, None)
         self._sys_lock = threading.Lock()
 
@@ -284,6 +287,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = f"FLEStudio/{__version__}"
     protocol_version = "HTTP/1.1"
     studio: Studio  # set on the subclass made by make_server
+    client: dict[str, Any] | None = None  # the paired client of this request (remote.py), if it came with a token
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002 - signature from the base class
         return  # quiet; the engine log is what users read
@@ -355,6 +359,9 @@ class Handler(BaseHTTPRequestHandler):
         return name in allowed or any(name.startswith(a + ".") for a in allowed if a)
 
     def _authed(self) -> bool:
+        paired = remote.authenticate(self)  # a client token counts, also from loopback (an SSH tunnel)
+        if paired is not None:
+            return paired
         if _is_loopback(self.client_address[0]):
             return True
         expected = self.studio.session_cookie()
@@ -373,13 +380,15 @@ class Handler(BaseHTTPRequestHandler):
         if not self._host_ok():
             self._send(403, b"FLE Studio: this host name is not allowed.", "text/plain; charset=utf-8")
             return False
-        if path == "/login":
+        if path in ("/login", "/api/remote/pair"):  # pairing proves itself with the code, see remote.py
             return True
         if not self._authed():
             if path.startswith(("/api/", "/v1/")):
                 self.send_json(401, {"error": {"message": "Sign in with the access key", "type": "auth"}})
             else:
                 self._send(303, b"", "text/plain", {"Location": "/login"})
+            return False
+        if self.client is not None and not remote.enforce(self, path):
             return False
         if self.command in ("POST", "PUT", "DELETE", "PATCH"):
             origin = self.headers.get("Origin")
@@ -389,8 +398,8 @@ class Handler(BaseHTTPRequestHandler):
             if origin == "null":
                 self.send_json(403, {"error": {"message": "Request from an opaque origin refused"}})
                 return False
-            if path.startswith("/api/") and not hmac.compare_digest(self.headers.get("X-FLE-Token", ""),
-                                                                    self.studio.token):
+            if (path.startswith(("/api/", "/h/")) and self.client is None
+                    and not hmac.compare_digest(self.headers.get("X-FLE-Token", ""), self.studio.token)):
                 # Usually a page from before a restart of Studio; the header tells it to reload for the new token.
                 self._send(403, json.dumps({"error": {"message": "Session expired; reload the page"}}).encode(),
                            "application/json; charset=utf-8", {"X-FLE-Session": "expired"})
@@ -400,12 +409,16 @@ class Handler(BaseHTTPRequestHandler):
     def _dispatch(self) -> None:
         url = urlparse(self.path)
         path = url.path
+        self.client = None  # one handler serves a whole keep-alive connection
         try:
             self._unread = max(0, int(self.headers.get("Content-Length") or 0))
         except ValueError:
             self._unread, self.close_connection = 0, True
         try:
             if not self._guard(path):
+                return
+            if path.startswith("/h/"):  # a host this Studio is a client of, see remote.py
+                remote.forward(self, url)
                 return
             if path.startswith("/v1/"):
                 self.proxy()
@@ -770,26 +783,43 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(200, {"ok": True})
 
 
+remote.install(Handler, ROUTES, ApiError)  # /api/remote* (host side), /api/hosts* (client side), /h/<id>/ pass-through
+
+
 class Server(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False if paths.IS_WIN else True
 
     def handle_error(self, request: Any, client_address: Any) -> None:
-        if isinstance(sys.exc_info()[1], (ConnectionResetError, BrokenPipeError, ConnectionAbortedError)):
-            return  # a browser closed its connection; nothing to report
+        if isinstance(sys.exc_info()[1], (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, ssl.SSLError)):
+            return  # a browser closed its connection, or a client that does not speak TLS knocked; nothing to report
         super().handle_error(request, client_address)
 
 
-def make_server(studio: Studio, host: str, port: int, tries: int = 20) -> Server:
-    """Bind to host:port, or the next free port above it."""
+def make_server(studio: Studio, host: str, port: int, tries: int = 20, tls: bool | None = None) -> Server:
+    """Bind to host:port, or the next free port above it.
+
+    `tls`: None is automatic: a server that listens beyond this machine (host mode) speaks TLS with its own
+    certificate (settings server.tls, `--no-tls`), a loopback one does not. True forces it, False turns it off."""
     handler = type("BoundHandler", (Handler,), {"studio": studio})
     studio.lan = host not in ("127.0.0.1", "localhost", "::1")
+    if tls is None:
+        tls = studio.lan and bool(studio.config.get("server.tls"))
     family = socket.AF_INET6 if ":" in host else socket.AF_INET
     Server.address_family = family
     last: OSError | None = None
     for p in range(port, port + tries) if port else [0]:
         try:
-            return Server((host, p), handler)
+            server = Server((host, p), handler)
         except OSError as exc:
             last = exc
+            continue
+        studio.tls_fingerprint = ""
+        if tls:
+            cert, key, studio.tls_fingerprint = tlsgen.ensure(studio.data_dir, remote.host_name(studio))
+            # The handshake happens in the thread of the connection, so a slow client cannot hold up the others.
+            server.socket = tlsgen.server_context(cert, key).wrap_socket(
+                server.socket, server_side=True, do_handshake_on_connect=False)
+        studio.listen = {"host": host, "port": int(server.server_address[1]), "tls": bool(tls)}
+        return server
     raise OSError(f"No free port from {port} to {port + tries - 1}: {last}")
