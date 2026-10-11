@@ -47,10 +47,14 @@ if TYPE_CHECKING:
     from playwright.sync_api import Page
 
 FAKE_ENGINE = Path(__file__).resolve().parents[1] / "fake_llama_server.py"
+FAKE_MCP = Path(__file__).resolve().parents[1] / "fake_mcp_server.py"
 
 MODEL_NAME = "FLE Studio E2E stub"
 # Shorter than the 40 characters the stand-in engine echoes back in its answer.
 QUESTION = "Hello from the browser end-to-end test"
+EDITED = "Edited question for the versions step"
+NEEDLE = "zebra-crossing-token"  # sits inside an attached file, to find it with the chat search
+FORMAT_FIELDS = ("response_format", "json_schema", "grammar")
 VIEWPORT = {"width": 1440, "height": 900}  # wide enough for the live panel to be open from the start
 WAIT_MS = 30_000  # how long the browser waits for one thing to show up
 MAX_SHOT_HEIGHT = 6000
@@ -430,6 +434,15 @@ class Session:
         self.report, self.studio, self.page, self.watch = report, studio, page, watch
         self.out, self.expect, self.model = out, expect, model
         self.chat_id = ""
+        self.sent: list[dict[str, Any]] = []  # the bodies of the chat requests the page sent to the engine
+        page.on("request", self._on_request)
+
+    def _on_request(self, request: Any) -> None:
+        if request.method == "POST" and request.url.split("?")[0].endswith("/v1/chat/completions"):
+            try:
+                self.sent.append(json.loads(request.post_data or "{}"))
+            except ValueError:
+                self.sent.append({})
 
     @contextlib.contextmanager
     def step(self, title: str) -> Generator[Step, None, None]:
@@ -570,6 +583,251 @@ class Session:
             self.expect(page.locator(".live-panel .tile", has_text="Generation").locator(".v")).to_contain_text(
                 "tok/s", timeout=WAIT_MS)
             step.note = self.shoot("chat")
+
+    # ---- chat features: attachments, versions, export and import, search, tools
+
+    def new_chat(self) -> None:
+        self.page.goto(self.studio.base + "/", wait_until="domcontentloaded")
+        self.expect(self.page.locator(".welcome h2")).to_be_visible(timeout=WAIT_MS)
+        self.expect(self.page.locator("button.send")).to_be_visible(timeout=WAIT_MS)
+
+    def send(self, text: str) -> None:
+        self.page.locator("textarea[aria-label='Message']").fill(text)
+        self.page.locator("button.send").click()
+
+    def idle(self) -> None:
+        """The whole turn is over (streaming, tools and all)."""
+        self.expect(self.page.locator("button.send:not(.stop)")).to_be_visible(timeout=60_000)
+
+    def saved_chat(self, want: Callable[[dict[str, Any]], bool], what: str) -> dict[str, Any]:
+        page, studio = self.page, self.studio
+        page.wait_for_function("() => /^\\/c\\/[0-9a-f]{16}$/.test(location.pathname)", timeout=WAIT_MS)
+        chat_id = page.evaluate("() => location.pathname.split('/').pop()")
+        found = wait_until(lambda: (lambda c: c if want(c) else None)(studio.api("GET", f"/api/chats/{chat_id}")), 15,
+                           what)
+        return found  # type: ignore[no-any-return]
+
+    def attachments(self) -> None:
+        page = self.page
+        attach = page.locator("input[aria-label='Attach files']")
+        with self.step("Attach a text file: it goes to the model in front of the question") as step:
+            self.new_chat()
+            notes = f"Project notes\n{NEEDLE}\n".encode() + b"plain words " * 40
+            attach.set_input_files([{"name": "notes.txt", "mimeType": "text/plain", "buffer": notes}])
+            chip = page.locator(".att-row .att-chip.text")
+            self.expect(chip).to_contain_text("notes.txt", timeout=WAIT_MS)
+            self.expect(chip).to_contain_text("tokens", timeout=WAIT_MS)
+            self.send("What do the notes say?")
+            self.expect(page.locator(".msg.user .att-file summary .n")).to_have_text("notes.txt", timeout=WAIT_MS)
+            self.expect(page.locator(".msg.assistant .stats")).to_be_visible(timeout=60_000)
+            self.idle()
+            sent = self.sent[-1]["messages"][-1]["content"]
+            if not isinstance(sent, str) or not (sent.startswith('<attachment name="notes.txt">') and NEEDLE in sent
+                                                 and sent.endswith("What do the notes say?")):
+                raise E2EError(f"the attachment did not reach the model in front of the question: {str(sent)[:200]!r}")
+            self.expect(page.locator(".att-row .att-chip")).to_have_count(0, timeout=WAIT_MS)  # taken by the send
+            saved = self.saved_chat(lambda c: len(c["messages"]) == 2 and c["messages"][1].get("content"),
+                                    "the chat with the attachment to be saved")
+            kept = (saved["messages"][0].get("attachments") or [{}])[0]
+            if kept.get("name") != "notes.txt" or NEEDLE not in kept.get("text", ""):
+                raise E2EError(f"the saved chat lost the attachment: {kept}")
+            step.note = "sent as an <attachment> block, kept with the chat; " + self.shoot("chat-attachment")
+
+        with self.step("A picture is turned away politely when the model cannot see") as step:
+            self.new_chat()
+            png = b"\x89PNG\r\n\x1a\n" + b"\0" * 32
+            attach.set_input_files([{"name": "cat.png", "mimeType": "image/png", "buffer": png}])
+            self.expect(page.locator("#toasts .toast.bad")).to_contain_text("cannot look at pictures", timeout=WAIT_MS)
+            self.expect(page.locator(".att-row .att-chip")).to_have_count(0, timeout=WAIT_MS)
+            step.note = "the page says so before anything is uploaded"
+
+        with self.step("A long attachment shows the context warning") as step:
+            big = b"lorem ipsum dolor " * 5600  # about 28,000 tokens of the 32,768 the engine holds
+            attach.set_input_files([{"name": "big.txt", "mimeType": "text/plain", "buffer": big}])
+            self.expect(page.locator(".att-row .att-chip.text")).to_contain_text("big.txt", timeout=WAIT_MS)
+            warn = page.locator(".ctx-warn")
+            self.expect(warn).to_be_visible(timeout=WAIT_MS)
+            self.expect(warn).to_contain_text("tokens", timeout=WAIT_MS)
+            step.note = "warning above the message box; " + self.shoot("chat-context-warning")
+            page.get_by_role("button", name="Remove big.txt").click()
+            self.expect(warn).to_be_hidden(timeout=WAIT_MS)
+
+    def versions(self) -> None:
+        page = self.page
+        user_switch = page.locator(".msg.user .switcher .num")
+        with self.step("Edit a message: it becomes version 2, the first stays one click away") as step:
+            page.goto(f"{self.studio.base}/c/{self.chat_id}", wait_until="domcontentloaded")
+            self.expect(page.locator(".msg.user .bubble")).to_have_text(QUESTION, timeout=WAIT_MS)
+            self.expect(page.locator(".msg .switcher")).to_have_count(0, timeout=WAIT_MS)
+            user = page.locator(".msg.user")
+            user.hover()
+            user.get_by_role("button", name="Edit", exact=True).click()
+            page.get_by_label("Edit your message").fill(EDITED)
+            page.get_by_role("button", name="Send as new version").click()
+            self.expect(page.locator(".msg.user .bubble")).to_have_text(EDITED, timeout=WAIT_MS)
+            self.expect(page.locator(".msg.assistant .stats")).to_be_visible(timeout=60_000)
+            self.idle()
+            self.expect(user_switch).to_have_text("2 / 2", timeout=WAIT_MS)
+            asked = [m["content"] for m in self.sent[-1]["messages"] if m["role"] == "user"]
+            if asked != [EDITED]:
+                raise E2EError(f"the engine was sent {asked} instead of only the edited question")
+            self.saved_chat(lambda c: len(c["messages"]) == 4, "both versions to be saved")
+            page.get_by_role("button", name="Previous version").click()
+            self.expect(page.locator(".msg.user .bubble")).to_have_text(QUESTION, timeout=WAIT_MS)
+            self.expect(user_switch).to_have_text("1 / 2", timeout=WAIT_MS)
+            self.expect(page.locator(".msg.assistant .body > .md")).to_contain_text(QUESTION, timeout=WAIT_MS)
+            step.note = "< 1 / 2 > shows the first question and its own answer; " + self.shoot("chat-versions")
+            page.get_by_role("button", name="Next version").click()
+            self.expect(page.locator(".msg.user .bubble")).to_have_text(EDITED, timeout=WAIT_MS)
+
+        with self.step("Answer again: the first answer stays as another version") as step:
+            last = page.locator(".msg.assistant").last
+            last.hover()
+            last.get_by_role("button", name="Regenerate").click()
+            self.expect(page.locator(".msg.assistant .switcher .num")).to_have_text("2 / 2", timeout=WAIT_MS)
+            self.expect(page.locator(".msg.assistant .stats")).to_be_visible(timeout=60_000)
+            self.idle()
+            self.saved_chat(lambda c: len(c["messages"]) == 5, "the second answer to be saved")
+            answer_switch = page.locator(".msg.assistant .switcher")
+            answer_switch.get_by_role("button", name="Previous version").click()
+            self.expect(page.locator(".msg.assistant .switcher .num")).to_have_text("1 / 2", timeout=WAIT_MS)
+            answer_switch.get_by_role("button", name="Next version").click()
+            self.expect(page.locator(".msg.assistant .switcher .num")).to_have_text("2 / 2", timeout=WAIT_MS)
+            step.note = "5 messages in the file, one question has 2 versions and one answer has 2"
+
+    def export_import(self) -> None:
+        page, studio = self.page, self.studio
+        before = len(studio.api("GET", "/api/chats")["chats"])
+        with self.step("Export the chat as Markdown and as JSON") as step:
+            page.get_by_role("button", name="Chat menu").click()
+            with page.expect_download() as download:
+                page.get_by_role("menuitem", name="Export as Markdown").click()
+            md_path = self.out / "export.md"
+            download.value.save_as(str(md_path))
+            markdown = md_path.read_text(encoding="utf-8")
+            filename = download.value.suggested_filename
+            if not filename.endswith(".md") or EDITED not in markdown or "## Assistant" not in markdown:
+                raise E2EError(f"the Markdown export looks wrong ({filename}): {markdown[:200]!r}")
+            if QUESTION in markdown.split("\n", 1)[1]:  # the title line still carries the first question
+                raise E2EError("the Markdown export holds the other version of the question too")
+            page.get_by_role("button", name="Chat menu").click()
+            with page.expect_download() as download:
+                page.get_by_role("menuitem", name="Export as JSON").click()
+            json_path = self.out / "export.json"
+            download.value.save_as(str(json_path))
+            doc = json.loads(json_path.read_text(encoding="utf-8"))
+            if doc.get("format") != "fle-studio-chat" or len(doc["chat"]["messages"]) != 5:
+                raise E2EError(f"the JSON export is not the whole tree: {doc.get('format')}, "
+                               f"{len(doc.get('chat', {}).get('messages', []))} messages")
+            step.note = "Markdown has the version on screen, JSON has all 5 messages"
+
+        with self.step("Import the JSON file as a new chat") as step:
+            page.locator("input[aria-label='Import a chat file']").set_input_files(str(json_path))
+            self.expect(page.locator("#toasts .toast.good")).to_contain_text("Imported", timeout=WAIT_MS)
+            page.wait_for_function(
+                "(old) => /^\\/c\\/[0-9a-f]{16}$/.test(location.pathname) && !location.pathname.endsWith(old)",
+                arg=self.chat_id, timeout=WAIT_MS)
+            self.expect(page.locator(".msg.user .bubble")).to_have_text(EDITED, timeout=WAIT_MS)
+            self.expect(page.locator(".msg.user .switcher .num")).to_have_text("2 / 2", timeout=WAIT_MS)
+            after = len(studio.api("GET", "/api/chats")["chats"])
+            if after != before + 1:
+                raise E2EError(f"the chat list went from {before} to {after} chats")
+            step.note = "opens as a copy with its versions"
+
+    def search(self) -> None:
+        page = self.page
+        box = page.locator("#chat-search")
+        hits = page.locator("#chat-list .chat-item.hit")
+        with self.step("Search the chats: text inside an attachment and in an older version") as step:
+            box.fill("zebra-crossing")
+            self.expect(hits).to_have_count(1, timeout=WAIT_MS)
+            self.expect(hits.first).to_contain_text("zebra-crossing", timeout=WAIT_MS)
+            self.expect(hits.first.locator("mark")).to_have_text("zebra-crossing", timeout=WAIT_MS)
+            box.fill("Hello from the browser")  # only in the first version of the question, in two chats
+            self.expect(hits).to_have_count(2, timeout=WAIT_MS)
+            box.fill("nothing like this anywhere")
+            self.expect(page.locator("#chat-list .chat-empty")).to_be_visible(timeout=WAIT_MS)
+            box.fill("zebra-crossing")
+            self.expect(hits).to_have_count(1, timeout=WAIT_MS)
+            step.note = "hits are highlighted; " + self.shoot("chat-search")
+            box.fill("")
+            self.expect(hits).to_have_count(0, timeout=WAIT_MS)
+            self.expect(page.locator("#chat-list .chat-item")).not_to_have_count(0, timeout=WAIT_MS)
+
+    def tools(self) -> None:
+        page, studio = self.page, self.studio
+        card = page.locator(".toolcard")
+        with self.step("The model calls a built-in tool and the card shows call and result") as step:
+            self.new_chat()
+            self.expect(page.locator("button.chip", has_text="Tools ·")).to_be_visible(timeout=WAIT_MS)
+            self.send('CALL_TOOL calculator {"expression": "6*7"}')
+            self.expect(card).to_have_count(1, timeout=WAIT_MS)
+            self.expect(card.locator(".tname")).to_have_text("calculator", timeout=WAIT_MS)
+            self.expect(card.locator(".pill")).to_contain_text("Done", timeout=WAIT_MS)
+            card.locator("summary").click()
+            self.expect(card.locator(".tbody")).to_be_visible(timeout=WAIT_MS)
+            self.expect(card.locator(".tbody pre").last).to_have_text("42", timeout=WAIT_MS)
+            self.expect(page.locator(".msg.assistant .body > .md").last).to_contain_text("Tool said", timeout=60_000)
+            self.idle()
+            first, second = self.sent[-2], self.sent[-1]
+            names = [t["function"]["name"] for t in first.get("tools") or []]
+            answers = [m for m in second["messages"] if m["role"] == "tool"]
+            if "calculator" not in names or not answers or answers[-1]["content"] != "42":
+                raise E2EError(f"the loop did not carry the tool: tools {names}, tool messages {answers}")
+            step.note = "request 1 offered the tools, request 2 carried the result; " + self.shoot("chat-tool")
+
+        with self.step("An MCP server's tool waits for approval, then runs once allowed") as step:
+            config = json.dumps({"mcpServers": {"fake": {"command": sys.executable, "args": [str(FAKE_MCP)]}}})
+            studio.api("POST", "/api/settings", {"tools": {"mcp_enabled": True, "mcp_json": config}})
+            studio.api("POST", "/api/tools/reload")
+            wait_until(lambda: any(t["name"] == "fake__write_note" for t in studio.api("GET", "/api/tools")["tools"]),
+                       30, "the MCP server's tools to be listed")
+            self.new_chat()
+            self.expect(page.locator("button.chip", has_text="Tools ·")).to_be_visible(timeout=WAIT_MS)
+            self.send('CALL_TOOL fake__write_note {"text": "from the e2e test"}')
+            self.expect(card.locator(".pill")).to_contain_text("Waiting for you", timeout=WAIT_MS)
+            self.expect(card.get_by_role("button", name="Allow once")).to_be_visible(timeout=WAIT_MS)
+            self.expect(card.get_by_role("button", name="Always allow")).to_be_visible(timeout=WAIT_MS)
+            waiting = self.shoot("chat-mcp-approval")
+            card.get_by_role("button", name="Allow once").click()
+            self.expect(card.locator(".pill")).to_contain_text("Done", timeout=WAIT_MS)
+            self.expect(card.locator(".tbody")).to_contain_text("saved note 1", timeout=WAIT_MS)
+            self.expect(page.locator(".msg.assistant .body > .md").last).to_contain_text("Tool said", timeout=60_000)
+            self.idle()
+            step.note = "asked first, ran after 'Allow once'; " + waiting
+
+        with self.step("Declining a tool call tells the model so") as step:
+            self.send('CALL_TOOL fake__write_note {"text": "not this one"}')
+            self.expect(card).to_have_count(2, timeout=WAIT_MS)
+            self.expect(card.last.locator(".pill")).to_contain_text("Waiting for you", timeout=WAIT_MS)
+            card.last.get_by_role("button", name="Decline").click()
+            self.expect(card.last.locator(".pill")).to_contain_text("Declined", timeout=WAIT_MS)
+            self.expect(page.locator(".msg.assistant .body > .md").last).to_contain_text("declined", timeout=60_000)
+            self.idle()
+            notes = studio.api("POST", "/api/tools/call", {"name": "fake__write_note", "arguments": {"text": "probe"},
+                                                           "approved": True})["content"]
+            if notes != "saved note 2":
+                raise E2EError(f"the declined call still ran on the server (the next note is {notes!r}, expected 2)")
+            step.note = "the server never ran it"
+
+        with self.step("No request carried tools together with a forced answer format") as step:
+            bad = [i for i, body in enumerate(self.sent) if body.get("tools") and any(k in body for k in FORMAT_FIELDS)]
+            if bad:
+                raise E2EError(f"requests {bad} carried tools and a forced answer format")
+            offered = sum(1 for body in self.sent if body.get("tools"))
+            step.note = f"{len(self.sent)} chat requests checked, {offered} offered tools"
+
+    def settings_tools(self) -> None:
+        page = self.page
+        with self.step("Settings lists the tools and the connected MCP server") as step:
+            self.go("Settings", "/settings", "Settings")
+            card = page.locator(".card", has=page.get_by_role("heading", name="Tools", exact=True))
+            self.expect(card).to_have_count(1, timeout=WAIT_MS)
+            self.expect(card).to_contain_text("Calculator", timeout=WAIT_MS)
+            self.expect(card).to_contain_text("fake", timeout=WAIT_MS)
+            servers_box = page.get_by_label("MCP servers (JSON)")
+            self.expect(servers_box).to_have_value(re.compile("mcpServers"), timeout=WAIT_MS)
+            step.note = self.shoot("settings-tools")
 
     def models(self) -> None:
         page = self.page
@@ -783,6 +1041,12 @@ def run_browser(args: argparse.Namespace, report: Report, studio: StudioProcess,
             session.chat()
             session.live_panel()
             session.reload_chat()
+            session.attachments()
+            session.versions()
+            session.export_import()
+            session.search()
+            session.tools()
+            session.settings_tools()
             session.models()
             session.engine()
             session.experiments()

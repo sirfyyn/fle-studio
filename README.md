@@ -95,7 +95,17 @@ fle-studio
 ## What you get
 
 **Chat.** An Open WebUI-style chat in the browser: Markdown and code blocks, a collapsible block for the model's
-reasoning, streaming answers, the speed of each answer, and a history that stays on your computer.
+reasoning, streaming answers, the speed of each answer, and a history that stays on your computer. It also does
+the everyday things (details in [docs/CHAT.md](docs/CHAT.md)):
+
+- **Attachments.** Text and code files, PDFs (install the small `pypdf` library with `pip install "fle-studio[pdf]"`)
+  and pictures, the last only when the loaded model can look at them. A token estimate warns before the context
+  window is full. The largest upload is a setting.
+- **Tools and MCP.** The model can call a calculator, the clock, read files in one folder you pick, and search the web
+  (off by default), and the tools of any MCP server you add in the usual `mcpServers` JSON (stdio or Streamable HTTP).
+  Every call is a card you can open. Anything that writes or starts a program asks first.
+- **Edit, branch, search, export.** Edit a message of yours and the old version stays, with a `< 2 / 3 >` switch.
+  Search all chats, export one as JSON or Markdown, import it again.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/media/chat-reasoning-dark.png">
@@ -208,6 +218,8 @@ on your hardware: the speed figures in the FLE report and in the model catalog w
 - Chats, settings and your Hugging Face token (if you set one) are stored in the data folder on your machine.
 - Nothing leaves your machine except the downloads you start: model files and searches on Hugging Face, and engine
   releases from GitHub. The installers additionally download uv (astral.sh) and FLE Studio itself (GitHub).
+- Two chat features can reach the internet, and both are your choice: the web search tool (off by default; each search
+  asks first) and MCP servers you add that use a web address. Programs you list as MCP servers run with your rights.
 
 ## Roadmap
 
@@ -220,7 +232,7 @@ Ideas and bug reports are welcome as GitHub issues.
 ## Development
 
 ```sh
-python -m pip install -e . pytest ruff
+python -m pip install -e ".[pdf]" pytest ruff
 ruff check src tests
 pytest -q
 ```

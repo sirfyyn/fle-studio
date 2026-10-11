@@ -44,6 +44,17 @@ FAKE_ENGINE=fle|upstream force the engine identity
 FAKE_STRICT_GGUF=1       refuse model files that do not start with the GGUF magic
 FAKE_REJECT_ARGS=a,b     refuse these flags with ``error: invalid argument``, like a server that does not know them
 FAKE_LOAD_DOTS=1         print the loader's progress dots (visible with -lv 4 only)
+FAKE_VISION=1            report vision support in /props and accept picture parts in chat messages (otherwise they
+                         are refused like a server without an mmproj file does)
+
+Tools and answer formats
+------------------------
+A request with ``tools`` makes the fake call a tool when the user's last message contains
+``CALL_TOOL name {"json": "arguments"}`` (several of them give several parallel calls) and the request offers a tool
+of that name. The reply is a streamed ``tool_calls`` delta (or ``message.tool_calls``) with finish reason
+``tool_calls``. When the last message is a tool result, the answer quotes it ("Tool said ..."). A forced answer
+format (``response_format`` other than text, ``json_schema``, ``grammar``) gives a JSON-only answer and never a tool
+call, even if tools were sent: this is the trap that FLE Studio must not fall into.
 """
 
 from __future__ import annotations
@@ -562,10 +573,49 @@ def flatten_content(content: Any) -> str:
         for part in content:
             if isinstance(part, dict) and isinstance(part.get("text"), str):
                 parts.append(part["text"])
+            elif isinstance(part, dict) and part.get("type") == "image_url":
+                parts.append("<__media__>")
             elif isinstance(part, str):
                 parts.append(part)
         return "\n".join(parts)
     return ""
+
+
+def has_image(messages: list[Any]) -> bool:
+    """Does any message carry a picture part (OpenAI `image_url`)?"""
+    return any(isinstance(m, dict) and isinstance(m.get("content"), list)
+               and any(isinstance(p, dict) and p.get("type") == "image_url" for p in m["content"]) for m in messages)
+
+
+CALL_RE = re.compile(r"CALL_TOOL[ \t]+(\S+)(?:[ \t]+(\{[^\n]*\}))?")
+
+
+def requested_tool_calls(req: dict[str, Any], last_user: str) -> list[tuple[str, str]]:
+    """The tools this fake "decides" to call: one for every `CALL_TOOL name {json arguments}` in the user's last
+    message, if the request offers a tool of that name and the last message is the user's."""
+    tools, messages = req.get("tools"), req.get("messages") or []
+    if not isinstance(tools, list) or not tools or req.get("tool_choice") == "none":
+        return []
+    if not messages or not isinstance(messages[-1], dict) or messages[-1].get("role") != "user":
+        return []
+    offered = {t["function"].get("name") for t in tools if isinstance(t, dict) and isinstance(t.get("function"), dict)}
+    calls = []
+    for name, args in CALL_RE.findall(last_user):
+        if name in offered:
+            try:
+                json.loads(args or "{}")
+            except ValueError:
+                args = ""
+            calls.append((name, args or "{}"))
+    return calls
+
+
+def forced_format(req: dict[str, Any]) -> bool:
+    """Does the request force the shape of the answer (JSON mode, JSON schema, grammar)?"""
+    fmt = req.get("response_format")
+    if isinstance(fmt, dict) and fmt.get("type") not in (None, "text"):
+        return True
+    return bool(req.get("json_schema") or req.get("grammar"))
 
 
 def lcp(a: str, b: str) -> int:
@@ -597,8 +647,10 @@ def render_prompt(messages: list[Any], think: bool) -> tuple[str, str]:
     return "".join(parts), last_user
 
 
-def make_tokens(seed: int, last_user: str, think: bool, limit: int, ignore_eos: bool) -> tuple[list, str]:
-    """The deterministic token list [(piece, channel)] and the finish reason; channel is reasoning|content|hidden."""
+def make_tokens(seed: int, last_user: str, think: bool, limit: int, ignore_eos: bool,
+                lead: str = "") -> tuple[list, str]:
+    """The deterministic token list [(piece, channel)] and the finish reason; channel is reasoning|content|hidden.
+    `lead` replaces the first sentence of the answer."""
     n_think = max(0, int(env_float("FAKE_THINK_TOKENS", 40))) if think else 0
     n_answer = max(0, int(env_float("FAKE_ANSWER_TOKENS", 32 + seed % 24)))
     snippet = re.sub(r"\s+", " ", last_user).strip().replace('"', "'")[:40]
@@ -606,7 +658,7 @@ def make_tokens(seed: int, last_user: str, think: bool, limit: int, ignore_eos: 
     if think:
         out += [(w if i == 0 else " " + w, "reasoning") for i, w in enumerate(words(THINK_SENTENCES, seed, n_think))]
         out.append(("", "hidden"))  # </think>
-    text = f'Fake reply to "{snippet}".'.split() if snippet else ["Fake", "reply."]
+    text = lead.split() if lead else f'Fake reply to "{snippet}".'.split() if snippet else ["Fake", "reply."]
     text += words(ANSWER_SENTENCES, seed, max(0, n_answer - len(text)))
     out += [(w if i == 0 else " " + w, "content") for i, w in enumerate(text[:n_answer])]
     if ignore_eos:  # the model never stops by itself: keep going until the limit
@@ -618,6 +670,32 @@ def make_tokens(seed: int, last_user: str, think: bool, limit: int, ignore_eos: 
     if len(out) + 1 > limit:  # no room left for the end-of-sequence token
         return out[:limit], "length"
     out.append(("", "hidden"))  # EOS
+    return out, "stop"
+
+
+def tool_call_tokens(seed: int, think: bool, calls: list[tuple[str, str]]) -> tuple[list, str]:
+    """Reasoning, then the tool calls: the channel `toolname:I` carries a call's name, `toolargs:I` its arguments."""
+    n_think = max(0, int(env_float("FAKE_THINK_TOKENS", 40))) if think else 0
+    out: list[tuple[str, str]] = []
+    if think:
+        out += [(w if i == 0 else " " + w, "reasoning") for i, w in enumerate(words(THINK_SENTENCES, seed, n_think))]
+        out.append(("", "hidden"))  # </think>
+    for i, (name, args) in enumerate(calls):
+        out.append((name, f"toolname:{i}"))
+        out += [(args[k:k + 8], f"toolargs:{i}") for k in range(0, len(args), 8)]
+    out.append(("", "hidden"))  # EOS
+    return out, "tool_calls"
+
+
+def json_tokens(seed: int, think: bool, text: str) -> tuple[list, str]:
+    """An answer that is JSON only, as the real server gives under a forced answer format."""
+    n_think = max(0, int(env_float("FAKE_THINK_TOKENS", 40))) if think else 0
+    out: list[tuple[str, str]] = []
+    if think:
+        out += [(w if i == 0 else " " + w, "reasoning") for i, w in enumerate(words(THINK_SENTENCES, seed, n_think))]
+        out.append(("", "hidden"))
+    out += [(text[k:k + 6], "content") for k in range(0, len(text), 6)]
+    out.append(("", "hidden"))
     return out, "stop"
 
 
@@ -690,6 +768,7 @@ class Fake:
         else:
             self.spec_type = "none"
         self.draft_width = max(1, cfg.draft_max) if self.spec_type != "none" else 0
+        self.vision = os.environ.get("FAKE_VISION", "").strip().lower() in TRUTHY
         self.cache_budget = int(env_float("FLE_MOE_CACHE_BUDGET_MIB", 0)) if self.is_fle else 0
         self.cache_slot_mib = 3.9  # a made-up size for one expert slice
         self.early_save = self.is_fle and env_float("FLE_SLOT_EARLY_SAVE", 0) != 0 and cfg.cache_ram > 0
@@ -1082,7 +1161,7 @@ class Fake:
             "default_generation_settings": {"params": self.params_json(), "n_ctx": self.n_ctx_slot},
             "total_slots": cfg.parallel, "model_alias": self.model_name, "model_ftype": self.model.ftype,
             "model_path": cfg.model,
-            "modalities": {"vision": False, "video": False, "audio": False},
+            "modalities": {"vision": self.vision, "video": False, "audio": False},
             "media_marker": self.media_marker,
             "endpoint_slots": cfg.slots, "endpoint_props": cfg.props, "endpoint_metrics": cfg.metrics, "ui": cfg.ui,
             "ui_settings": {}, "chat_template": CHAT_TEMPLATE, "chat_template_caps": CHAT_TEMPLATE_CAPS,
@@ -1102,7 +1181,8 @@ class Fake:
             "object": "list",
             "data": [{
                 "id": self.model_name, "aliases": self.aliases, "tags": [], "object": "model",
-                "architecture": {"input_modalities": ["text"], "output_modalities": ["text"]},
+                "architecture": {"input_modalities": ["text", "image"] if self.vision else ["text"],
+                                 "output_modalities": ["text"]},
                 "created": int(time.time()), "owned_by": "llamacpp",
                 "meta": {"vocab_type": 2, "n_vocab": m.n_vocab, "n_ctx": self.n_ctx_slot,
                          "n_ctx_train": m.n_ctx_train, "n_embd": m.n_embd, "n_params": m.n_params,
@@ -1312,6 +1392,14 @@ class Completion:
         self.fake, self.h, self.req = fake, handler, req
         self.opts = ChatOptions(req, fake.cfg)
         self.prompt, self.last_user = render_prompt(req["messages"], self.opts.think)
+        self.json_only = forced_format(req)  # under a forced format the real server never calls tools
+        self.tool_calls = [] if self.json_only else requested_tool_calls(req, self.last_user)
+        trailing: list[str] = []
+        for msg in reversed(req["messages"]):
+            if not isinstance(msg, dict) or msg.get("role") != "tool":
+                break
+            trailing.insert(0, flatten_content(msg.get("content")))
+        self.tool_result = " ".join(trailing)
         self.n_prompt = max(1, len(self.prompt) // 4)
         digest = hashlib.sha256(self.prompt.encode("utf-8", "replace")).digest()
         self.seed = int.from_bytes(digest[:8], "big")
@@ -1359,6 +1447,18 @@ class Completion:
         if extra:
             body.update(extra)
         return body
+
+    def call_id(self, index: int) -> str:
+        return f"call_{self.seed % 100000:05d}_{index}"
+
+    def tool_delta(self, channel: str, piece: str) -> dict[str, Any]:
+        """One streamed piece of a tool call: the first carries id and name, the rest the argument text."""
+        kind, _, number = channel.partition(":")
+        index = int(number)
+        if kind == "toolname":
+            return {"index": index, "id": self.call_id(index), "type": "function",
+                    "function": {"name": piece, "arguments": ""}}
+        return {"index": index, "function": {"arguments": piece}}
 
     def timings_at(self, n_gen: int) -> dict[str, Any]:
         """server_slot_stats::to_json() after n_gen generated tokens."""
@@ -1436,7 +1536,19 @@ class Completion:
                                                                  f"task.n_tokens = {self.n_prompt}")
         room = max(0, slot.n_ctx - self.n_prompt)
         limit = room if opts.cap < 0 else min(opts.cap, room)
-        self.tokens, self.finish_reason = make_tokens(self.seed, self.last_user, opts.think, limit, opts.ignore_eos)
+        if self.json_only:
+            snippet = re.sub(r"\s+", " ", self.last_user).strip().replace('"', "'")[:40]
+            reply = ({"result": "no tools were called"} if self.req.get("tools") else {"reply": snippet})
+            self.tokens, self.finish_reason = json_tokens(self.seed, opts.think, json.dumps(reply))
+        elif self.tool_calls:
+            self.tokens, self.finish_reason = tool_call_tokens(self.seed, opts.think, self.tool_calls)
+        else:
+            lead = ""
+            if self.tool_result:
+                said = re.sub(r"\s+", " ", self.tool_result).strip().replace('"', "'")[:80]
+                lead = f'Tool said "{said}".'
+            self.tokens, self.finish_reason = make_tokens(self.seed, self.last_user, opts.think, limit,
+                                                          opts.ignore_eos, lead)
         rng = random.Random(self.seed ^ 0x9E3779B97F4A7C15)
         self.t_prompt = self.prompt_n / fake.prompt_rate * (1 + fake.jitter * (2 * rng.random() - 1))
         self.times, self.rounds = plan_timeline(len(self.tokens), self.t_prompt, fake.tok_rate, fake.jitter,
@@ -1484,7 +1596,9 @@ class Completion:
             events = []
             if i == 0:
                 events.append(self.chunk({"role": "assistant", "content": None}))
-            if channel != "hidden":
+            if channel.startswith("tool"):
+                events.append(self.chunk({"tool_calls": [self.tool_delta(channel, piece)]}))
+            elif channel != "hidden":
                 key = "reasoning_content" if channel == "reasoning" else "content"
                 with_timings = opts.per_token or (n == n_total and self.finish_reason == "length")
                 events.append(self.chunk({key: piece}, timings=self.timings_at(n) if with_timings else None))
@@ -1508,6 +1622,10 @@ class Completion:
             message: dict[str, Any] = {"role": "assistant", "content": "".join(self.content)}
             if self.reasoning:
                 message["reasoning_content"] = "".join(self.reasoning)
+            if self.tool_calls:
+                message["tool_calls"] = [{"type": "function", "id": self.call_id(i),
+                                          "function": {"name": name, "arguments": args}}
+                                         for i, (name, args) in enumerate(self.tool_calls)]
             h.send_json(200, {
                 "choices": [{"finish_reason": self.finish_reason, "index": 0, "message": message}],
                 "created": self.created, "model": fake.model_name, "system_fingerprint": fake.build_info,
@@ -1722,6 +1840,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.fail("'messages' is required", "invalid_request_error", 400)
         if not isinstance(req["messages"], list):
             return self.fail("Expected 'messages' to be an array", "invalid_request_error", 400)
+        if has_image(req["messages"]) and not fake.vision:
+            return self.fail("image input is not supported - hint: if this is unexpected, you may need to provide "
+                             "the mmproj", "invalid_request_error", 400)
         Completion(fake, self, req).run()
 
 

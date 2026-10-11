@@ -59,6 +59,22 @@ DEFAULTS: dict[str, Any] = {
         "max_tokens": 0,  # 0 = until the model stops or the context is full
         "thinking": True,
         "system_prompt": "",
+        "max_upload_mb": 25,  # largest file that can be attached to a message (1 to 512)
+    },
+    "tools": {  # what the model may call in a chat; see tools.py
+        "enabled": True,  # master switch; everything below is off or careful by default
+        "max_rounds": 8,  # model → tool → model steps for one answer
+        "call_timeout": 60,  # seconds one MCP tool call may take
+        "calculator": True,
+        "datetime": True,
+        "files": False,  # read files in files_dir, nowhere else
+        "files_dir": "",
+        "web_search": False,
+        "web_search_confirm": True,  # ask before every search, because the query leaves this computer
+        "web_search_url": "",  # a SearXNG address (…/search); empty = DuckDuckGo's plain HTML page
+        "mcp_enabled": True,
+        "mcp_json": "",  # {"mcpServers": {…}}
+        "mcp_trusted": [],  # names of MCP servers whose tools run without asking
     },
     "forge": {
         "tools_dir": "",  # folder with llama-imatrix / llama-quantize / llama-perplexity; empty = engines, then PATH

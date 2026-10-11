@@ -2,6 +2,7 @@
 
 import { post } from "./api.js";
 import { applyTheme, on, refreshState, store, topbar } from "./app.js";
+import { toolsSection, stopToolsPolling } from "./settings-tools.js";
 import { clear, fmt, h, icon, toast } from "./ui.js";
 
 export function mount(main) {
@@ -21,14 +22,15 @@ export function mount(main) {
     }
   }
 
-  function render() {
+  function render(force = false) {
     const s = store.state?.settings;
     if (!s) return;
-    if (page.contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+    if (!force && page.contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
     clear(page,
       h("div", { class: "page-head" }, h("div", null, h("h2", null, "Settings"),
         h("p", null, `Stored in ${store.state.data_dir}. Start settings for the engine live on the Engine page.`))),
-      look(s), models(s), chat(s), hub(s), network(s), about());
+      look(s), models(s), chat(s), toolsSection(s, { section, field, toggle, save, render: () => render(true) }),
+      hub(s), network(s), about());
   }
 
   // ------------------------------------------------------------------------------------------- sections
@@ -70,7 +72,10 @@ export function mount(main) {
       h("label", { class: "row" }, toggle(c.thinking, (v) => save({ chat: { thinking: v } }, true)),
         h("span", null, "Let the model think before it answers ", h("span", { class: "muted small" }, "(for models that can)"))),
       field("System prompt", h("textarea", { class: "textarea", rows: 3, value: c.system_prompt,
-        placeholder: "Optional. Sent at the start of every new chat.", onchange: (e) => save({ chat: { system_prompt: e.target.value } }, true) })));
+        placeholder: "Optional. Sent at the start of every new chat.", onchange: (e) => save({ chat: { system_prompt: e.target.value } }, true) })),
+      field("Largest upload", h("input", { class: "input num", type: "number", min: 1, max: 512, step: 1, value: c.max_upload_mb,
+        "aria-label": "Largest upload in MB", onchange: (e) => save({ chat: { max_upload_mb: Math.max(1, Math.min(512, Math.round(Number(e.target.value) || 25))) } }, true) }),
+      "MB per attached file (1 to 512). Larger files are refused with a message that names this limit."));
   }
 
   function hub(s) {
@@ -125,7 +130,7 @@ export function mount(main) {
         h("a", { href: "https://github.com/sirfyyn/FastLocalExperts", target: "_blank", rel: "noopener" }, "FLE engine on GitHub ", icon("external", "sm")),
         h("a", { href: st.reference?.report || "https://sirfyyn.github.io/FastLocalExperts/", target: "_blank", rel: "noopener" }, "How FLE works ", icon("external", "sm")),
         h("a", { href: "https://huggingface.co/sirfyyn/Qwen3.8-Flash-Next-FLE-GGUF", target: "_blank", rel: "noopener" }, "FLE models ", icon("external", "sm"))),
-      h("span", { class: "small faint" }, "FLE Studio talks to the internet only when you download a model or an engine, or search Hugging Face. No telemetry."));
+      h("span", { class: "small faint" }, "FLE Studio talks to the internet only when you download a model or an engine, search Hugging Face, or turn on web search or a web MCP server for the chat. No telemetry."));
   }
 
   // ------------------------------------------------------------------------------------------- controls
@@ -155,5 +160,5 @@ export function mount(main) {
 
   unsub.push(on("state", render));
   render();
-  return { unmount() { unsub.forEach((u) => u()); } };
+  return { unmount() { unsub.forEach((u) => u()); stopToolsPolling(); } };
 }

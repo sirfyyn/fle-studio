@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from . import __version__, bench, catalog, hf, launch, net, paths, service, system
+from . import __version__, bench, catalog, chat_api, chats, hf, launch, net, paths, service, system
 from .chats import Chats
 from .config import Config
 from .downloads import Downloads
@@ -352,8 +352,8 @@ class Handler(BaseHTTPRequestHandler):
             except OSError:
                 self.close_connection = True
 
-    def read_json(self) -> dict[str, Any]:
-        raw = self._body(MAX_JSON)
+    def read_json(self, limit: int = MAX_JSON) -> dict[str, Any]:
+        raw = self._body(limit)
         if not raw:
             return {}
         try:
@@ -521,6 +521,7 @@ class Handler(BaseHTTPRequestHandler):
                                            "type": "unavailable_error", "code": 503}})
             return
         body = self._body(MAX_PROXY) or None
+        chat_api.screen_proxy_body(self.path, body)  # tools and a forced answer format must not share a request
         u = urlparse(base)
         if u.scheme == "https":
             conn: http.client.HTTPConnection = http.client.HTTPSConnection(
@@ -752,13 +753,13 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(200, {"chats": self.studio.chats.list()})
 
     def api_chat_create(self, query: dict[str, str]) -> None:
-        self.send_json(200, self.studio.chats.save(None, self.read_json()))
+        self.send_json(200, self.studio.chats.save(None, self.read_json(chats.MAX_BYTES)))
 
     def api_chat_get(self, query: dict[str, str], id: str) -> None:  # noqa: A002
         self.send_json(200, self.studio.chats.get(id))
 
     def api_chat_put(self, query: dict[str, str], id: str) -> None:  # noqa: A002
-        self.send_json(200, self.studio.chats.save(id, self.read_json()))
+        self.send_json(200, self.studio.chats.save(id, self.read_json(chats.MAX_BYTES)))
 
     def api_chat_delete(self, query: dict[str, str], id: str) -> None:  # noqa: A002
         self.studio.chats.delete(id)
@@ -868,6 +869,9 @@ class Handler(BaseHTTPRequestHandler):
                                                   unified=any(g.get("unified") for g in gpus)))
         except RuntimeError as exc:
             raise ApiError(409, str(exc)) from None
+
+
+chat_api.install(Handler, ROUTES, ApiError)  # attachments, tools, chat search/export/import (chat_api.py)
 
 
 class Server(ThreadingHTTPServer):
