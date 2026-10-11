@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.2.0] - unreleased
+## [0.2.0] - 2026-10-11
 
 Not released yet. Studio 0.2 adds Forge, a chat with attachments, tools, MCP and apps, tuning and quality
 measurements, an expert cache page, an update check and host/client mode.
