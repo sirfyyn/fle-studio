@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from . import __version__, bench, catalog, hf, launch, net, paths, service, system
+from . import __version__, bench, catalog, hf, launch, net, paths, service, system, updates
 from .chats import Chats
 from .config import Config
 from .downloads import Downloads
@@ -768,6 +768,9 @@ class Handler(BaseHTTPRequestHandler):
     def api_bench_delete(self, query: dict[str, str], id: str) -> None:  # noqa: A002
         self.studio.bench.delete(id)
         self.send_json(200, {"ok": True})
+
+
+updates.install(Handler, ROUTES, ApiError)  # /api/update*: the update check and the one-click update (updates.py)
 
 
 class Server(ThreadingHTTPServer):

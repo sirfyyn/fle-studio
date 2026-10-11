@@ -6,12 +6,14 @@ import argparse
 import json
 import os
 import secrets
+import shutil
 import signal
 import sys
 import threading
 import urllib.request
 import webbrowser
 from pathlib import Path
+from typing import Any
 
 from . import __version__
 
@@ -40,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.home:
         os.environ["FLE_STUDIO_HOME"] = str(Path(args.home).expanduser())
 
+    from . import updates  # noqa: PLC0415
     from .server import Studio, make_server  # noqa: PLC0415 - after FLE_STUDIO_HOME is set
 
     studio = Studio()
@@ -91,6 +94,16 @@ def main(argv: list[str] | None = None) -> int:
     def stop(signum: int, _frame: object) -> None:
         threading.Thread(target=server.shutdown, daemon=True).start()
 
+    # The update ends this process and, where it can, runs the same command line again (see updates.py).
+    restart: dict[str, Any] = {"wanted": False, "argv": None}
+
+    def request_restart(argv: list[str] | None) -> None:
+        restart.update(wanted=True, argv=argv)
+        threading.Thread(target=server.shutdown, daemon=True).start()
+
+    updates.service(studio).on_restart = request_restart
+    updates.start_background(studio)
+
     signal.signal(signal.SIGTERM, stop)
     if hasattr(signal, "SIGBREAK"):
         signal.signal(signal.SIGBREAK, stop)  # Ctrl+Break and closing the console on Windows
@@ -105,6 +118,20 @@ def main(argv: list[str] | None = None) -> int:
         print("Stopping FLE Studio …")
         studio.engine.shutdown()
         server.server_close()
+    if restart["wanted"] and restart["argv"]:
+        return _run_again(restart["argv"])
+    return 0
+
+
+def _run_again(argv: list[str]) -> int:
+    """Replace this process by the same command line, which now runs the new version."""
+    program = argv[0] if os.path.isabs(argv[0]) else (shutil.which(argv[0]) or sys.executable)
+    print(f"Starting FLE Studio again: {' '.join(argv)}", flush=True)
+    try:
+        os.execv(program, [program, *argv[1:]])
+    except OSError as exc:
+        print(f"Could not start FLE Studio again ({exc}). Start it by hand: fle-studio", file=sys.stderr)
+        return 1
     return 0
 
 
