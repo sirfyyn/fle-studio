@@ -83,6 +83,24 @@ Options of `fle-studio`:
 Your data (settings, chats, engines, models) lives in `~/Library/Application Support/FLE Studio` on macOS,
 `~/.local/share/fle-studio` on Linux and `%LOCALAPPDATA%\FLE Studio` on Windows. Uninstalling does not delete it.
 
+### Updates
+
+FLE Studio looks for a newer release about once a day (and when you press **Check now** in Settings → Updates). It asks
+`api.github.com` for the latest release of `sirfyyn/fle-studio` and sends nothing about you or your machine. The answer
+is cached; offline, it stays silent. Switch the check off, or include pre-releases, in Settings → Updates.
+
+When a newer version exists, a quiet card appears in the sidebar: "FLE Studio X.Y.Z is available". It opens the release
+notes (shown as plain text), a link to the release and **Later**, which hides that version.
+
+- **One click** works when FLE Studio is installed as a uv tool (the installers do that) and does not run as a service.
+  It runs `uv tool install --python 3.12 --force git+https://github.com/sirfyyn/fle-studio@vX.Y.Z`, then starts again
+  with the same command line. If the install fails, the old version keeps running and you see the message and the log
+  (`update.log` in the data folder). On Windows a small helper does the install after FLE Studio has ended, because the
+  running program file is locked.
+- **Everything else** (service mode, pip or virtual-environment installs, a folder or a wheel) shows the command to copy.
+- **FLE engines** you installed from the Engine page: if a newer FLE engine build exists, the same card says so, and the
+  Engine page has the **Update** button.
+
 ### From source
 
 ```sh
@@ -226,7 +244,9 @@ on your hardware: the speed figures in the FLE report and in the model catalog w
 - There is no telemetry, no analytics and no account.
 - Chats, settings and your Hugging Face token (if you set one) are stored in the data folder on your machine.
 - Nothing leaves your machine except the downloads you start: model files and searches on Hugging Face, and engine
-  releases from GitHub. The installers additionally download uv (astral.sh) and FLE Studio itself (GitHub).
+  releases from GitHub. The update check asks GitHub for the latest FLE Studio release about once a day, with no
+  identifier (switch it off in Settings → Updates). The installers additionally download uv (astral.sh) and FLE
+  Studio itself (GitHub).
 - Two chat features can reach the internet, and both are your choice: the web search tool (off by default; each search
   asks first) and MCP servers you add that use a web address. Programs you list as MCP servers run with your rights.
 

@@ -45,6 +45,7 @@ from . import (
     system,
     tuner,
     tuning_api,
+    updates,
 )
 from .cachewatch import CacheWatch
 from .chats import Chats
@@ -912,6 +913,9 @@ class Handler(BaseHTTPRequestHandler):
 
 chat_api.install(Handler, ROUTES, ApiError)  # attachments, tools, chat search/export/import (chat_api.py)
 mcp_api.install(Handler, ROUTES, ApiError)  # MCP sign-in (OAuth) and MCP Apps frames (mcp_api.py)
+
+
+updates.install(Handler, ROUTES, ApiError)  # /api/update*: the update check and the one-click update (updates.py)
 
 
 class Server(ThreadingHTTPServer):

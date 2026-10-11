@@ -48,6 +48,15 @@ if TYPE_CHECKING:
 
 FAKE_ENGINE = Path(__file__).resolve().parents[1] / "fake_llama_server.py"
 FAKE_MCP = Path(__file__).resolve().parents[1] / "fake_mcp_server.py"
+sys.path.insert(0, str(FAKE_ENGINE.parent))
+from fake_github import FakeGitHub, release  # noqa: E402 - the stand-in for api.github.com (update check)
+
+# What the fake release says. The scripts and the image must stay inert text in the page.
+UPDATE_TAG = "v9.0.0"
+UPDATE_NOTES = (
+    "## What is new\n\n- A **fast** thing with `code`\n- A second thing\n\n"
+    "<script>window.__pwned = 1</script>\n<img src=x onerror=\"window.__pwned = 1\">\n"
+)
 
 MODEL_NAME = "FLE Studio E2E stub"
 # Shorter than the 40 characters the stand-in engine echoes back in its answer.
@@ -259,7 +268,8 @@ class StudioProcess:
         self.engine_pid = 0
         self.engine_port = 0
         self.killed = False
-        self.env = {k: v for k, v in os.environ.items()
+        self.github: FakeGitHub | None = None
+        self.env ={k: v for k, v in os.environ.items()
                     if not k.upper().startswith(SCRUBBED_PREFIXES) and k.upper() not in SCRUBBED_NAMES}
         self.env.update({"PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1", "NO_PROXY": "127.0.0.1,localhost"})
 
@@ -358,6 +368,10 @@ class StudioProcess:
         if self.engine_pid and pid_alive(self.engine_pid):
             say(f"note: the engine process {self.engine_pid} was still running; killing it")
             kill_pid(self.engine_pid)
+        if self.github is not None:
+            with contextlib.suppress(Exception):
+                self.github.__exit__(None, None, None)
+            self.github = None
 
 
 # ------------------------------------------------------------------------------------------------ browser helpers
@@ -1355,7 +1369,8 @@ class Session:
 
         with self.step("Settings page: theme switch and system setting") as step:
             self.go("Settings", "/settings", "Settings")
-            self.expect(page.locator(".card", has_text="About")).to_contain_text(studio.version, timeout=WAIT_MS)
+            about = page.locator(".card", has=page.get_by_role("heading", name="About", exact=True))
+            self.expect(about).to_contain_text(studio.version, timeout=WAIT_MS)
             page.emulate_media(color_scheme="light")
             wait_for_look(page, "light", "like the system, light")
             page.emulate_media(color_scheme="dark")
@@ -1377,6 +1392,55 @@ class Session:
             if saved != "system":
                 raise E2EError(f"'Like the system' was not saved (settings say {saved!r})")
             step.note = "Light and Dark override the system, saved, kept after a reload; " + self.shoot("settings")
+
+    def updates(self) -> None:
+        page, studio = self.page, self.studio
+        gh = studio.github
+        assert gh is not None
+        with self.step("Updates: check now, notice, notes as text, Later, switch off") as step:
+            self.go("Settings", "/settings", "Settings")
+            card = page.locator(".card", has=page.get_by_role("heading", name="Updates", exact=True))
+            self.expect(card).to_be_visible(timeout=WAIT_MS)
+            page.locator("#update-check-now").click()
+            notice = page.locator("#update-card")
+            self.expect(notice).to_contain_text(f"FLE Studio {UPDATE_TAG[1:]} is available", timeout=WAIT_MS)
+            self.expect(card).to_contain_text("is available", timeout=WAIT_MS)
+            notice.click()
+            dialog = page.locator(".upd-modal")
+            self.expect(dialog).to_be_visible(timeout=WAIT_MS)
+            notes = dialog.locator(".upd-notes")
+            self.expect(notes.locator("h4")).to_have_text("What is new", timeout=WAIT_MS)
+            self.expect(notes.locator("li")).to_have_count(2, timeout=WAIT_MS)
+            self.expect(notes.locator("code")).to_have_text("code", timeout=WAIT_MS)
+            self.expect(notes).to_contain_text("<script>window.__pwned = 1</script>", timeout=WAIT_MS)
+            if notes.locator("script, img").count() or page.evaluate("() => window.__pwned") is not None:
+                raise E2EError("HTML from the release notes became part of the page")
+            link = dialog.get_by_role("link", name="Release page on GitHub")
+            want = f"https://github.com/sirfyyn/fle-studio/releases/tag/{UPDATE_TAG}"
+            self.expect(link).to_have_attribute("href", want, timeout=WAIT_MS)
+            # This run is not a uv tool install: no one-click button, the command to copy instead.
+            self.expect(dialog.get_by_role("button", name="Update now")).to_have_count(0, timeout=WAIT_MS)
+            # (an editable install from a source folder gets "git pull", a pip install the pip command)
+            command = dialog.locator(".upd-cmd code")
+            self.expect(command).to_contain_text(re.compile(r"git pull|pip install"), timeout=WAIT_MS)
+            shots = self.shoot("update")
+            dialog.get_by_role("button", name="Later").click()
+            self.expect(dialog).to_have_count(0, timeout=WAIT_MS)
+            self.expect(notice).to_be_hidden(timeout=WAIT_MS)
+            page.reload(wait_until="domcontentloaded")
+            self.expect(page.locator(".page-head h2")).to_have_text("Settings", timeout=WAIT_MS)
+            self.expect(page.locator("#update-card")).to_be_hidden(timeout=WAIT_MS)
+            seen = len(gh.requests)
+            card = page.locator(".card", has=page.get_by_role("heading", name="Updates", exact=True))
+            card.locator("label", has_text="Check for updates").locator("i").click()
+            self.expect(page.locator("#update-check-now")).to_be_disabled(timeout=WAIT_MS)
+            if studio.api("GET", "/api/state")["settings"]["updates"]["check"] is not False:
+                raise E2EError("switching the update check off was not saved")
+            if len(gh.requests) != seen:
+                raise E2EError("FLE Studio asked GitHub after the update check was switched off")
+            if any({"authorization", "cookie"} & set(headers) for _, headers in gh.requests):
+                raise E2EError("the update check sent identifying headers")
+            step.note = f"{len(gh.requests)} request(s) to the fake GitHub, no identifiers; " + shots
 
 
 # ------------------------------------------------------------------------------------------------ the run
@@ -1424,6 +1488,7 @@ def run_browser(args: argparse.Namespace, report: Report, studio: StudioProcess,
             session.tuning()
             session.forge()
             session.settings()
+            session.updates()
             with report.step("No uncaught page errors or console errors in the whole run") as step:
                 watch.check("the whole run")
                 step.note = f"{len(watch.lines)} console message(s) in browser-console.log"
@@ -1440,6 +1505,8 @@ def run_browser(args: argparse.Namespace, report: Report, studio: StudioProcess,
 
 
 def run(args: argparse.Namespace, report: Report, studio: StudioProcess, out: Path, work: Path) -> None:
+    studio.github = FakeGitHub([release(UPDATE_TAG, UPDATE_NOTES)]).__enter__()
+    studio.env["FLE_STUDIO_GITHUB_API"] = studio.github.url  # the update check never reaches the real GitHub
     with report.step("Start FLE Studio on a free port") as step:
         studio.start()
         step.note = f"v{studio.version} at {studio.base}, data in a temporary folder"

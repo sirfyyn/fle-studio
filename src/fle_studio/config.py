@@ -85,6 +85,12 @@ DEFAULTS: dict[str, Any] = {
     "attach_auto": False,  # connect again when FLE Studio starts (Connect sets it, Disconnect clears it)
     "last_model": "",
     "theme": "system",  # system | dark | light
+    "updates": {
+        "check": True,  # ask GitHub for a newer FLE Studio (and FLE engine) about once a day
+        "prereleases": False,  # also offer pre-releases (release candidates, betas)
+        "dismissed": "",  # the version whose notice was hidden with "Later"
+        "dismissed_engines": "",  # the engine updates whose notice was hidden, comma separated
+    },
 }
 
 SECRETS = ("hf_token", "access_key", "attach_key")

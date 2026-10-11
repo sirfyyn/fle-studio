@@ -4,6 +4,7 @@ import { post } from "./api.js";
 import { applyTheme, on, refreshState, store, topbar } from "./app.js";
 import { toolsSection, stopToolsPolling } from "./settings-tools.js";
 import { clear, fmt, h, icon, toast } from "./ui.js";
+import { updatesSection } from "./update.js";
 
 export function mount(main) {
   const unsub = [];
@@ -30,7 +31,7 @@ export function mount(main) {
       h("div", { class: "page-head" }, h("div", null, h("h2", null, "Settings"),
         h("p", null, `Stored in ${store.state.data_dir}. Start settings for the engine live on the Engine page.`))),
       look(s), models(s), chat(s), toolsSection(s, { section, field, toggle, save, render: () => render(true) }),
-      hub(s), network(s), about());
+      hub(s), network(s), updatesSection({ section, toggle, save }), about());
   }
 
   // ------------------------------------------------------------------------------------------- sections
@@ -130,7 +131,7 @@ export function mount(main) {
         h("a", { href: "https://github.com/sirfyyn/FastLocalExperts", target: "_blank", rel: "noopener" }, "FLE engine on GitHub ", icon("external", "sm")),
         h("a", { href: st.reference?.report || "https://sirfyyn.github.io/FastLocalExperts/", target: "_blank", rel: "noopener" }, "How FLE works ", icon("external", "sm")),
         h("a", { href: "https://huggingface.co/sirfyyn/Qwen3.8-Flash-Next-FLE-GGUF", target: "_blank", rel: "noopener" }, "FLE models ", icon("external", "sm"))),
-      h("span", { class: "small faint" }, "FLE Studio talks to the internet only when you download a model or an engine, search Hugging Face, or turn on web search or a web MCP server for the chat. No telemetry."));
+      h("span", { class: "small faint" }, "FLE Studio talks to the internet only when you download a model or an engine, search Hugging Face, look for updates (once a day, switchable above), or turn on web search or a web MCP server for the chat. No telemetry."));
   }
 
   // ------------------------------------------------------------------------------------------- controls
