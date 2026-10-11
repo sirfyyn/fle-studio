@@ -1,5 +1,41 @@
 # Changelog
 
+## Unreleased
+
+Chat 0.2: attachments, tools and MCP, and the comforts of a daily chat. See [docs/CHAT.md](docs/CHAT.md).
+
+### Added
+
+- Attachments in the chat: text and code files, PDFs (optional `pypdf`, `pip install "fle-studio[pdf]"`) and pictures
+  (only when the loaded model reports vision; otherwise a clear message). Choose, drop or paste files. A token
+  estimate shows against the context window and warns from 80 %. The upload limit is a setting (Settings → Chat →
+  Largest upload, 25 MB by default) instead of a fixed refusal.
+- Tool calling through llama-server's OpenAI-style `tools` field, with the model, tool, model loop in the page and
+  an openable card for every call (arguments and result). Built-in tools, each one switchable: calculator, current
+  time, read files in one folder you choose (read only, nothing outside it), and web search (off by default, asks
+  before each search, DuckDuckGo or your own SearXNG address).
+- An MCP client for stdio and Streamable HTTP servers, configured in Settings → Tools with the usual `mcpServers`
+  JSON. Their tools appear in the chat. A tool of an MCP server asks for approval before every call unless you allow
+  that server; the server side enforces this too. A `autoApprove` entry in the JSON is ignored on purpose.
+- Edit your own messages: the edit becomes another version and the model answers it. "Answer again" keeps the
+  previous answer as a version too. A `< 2 / 3 >` switch moves between versions.
+- Search over the titles and the text of all chats (every version, attachment names and attachment text).
+- Export a chat as JSON (every version, pictures inline) or Markdown (the version on screen), and import both again,
+  plus plain OpenAI-style message lists.
+- `GET /api/chat/capabilities`, `/api/tools`, `/api/attachments`, `/api/chats/search`, `/api/chats/<id>/export` and
+  `/api/chats/import`.
+- Tests: the stand-in engine can return `tool_calls` and accepts pictures with `FAKE_VISION=1`, a stand-in MCP server
+  (`tests/fake_mcp_server.py`), unit and integration tests for all of it, a Node check of the request builder, and
+  browser steps for attachments, versions, export and import, search, tool cards and MCP approval.
+
+### Changed
+
+- Chats are stored as a tree of messages (version 2 of the file). Older chat files open unchanged. Pictures are kept
+  as files next to the chats, not inside them. The size limit of one saved chat is 32 MB (was 4 MB).
+- A request that carries tools and a forced answer format (`response_format`, `json_schema` or `grammar`) is refused
+  by the proxy with HTTP 400, and the page never sends both: the model would not call the tools and would answer
+  with substitute JSON. A test keeps this.
+
 ## [0.1.1] - 2026-10-11
 
 Installers, CI and docs. The app itself does not change in this release.
