@@ -92,7 +92,7 @@ def test_clock() -> None:
 def shared(tmp_path: Path) -> Path:
     root = tmp_path / "shared"
     (root / "sub").mkdir(parents=True)
-    (root / "a.txt").write_text("hello\nworld\n", encoding="utf-8")
+    (root / "a.txt").write_bytes(b"hello\nworld\n")
     (root / "sub" / "b.txt").write_text("deep", encoding="utf-8")
     (root / "bin.dat").write_bytes(b"\x00\x01\x02")
     (tmp_path / "secret.txt").write_text("outside", encoding="utf-8")

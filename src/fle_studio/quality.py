@@ -370,6 +370,8 @@ class Quality:
                 out.append(json.loads(p.read_text(encoding="utf-8")))
             except (OSError, ValueError):
                 continue
+        # file names only resolve to the second; runs started in the same second keep their real order
+        out.sort(key=lambda r: r.get("started") or 0, reverse=True)
         return out
 
     def delete(self, ident: str) -> None:
