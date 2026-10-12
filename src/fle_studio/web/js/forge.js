@@ -175,6 +175,7 @@ function download(name, text) {
 export function mount(main) {
   let step = "start";
   let overview = null;
+  let toolsDirText = null; // what was typed in the tools folder box; survives a redraw (the overview can arrive late)
   let job = null; // the job being followed (full record), or null
   let logSeq = 0;
   let timer = 0;
@@ -229,10 +230,12 @@ export function mount(main) {
   }
 
   function panelStart() {
-    const dirInput = h("input", { class: "input mono", id: "fg-tools-dir", value: overview?.tools_dir || "", spellcheck: "false",
-      placeholder: "Folder with llama-quantize, llama-imatrix, llama-perplexity" });
+    const dirInput = h("input", { class: "input mono", id: "fg-tools-dir", value: toolsDirText ?? (overview?.tools_dir || ""), spellcheck: "false",
+      placeholder: "Folder with llama-quantize, llama-imatrix, llama-perplexity",
+      oninput: (e) => { toolsDirText = e.currentTarget.value; } });
     const scan = h("button", { class: "btn", onclick: (e) => busy(e.currentTarget, async () => {
       overview = await post("/api/forge/tools", { tools_dir: dirInput.value.trim() });
+      toolsDirText = null;
       renderPanel();
     }) }, icon("refresh", "sm"), "Search again");
     const missing = (overview?.tools || []).filter((t) => !t.ok && t.name !== "llama-fle-reap");

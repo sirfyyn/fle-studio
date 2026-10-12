@@ -8,6 +8,11 @@
   of JSON in `<data folder>/capture/`, with the request, the answer, timings and accepted draft tokens, for building your
   own corpus. Streams are put back together, pictures are left out, files are private, a size limit stops the recording.
 
+### Fixed
+
+- Forge: the folder typed into the tools box is no longer lost when the page redraws while the first search is still
+  running.
+
 ## [0.2.0] - 2026-10-11
 
 Studio 0.2 adds Forge, a chat with attachments, tools, MCP and apps, tuning and quality
