@@ -742,7 +742,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def api_capture_clear(self, query: dict[str, str]) -> None:
         if self.read_json().get("confirm") is not True:
-            raise ApiError(400, "Send {\"confirm\": true} to delete all captured files")
+            raise ApiError(400, 'Send {"confirm": true} to delete all captured files')
         self.send_json(200, {"deleted": self.studio.capture.clear()})
 
     def api_state(self, query: dict[str, str]) -> None:

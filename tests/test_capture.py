@@ -69,7 +69,8 @@ def test_a_streamed_answer_is_put_back_together(stack: Stack) -> None:
 def test_pictures_are_not_kept(stack: Stack) -> None:
     stack.settings({"capture": {"enabled": True}})
     big = "data:image/png;base64," + "A" * 5000
-    body = {"messages": [{"role": "user", "content": [{"type": "text", "text": "hi"}, {"type": "image_url", "image_url": {"url": big}}]}], "max_tokens": 4}
+    content = [{"type": "text", "text": "hi"}, {"type": "image_url", "image_url": {"url": big}}]
+    body = {"messages": [{"role": "user", "content": content}], "max_tokens": 4}
     stack.chat(body)
     rec = lines(stack)
     if rec:  # the fake engine may refuse a picture without vision; then the refusal is recorded without the picture

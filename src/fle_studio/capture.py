@@ -1,10 +1,11 @@
 """Capture: keep what you do with the model, as plain files on this computer, to build your own corpus.
 
-Off by default. When it is on, every chat completion that goes through FLE Studio (the chat page and any other client
-that talks to the /v1 address) is written as one line of JSON to <data folder>/capture/YYYY-MM-DD.jsonl: the request, the
-answer in the usual chat-completion shape (a streamed answer is put back together), the engine's timings (speed, draft
-tokens accepted) and how long it took. Nothing is sent anywhere. The lines look like the ones a corpus for MTP-head
-training, imatrix calibration or a test set needs. Pictures are not kept, only a note that there was one.
+Off by default. When it is on, every chat completion that goes through FLE Studio (the chat page and any other
+client that talks to the /v1 address) is written as one line of JSON to <data folder>/capture/YYYY-MM-DD.jsonl:
+the request, the answer in the usual chat-completion shape (a streamed answer is put back together), the engine's
+timings (speed, draft tokens accepted) and how long it took. Nothing is sent anywhere. The lines look like the ones
+a corpus for MTP-head training, imatrix calibration or a test set needs. Pictures are not kept, only a note that
+there was one.
 
 The files are readable by you only. A size limit stops the recording instead of filling the disk.
 """
@@ -37,7 +38,7 @@ def _strip_images(obj: Any) -> Any:
 class Recorder:
     """One request in flight. Feed it the answer as it arrives, then call done()."""
 
-    def __init__(self, owner: "Capture", path: str, request: dict[str, Any]) -> None:
+    def __init__(self, owner: Capture, path: str, request: dict[str, Any]) -> None:
         self.owner = owner
         self.path = path
         self.request = request
@@ -85,7 +86,8 @@ class Recorder:
             if delta.get("reasoning_content"):
                 self._reasoning.append(delta["reasoning_content"])
             for call in delta.get("tool_calls") or []:
-                slot = self._tools.setdefault(int(call.get("index", 0)), {"id": "", "type": "function", "function": {"name": "", "arguments": ""}})
+                empty = {"id": "", "type": "function", "function": {"name": "", "arguments": ""}}
+                slot = self._tools.setdefault(int(call.get("index", 0)), empty)
                 if call.get("id"):
                     slot["id"] = call["id"]
                 fn = call.get("function") or {}
@@ -97,7 +99,7 @@ class Recorder:
                 self._finish = choice["finish_reason"]
 
     def done(self, status: int, body: bytes | None = None) -> None:
-        """The answer is complete (or the browser stopped reading). body: the whole answer of a request without streaming."""
+        """The answer is complete (or the browser stopped reading). body: the whole answer if not streamed."""
         try:
             if self.stream:
                 if self._buf.strip():
