@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -104,6 +105,7 @@ def test_the_size_limit_stops_the_recording(tmp_path: Path) -> None:
     assert cap.status()["records"] == 1
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows has no Unix file modes")
 def test_files_are_private(tmp_path: Path) -> None:
     cap = Capture(tmp_path, lambda: True, lambda: 0)
     cap.write({"a": 1})
