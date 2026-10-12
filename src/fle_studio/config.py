@@ -80,6 +80,10 @@ DEFAULTS: dict[str, Any] = {
         "mcp_json": "",  # {"mcpServers": {…}}
         "mcp_trusted": [],  # names of MCP servers whose tools run without asking
     },
+    "capture": {  # keep what you do with the model as files on this computer; see capture.py
+        "enabled": False,  # off until you switch it on; nothing is sent anywhere
+        "max_mb": 2048,  # stop recording at this size (0 = no limit)
+    },
     "forge": {
         "tools_dir": "",  # folder with llama-imatrix / llama-quantize / llama-perplexity; empty = engines, then PATH
     },

@@ -33,6 +33,7 @@ from urllib.parse import parse_qs, urlparse
 from . import (
     __version__,
     bench,
+    capture,
     catalog,
     chat_api,
     chats,
@@ -117,6 +118,9 @@ class Studio:
         self.engine.restart_on_crash = bool(self.config.get("launch.restart_on_crash"))
         self.live = Live(self.engine)
         self.chats = Chats(self.data_dir)
+        self.capture = capture.Capture(
+            self.data_dir, lambda: self.config.get("capture.enabled"), lambda: self.config.get("capture.max_mb")
+        )
         self.bench = bench.Bench(self.engine, self.data_dir)
         self.forge = Forge(
             self.data_dir,
@@ -357,6 +361,8 @@ ROUTES: list[tuple[str, re.Pattern[str], str]] = [
         ("POST", r"^/api/forge/calculate$", "forge_calculate"),
         ("POST", r"^/api/forge/corpus$", "forge_corpus"),
         ("POST", r"^/api/forge/recipe/import$", "forge_recipe_import"),
+        ("GET", r"^/api/capture$", "capture"),
+        ("POST", r"^/api/capture/clear$", "capture_clear"),
         ("POST", r"^/api/forge/recipe/share$", "forge_recipe_share"),
         ("POST", r"^/api/forge/check$", "forge_check"),
         ("POST", r"^/api/forge/jobs$", "forge_job_create"),
@@ -652,6 +658,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         body = self._body(MAX_PROXY) or None
         chat_api.screen_proxy_body(self.path, body)  # tools and a forced answer format must not share a request
+        rec = self.studio.capture.begin(self.path, body)
         u = urlparse(base)
         if u.scheme == "https":
             conn: http.client.HTTPConnection = http.client.HTTPSConnection(
@@ -677,6 +684,8 @@ class Handler(BaseHTTPRequestHandler):
             data = resp.read()
             conn.close()
             self._record(data)
+            if rec:
+                rec.done(resp.status, data)
             self._send(resp.status, data, ctype)
             return
         self.send_response(resp.status)
@@ -695,10 +704,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(chunk)
                 self.wfile.flush()
                 tail = (tail + chunk)[-262144:]
+                if rec:
+                    rec.feed(chunk)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
             pass  # the browser stopped reading (Stop button); closing our side cancels the generation
         finally:
             conn.close()
+            if rec:
+                rec.done(resp.status)
         self._record_stream(tail)
 
     def _record(self, data: bytes) -> None:
@@ -723,6 +736,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def api_ping(self, query: dict[str, str]) -> None:
         self.send_json(200, {"app": "fle-studio", "version": __version__})
+
+    def api_capture(self, query: dict[str, str]) -> None:
+        self.send_json(200, self.studio.capture.status())
+
+    def api_capture_clear(self, query: dict[str, str]) -> None:
+        if self.read_json().get("confirm") is not True:
+            raise ApiError(400, "Send {\"confirm\": true} to delete all captured files")
+        self.send_json(200, {"deleted": self.studio.capture.clear()})
 
     def api_state(self, query: dict[str, str]) -> None:
         self.send_json(200, self.studio.state())

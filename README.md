@@ -199,6 +199,8 @@ a 95 % interval over repeated runs, say "within noise" when a difference is not 
 quality (KL divergence, a knowledge probe) next to speed. See [docs/TUNING-AND-QUALITY.md](docs/TUNING-AND-QUALITY.md);
 the Expert cache page is described in [docs/EXPERT-CACHE-DATA.md](docs/EXPERT-CACHE-DATA.md).
 
+**Capture.** Off by default. In Settings → Capture you can keep what you do with the model: every chat answer that goes through FLE Studio (the chat page and any other client on the `/v1` address) is written as one line of JSON to a file in `<data folder>/capture/`, with the request, the answer, the speed and the draft tokens the engine accepted. Streamed answers are put back together, pictures are left out, the files are readable by you only, and a size limit stops the recording. Use it to build your own test set, calibration text or training data for a better draft head from your own work. Nothing is sent anywhere; "Delete all recordings" removes the files.
+
 **Expert cache.** A page that reads the engine's log and shows how well the GPU expert cache works: hit rate over
 time, the budget, and (when the engine prints it) the hot experts per layer.
 
@@ -270,6 +272,7 @@ confirmation. Chats live on the host, with an optional read-only copy. Details: 
   `127.0.0.1` too.
 - There is no telemetry, no analytics and no account.
 - Chats, settings and your Hugging Face token (if you set one) are stored in the data folder on your machine.
+- Capture (Settings → Capture) is off until you switch it on. It only writes files in the data folder.
 - Nothing leaves your machine except the downloads you start: model files and searches on Hugging Face, and engine
   releases from GitHub. The update check asks GitHub for the latest FLE Studio release about once a day, with no
   identifier (switch it off in Settings → Updates). The installers additionally download uv (astral.sh) and FLE

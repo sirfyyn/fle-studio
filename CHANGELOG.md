@@ -5,6 +5,12 @@
 Not released yet. Studio 0.2 adds Forge, a chat with attachments, tools, MCP and apps, tuning and quality
 measurements, an expert cache page, an update check and host/client mode.
 
+### Capture
+
+- **Capture** (Settings → Capture, off by default): keeps every chat answer that goes through FLE Studio as one line
+  of JSON in `<data folder>/capture/`, with the request, the answer, timings and accepted draft tokens, for building your
+  own corpus. Streams are put back together, pictures are left out, files are private, a size limit stops the recording.
+
 ### Forge: build your own quant
 
 - Forge accepts the named quantization mixtures of `llama-quantize` (`q3_k_m`, `q4_k_m`, ...) as the default type.
