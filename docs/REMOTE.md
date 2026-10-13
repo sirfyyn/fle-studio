@@ -28,8 +28,8 @@ fle-studio --host 0.0.0.0 --service rhea.service --no-browser   # next to a syst
 
 1. On the host: Settings → Remote access → **New pairing code**, or `fle-studio --pair-code` in a terminal (it works
    while the server runs). The code has 8 characters, is valid for 10 minutes and works once.
-2. On the client: the switcher at the top of the sidebar → **Add host…**, the host's address (`titan` or
-   `titan:8642`) and the code.
+2. On the client: the switcher at the top of the sidebar → **Add host…**, the host's address (`gpu-box` or
+   `gpu-box:8642`) and the code.
 
 The client does not send the code. It sends a proof that only someone who knows the code and saw the host's real
 certificate can make, so a machine in between learns neither the code nor gets a token. The certificate's fingerprint
@@ -54,7 +54,7 @@ never written to logs, and the client keeps its tokens in `hosts.json` of its da
 
 ## SSH instead of a certificate
 
-Add host → **SSH**, with a target like `max@titan`, the SSH port, and the port the Studio on the host listens on.
+Add host → **SSH**, with a target like `max@gpu-box`, the SSH port, and the port the Studio on the host listens on.
 FLE Studio then starts the system `ssh -N -L` itself, with `BatchMode=yes` (keys or the ssh-agent, **no
 passwords**), watches it, and starts it again when it dies; **Reconnect** does that at once. The host can stay on
 `127.0.0.1`. Pairing works the same way, through the tunnel. Note that anybody who may log in to the host account over

@@ -535,9 +535,9 @@ def test_unreachable_mirrored_chats_and_removing(rigs: Callable[..., Rig]) -> No
     assert check["ok"] is False and check["code"] == "unreachable"
     # without the switch there is no copy
     other = client.owner.call(
-        "POST", f"/api/hosts/{entry['id']}/update", {"mirror": False, "name": "Titan", "color": "#112233"}
+        "POST", f"/api/hosts/{entry['id']}/update", {"mirror": False, "name": "GPU box", "color": "#112233"}
     )
-    assert other[1]["host"]["name"] == "Titan" and other[1]["host"]["color"] == "#112233"
+    assert other[1]["host"]["name"] == "GPU box" and other[1]["host"]["color"] == "#112233"
     assert client.owner.call("GET", f"{base}/api/chats")[0] == 502  # no switch, no offline copy served
     removed = client.owner.call("POST", f"/api/hosts/{entry['id']}/remove", {})
     assert removed[1]["hosts"] == [] and not (client.studio.data_dir / "mirror" / entry["id"]).exists()
@@ -568,9 +568,9 @@ def test_service_mode_goes_along(rigs: Callable[..., Rig], systemd: Any, tmp_pat
 
 
 def test_the_ssh_command_is_built_for_keys_only_and_a_watched_tunnel() -> None:
-    cmd = remote.ssh_command(["ssh"], "max@titan", 2222, 51000, 8642)
+    cmd = remote.ssh_command(["ssh"], "max@gpu-box", 2222, 51000, 8642)
     assert cmd[:4] == ["ssh", "-N", "-T", "-L"] and cmd[4] == "127.0.0.1:51000:127.0.0.1:8642"
-    assert cmd[cmd.index("-p") + 1] == "2222" and cmd[-1] == "max@titan"
+    assert cmd[cmd.index("-p") + 1] == "2222" and cmd[-1] == "max@gpu-box"
     options = [cmd[i + 1] for i, a in enumerate(cmd) if a == "-o"]
     assert "BatchMode=yes" in options and "ExitOnForwardFailure=yes" in options  # no passwords, no half tunnels
     assert any(o.startswith("ServerAliveInterval=") for o in options)
@@ -584,9 +584,9 @@ def test_ssh_targets_that_could_be_options_or_commands_are_refused(target: str) 
 
 
 def test_ssh_target_and_ports() -> None:
-    assert remote.check_ssh("max@titan.local", "", "") == ("max@titan.local", 22, 8642)
-    assert remote.check_ssh("titan", "2200", "9000") == ("titan", 2200, 9000)
-    for bad in (("titan", 0, 1), ("titan", 22, 70000), ("titan", "x", 1)):
+    assert remote.check_ssh("max@gpu-box.local", "", "") == ("max@gpu-box.local", 22, 8642)
+    assert remote.check_ssh("gpu-box", "2200", "9000") == ("gpu-box", 2200, 9000)
+    for bad in (("gpu-box", 0, 1), ("gpu-box", 22, 70000), ("gpu-box", "x", 1)):
         with pytest.raises(remote.RemoteError):
             remote.check_ssh(*bad)
 
@@ -617,18 +617,18 @@ def test_an_ssh_host_through_a_tunnel_that_comes_back(rigs: Callable[..., Rig], 
     client = rigs("client", False)
     body = {
         "kind": "ssh",
-        "target": "max@titan",
+        "target": "max@gpu-box",
         "port": 22,
         "remote_port": solo.port,
         "code": solo.code(),
-        "name": "Titan by ssh",
+        "name": "GPU box by ssh",
     }
     status, added = client.owner.call("POST", "/api/hosts", body)
     assert status == 200, added
     entry = added["host"]
     assert entry["kind"] == "ssh" and entry["tunnel"]["state"] == "up" and entry["fingerprint"] == ""
     argv = json.loads(fake_ssh.read_text(encoding="utf-8").splitlines()[0])
-    assert "max@titan" in argv and "BatchMode=yes" in argv and f"127.0.0.1:{solo.port}" in argv[argv.index("-L") + 1]
+    assert "max@gpu-box" in argv and "BatchMode=yes" in argv and f"127.0.0.1:{solo.port}" in argv[argv.index("-L") + 1]
     base = f"/h/{entry['id']}"
     assert client.owner.call("GET", f"{base}/api/state")[1]["data_dir"] == str(solo.studio.data_dir)
     assert solo.owner.call("GET", "/api/remote")[1]["clients"][0]["name"]  # paired over the tunnel
@@ -653,16 +653,16 @@ def test_a_refused_ssh_login_says_why_and_a_dead_tunnel_ends_with_the_studio(
     rigs: Callable[..., Rig], fake_ssh: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     solo, client = rigs("solo", False), rigs("client", False)
-    monkeypatch.setenv("FAKE_SSH_FAIL", "max@titan: Permission denied (publickey).")
+    monkeypatch.setenv("FAKE_SSH_FAIL", "max@gpu-box: Permission denied (publickey).")
     status, body = client.owner.call(
-        "POST", "/api/hosts", {"kind": "ssh", "target": "max@titan", "remote_port": solo.port, "code": solo.code()}
+        "POST", "/api/hosts", {"kind": "ssh", "target": "max@gpu-box", "remote_port": solo.port, "code": solo.code()}
     )
     assert status == 502 and "Permission denied" in body["error"]["message"]
     assert client.owner.call("GET", "/api/hosts")[1]["hosts"] == []
     monkeypatch.delenv("FAKE_SSH_FAIL")
     wait_for(lambda: True, "nothing")
     ok = client.owner.call(
-        "POST", "/api/hosts", {"kind": "ssh", "target": "max@titan", "remote_port": solo.port, "code": solo.code()}
+        "POST", "/api/hosts", {"kind": "ssh", "target": "max@gpu-box", "remote_port": solo.port, "code": solo.code()}
     )
     assert ok[0] == 200
     tunnel = next(iter(client.studio.__dict__["_remote"].hosts._tunnels.values()))
@@ -673,7 +673,7 @@ def test_a_refused_ssh_login_says_why_and_a_dead_tunnel_ends_with_the_studio(
 
 def test_the_tunnel_class_alone(fake_ssh: Path, rigs: Callable[..., Rig]) -> None:
     solo = rigs("solo", False)
-    t = remote.Tunnel("max@titan", 22, solo.port)
+    t = remote.Tunnel("max@gpu-box", 22, solo.port)
     assert t.state == "stopped" and t.info()["local_port"] == 0
     assert t.wait_ready(20)
     assert Web(t.local_port).call("GET", "/api/ping")[0] == 200

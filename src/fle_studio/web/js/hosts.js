@@ -137,9 +137,9 @@ function field(label, control, hint = "") {
 
 function openAdd() {
   let kind = "direct";
-  const name = h("input", { class: "input", id: "host-name-in", placeholder: "Titan", autocomplete: "off" });
-  const address = h("input", { class: "input mono", id: "host-address", placeholder: "titan:8642", autocomplete: "off", spellcheck: "false" });
-  const target = h("input", { class: "input mono", id: "host-ssh-target", placeholder: "user@titan", autocomplete: "off", spellcheck: "false" });
+  const name = h("input", { class: "input", id: "host-name-in", placeholder: "GPU box", autocomplete: "off" });
+  const address = h("input", { class: "input mono", id: "host-address", placeholder: "gpu-box:8642", autocomplete: "off", spellcheck: "false" });
+  const target = h("input", { class: "input mono", id: "host-ssh-target", placeholder: "user@gpu-box", autocomplete: "off", spellcheck: "false" });
   const sshPort = h("input", { class: "input mono", id: "host-ssh-port", value: "22", inputmode: "numeric" });
   const remotePort = h("input", { class: "input mono", id: "host-remote-port", value: "8642", inputmode: "numeric" });
   const code = h("input", { class: "input mono", id: "host-code", placeholder: "ABCD-EFGH", autocomplete: "off", spellcheck: "false",

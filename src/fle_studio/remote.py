@@ -496,7 +496,7 @@ class PinnedHTTPSConnection(http.client.HTTPSConnection):
 
 
 def parse_address(text: str) -> tuple[str, str, int]:
-    """'titan', 'titan:8642', 'https://10.0.0.5:9000' or 'http://…' to (scheme, host, port)."""
+    """'gpu-box', 'gpu-box:8642', 'https://10.0.0.5:9000' or 'http://…' to (scheme, host, port)."""
     raw = str(text or "").strip()
     if not raw:
         raise RemoteError(400, "Enter the host's address.")
