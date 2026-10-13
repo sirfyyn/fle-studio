@@ -65,7 +65,7 @@ uv tool upgrade fle-studio          # update (stays on the release you installed
 uv tool uninstall fle-studio        # remove the program (your data stays)
 ```
 
-The installer pins the release it installs (v0.2.1 at the time of writing), and `uv tool upgrade` follows that pin. To
+The installer pins the release it installs (v0.2.2 at the time of writing), and `uv tool upgrade` follows that pin. To
 move to a newer release, run the installer again; it always installs the release named in its own script, or the one
 you set with `FLE_STUDIO_REF`.
 
@@ -199,6 +199,8 @@ a 95 % interval over repeated runs, say "within noise" when a difference is not 
 quality (KL divergence, a knowledge probe) next to speed. See [docs/TUNING-AND-QUALITY.md](docs/TUNING-AND-QUALITY.md);
 the Expert cache page is described in [docs/EXPERT-CACHE-DATA.md](docs/EXPERT-CACHE-DATA.md).
 
+**Live.** The first entry of the chat list. Everything that goes through the `/v1` address of FLE Studio, from the chat page and from any other program, shows up there as a temporary chat, so you can watch what a client really sends and what the model answers. Requests that repeat the earlier messages are joined into one conversation. Live is kept in memory only (the newest 100 messages, gone when Studio closes), pictures are left out, and nothing is written to disk. To keep something, press the star on a conversation, or on one message to keep everything up to it: that copies it into your normal chats as a favorite.
+
 **Capture.** Off by default. In Settings → Capture you can keep what you do with the model: every chat answer that goes through FLE Studio (the chat page and any other client on the `/v1` address) is written as one line of JSON to a file in `<data folder>/capture/`, with the request, the answer, the speed and the draft tokens the engine accepted. Streamed answers are put back together, pictures are left out, the files are readable by you only, and a size limit stops the recording. Use it to build your own test set, calibration text or training data for a better draft head from your own work. Nothing is sent anywhere; "Delete all recordings" removes the files.
 
 **Expert cache.** A page that reads the engine's log and shows how well the GPU expert cache works: hit rate over
@@ -273,6 +275,7 @@ confirmation. Chats live on the host, with an optional read-only copy. Details: 
 - There is no telemetry, no analytics and no account.
 - Chats, settings and your Hugging Face token (if you set one) are stored in the data folder on your machine.
 - Capture (Settings → Capture) is off until you switch it on. It only writes files in the data folder.
+- Live keeps what passes through `/v1` in memory only; only a conversation you star is saved, as a normal chat.
 - Nothing leaves your machine except the downloads you start: model files and searches on Hugging Face, and engine
   releases from GitHub. The update check asks GitHub for the latest FLE Studio release about once a day, with no
   identifier (switch it off in Settings → Updates). The installers additionally download uv (astral.sh) and FLE

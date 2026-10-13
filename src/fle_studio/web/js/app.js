@@ -14,6 +14,7 @@ export const store = {
   live: [], // samples from /api/live, about one per second
   liveMeta: {}, // metrics_available, last_response, totals, cache, accept_logged
   chats: [],
+  livechat: { count: 0, version: 0 }, // /api/livechat?summary=1: the Live chat, see live.js
   downloads: [],
   online: true,
 };
@@ -77,6 +78,11 @@ async function tick() {
     emit("live");
     renderEngineCard();
 
+    const lc = await get("/api/livechat?summary=1");
+    const lcChanged = lc.version !== store.livechat.version;
+    store.livechat = lc;
+    if (lcChanged) { emit("livechat"); renderChatList(); }
+
     const wantDl = store.downloads.some((d) => ACTIVE_DL.has(d.state)) || /^\/(models|engine)/.test(location.pathname);
     if (wantDl) {
       const before = new Map(store.downloads.map((d) => [d.id, d.state]));
@@ -112,9 +118,10 @@ const pages = {
   cache: () => import("./cache.js"),
   forge: () => import("./forge.js"),
   settings: () => import("./settings.js"),
+  live: () => import("./live.js"),
 };
 const routes = [
-  [/^\/$/, "chat"], [/^\/c\/([0-9a-f]{16})$/, "chat"], [/^\/models\/?$/, "models"], [/^\/engine\/?$/, "engine"],
+  [/^\/$/, "chat"], [/^\/c\/([0-9a-f]{16})$/, "chat"], [/^\/live\/?$/, "live"], [/^\/models\/?$/, "models"], [/^\/engine\/?$/, "engine"],
   [/^\/lab\/?$/, "lab"], [/^\/cache\/?$/, "cache"], [/^\/forge\/?$/, "forge"], [/^\/settings\/?$/, "settings"],
 ];
 let current = null;
@@ -193,11 +200,15 @@ function renderChatList() {
   if (searchActive()) return; // the search box shows its hits in this list
   const list = document.getElementById("chat-list");
   const active = (location.pathname.match(/^\/c\/([0-9a-f]{16})$/) || [])[1];
+  const count = store.livechat?.count || 0;
+  const liveItem = h("a", { class: `chat-item live${/^\/live\/?$/.test(location.pathname) ? " active" : ""}`, href: "/live", "data-link": true,
+    title: "Everything that goes through /v1, kept in memory only" },
+  icon("live", "sm"), h("span", { class: "t" }, "Live"), count ? h("span", { class: "badge", title: "Messages in Live" }, count) : null);
   if (!store.chats.length) {
-    clear(list, h("div", { class: "chat-empty" }, "Your conversations stay on this computer."));
+    clear(list, liveItem, h("div", { class: "chat-empty" }, "Your conversations stay on this computer."));
     return;
   }
-  const out = [];
+  const out = [liveItem];
   let group = "";
   for (const c of store.chats) {
     const g = chatGroup(c.updated);
@@ -213,7 +224,7 @@ function renderChatList() {
         refreshChats();
       } }, icon("trash", "sm"));
     out.push(h("a", { class: `chat-item${c.id === active ? " active" : ""}`, href: `/c/${c.id}`, "data-link": true, title: c.title },
-      h("span", { class: "t" }, c.title), x));
+      c.favorite ? icon("star", "sm") : null, h("span", { class: "t" }, c.title), x));
   }
   clear(list, out);
 }

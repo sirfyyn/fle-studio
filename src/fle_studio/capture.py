@@ -123,7 +123,7 @@ class Recorder:
                     answer = json.loads((body or b"").decode("utf-8"))
                 except ValueError:
                     answer = {}
-            self.owner.write(
+            self.owner.record(
                 {
                     "zeit": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(self.started)),
                     "pfad": self.path.split("?", 1)[0],
@@ -140,14 +140,15 @@ class Recorder:
 
 
 class Capture:
-    def __init__(self, data_dir: Path, enabled: Any, max_mb: Any) -> None:
+    def __init__(self, data_dir: Path, enabled: Any, max_mb: Any, live: Any = None) -> None:
         self.dir = Path(data_dir) / SUBDIR
         self._enabled = enabled  # callables, so a change in the settings takes effect at once
         self._max_mb = max_mb
+        self.live = live  # the in-memory Live chat (livechat.py), which sees every request whether or not Capture is on
         self._lock = threading.Lock()
 
     def begin(self, path: str, body: bytes | None) -> Recorder | None:
-        if not self._enabled() or not body or not path.split("?", 1)[0].rstrip("/").endswith(RECORDED):
+        if not (self._enabled() or self.live) or not body or not path.split("?", 1)[0].rstrip("/").endswith(RECORDED):
             return None
         try:
             request = json.loads(body.decode("utf-8"))
@@ -162,6 +163,13 @@ class Capture:
             return sum(p.stat().st_size for p in self.dir.glob("*.jsonl"))
         except OSError:
             return 0
+
+    def record(self, record: dict[str, Any]) -> None:
+        """A finished request: to the Live chat (memory), and to the files when Capture is on."""
+        if self.live:
+            self.live.add(record)
+        if self._enabled():
+            self.write(record)
 
     def write(self, record: dict[str, Any]) -> bool:
         limit = int(self._max_mb() or 0) * 1024 * 1024

@@ -55,6 +55,7 @@ class Chats:
                     "title": d.get("title") or "New chat",
                     "updated": d.get("updated", 0),
                     "model": d.get("model", ""),
+                    "favorite": bool(d.get("favorite")),
                     "messages": len(chat_tree.active_path(nodes, leaf)),
                 }
             )
@@ -89,6 +90,7 @@ class Chats:
             "updated": now,
             "model": str(data.get("model") or ""),
             "system": str(data.get("system") or ""),
+            "favorite": bool(data.get("favorite")),
             "leaf": leaf,
             "messages": messages,
         }

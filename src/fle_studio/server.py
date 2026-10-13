@@ -39,6 +39,7 @@ from . import (
     chats,
     hf,
     launch,
+    livechat,
     mcp_api,
     net,
     paths,
@@ -118,8 +119,12 @@ class Studio:
         self.engine.restart_on_crash = bool(self.config.get("launch.restart_on_crash"))
         self.live = Live(self.engine)
         self.chats = Chats(self.data_dir)
+        self.livechat = livechat.LiveChat()
         self.capture = capture.Capture(
-            self.data_dir, lambda: self.config.get("capture.enabled"), lambda: self.config.get("capture.max_mb")
+            self.data_dir,
+            lambda: self.config.get("capture.enabled"),
+            lambda: self.config.get("capture.max_mb"),
+            self.livechat,
         )
         self.bench = bench.Bench(self.engine, self.data_dir)
         self.forge = Forge(
@@ -361,6 +366,10 @@ ROUTES: list[tuple[str, re.Pattern[str], str]] = [
         ("POST", r"^/api/forge/calculate$", "forge_calculate"),
         ("POST", r"^/api/forge/corpus$", "forge_corpus"),
         ("POST", r"^/api/forge/recipe/import$", "forge_recipe_import"),
+        ("GET", r"^/api/livechat$", "live_chat"),
+        ("DELETE", r"^/api/livechat$", "live_chat_clear"),
+        ("DELETE", r"^/api/livechat/(?P<id>[0-9a-f]{12})$", "live_chat_delete"),
+        ("POST", r"^/api/livechat/(?P<id>[0-9a-f]{12})/star$", "live_chat_star"),
         ("GET", r"^/api/capture$", "capture"),
         ("POST", r"^/api/capture/clear$", "capture_clear"),
         ("POST", r"^/api/forge/recipe/share$", "forge_recipe_share"),
@@ -736,6 +745,31 @@ class Handler(BaseHTTPRequestHandler):
 
     def api_ping(self, query: dict[str, str]) -> None:
         self.send_json(200, {"app": "fle-studio", "version": __version__})
+
+    def api_live_chat(self, query: dict[str, str]) -> None:
+        if query.get("summary"):
+            self.send_json(200, self.studio.livechat.summary())
+        else:
+            self.send_json(200, self.studio.livechat.snapshot())
+
+    def api_live_chat_clear(self, query: dict[str, str]) -> None:
+        self.send_json(200, {"deleted": self.studio.livechat.clear()})
+
+    def api_live_chat_delete(self, query: dict[str, str], id: str) -> None:  # noqa: A002
+        if not self.studio.livechat.delete(id):
+            raise ApiError(404, "That conversation is already gone")
+        self.send_json(200, {"ok": True})
+
+    def api_live_chat_star(self, query: dict[str, str], id: str) -> None:  # noqa: A002
+        """Copy a Live conversation (up to one message, if the body names it) into the chat archive as a favorite."""
+        message = self.read_json().get("message")
+        try:
+            data = self.studio.livechat.star_data(id, str(message) if message else None)
+        except KeyError:
+            raise ApiError(404, "That conversation or message is already gone") from None
+        saved = self.studio.chats.save(None, data)
+        self.studio.livechat.mark_starred(id)
+        self.send_json(200, saved)
 
     def api_capture(self, query: dict[str, str]) -> None:
         self.send_json(200, self.studio.capture.status())

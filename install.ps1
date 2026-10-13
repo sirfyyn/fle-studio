@@ -15,7 +15,7 @@ Install only; do not start FLE Studio afterwards. With "irm | iex" you cannot pa
 $env:FLE_STUDIO_NO_START = '1' does the same.
 
 .PARAMETER Ref
-Git tag, branch or commit of FLE Studio to install. Default: $env:FLE_STUDIO_REF, else v0.2.1.
+Git tag, branch or commit of FLE Studio to install. Default: $env:FLE_STUDIO_REF, else v0.2.2.
 
 .PARAMETER Source
 Install from this folder or wheel file instead of GitHub (offline installs, CI); git is not needed then and -Ref is
@@ -29,7 +29,7 @@ irm https://raw.githubusercontent.com/sirfyyn/fle-studio/main/install.ps1 | iex
 #>
 param(
     [switch]$NoStart,
-    [string]$Ref = $(if ($env:FLE_STUDIO_REF) { $env:FLE_STUDIO_REF } else { 'v0.2.1' }),
+    [string]$Ref = $(if ($env:FLE_STUDIO_REF) { $env:FLE_STUDIO_REF } else { 'v0.2.2' }),
     [string]$Source = $env:FLE_STUDIO_SOURCE
 )
 

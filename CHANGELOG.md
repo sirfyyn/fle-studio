@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.2] - 2026-10-13
+
+### Live chat
+
+- **Live**: a fixed entry at the top of the chat list. Everything that goes through the `/v1` address of FLE Studio
+  (this chat page and any other program) shows up there as a temporary chat. Requests that repeat the earlier messages
+  are joined into one conversation. It lives in memory only, keeps the newest 100 messages, and writes nothing to disk.
+  Pictures are left out. The star on a conversation, or on one message, copies it (up to that message) into your
+  normal chats as a favorite; chats that are favorites show a star in the list.
+
 ## [0.2.1] - 2026-10-12
 
 ### Capture

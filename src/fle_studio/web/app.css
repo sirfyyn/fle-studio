@@ -223,6 +223,24 @@ svg.i.lg { width: 22px; height: 22px; }
 .chat-item .x { opacity: 0; }
 .chat-item:hover .x, .chat-item.active .x { opacity: 1; }
 .chat-empty { padding: 8px 10px; color: var(--faint); font-size: 12.5px; }
+.chat-item.live { margin-bottom: 4px; }
+.chat-item .i { flex: none; }
+
+/* Live: the temporary chat of everything that goes through /v1 */
+.live-list { display: grid; gap: 14px; }
+.live-thread { padding: 0; }
+.live-title { overflow-wrap: anywhere; }
+.live-messages { display: grid; gap: 1px; padding: 0 0 6px; }
+.live-msg { padding: 8px 16px; display: grid; gap: 4px; min-width: 0; }
+.live-msg.assistant { background: var(--soft); }
+.live-meta { display: flex; align-items: center; gap: 10px; }
+.live-meta b { font-weight: 600; text-transform: capitalize; color: var(--muted); }
+.live-body { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.live-body.md { white-space: normal; }
+.live-think { color: var(--muted); }
+.live-think summary { cursor: pointer; }
+.btn.on { color: var(--accent); }
+.btn.on .i path { fill: currentColor; }
 
 .engine-card {
   border: 1px solid var(--line); background: var(--card); border-radius: 12px;
