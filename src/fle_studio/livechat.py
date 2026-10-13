@@ -75,9 +75,10 @@ class LiveChat:
             reply["t"] = now
             self._push(thread, reply)
             thread["updated"] = now
+            thread["seq"] = self._version  # the clock can be coarse (Windows), so equal times are told apart by this
             thread["model"] = model
-            self._trim()
             self._version += 1
+            self._trim()
 
     def _request_messages(self, request: dict[str, Any]) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
@@ -153,7 +154,7 @@ class LiveChat:
     def _trim(self) -> None:
         """Drop the oldest messages until at most max_messages are left; a thread that is empty goes away."""
         while self._total() > self.max_messages:
-            oldest = min(self._threads, key=lambda t: t["updated"])
+            oldest = min(self._threads, key=lambda t: (t["updated"], t["seq"]))
             oldest["messages"].pop(0)
             oldest["sig"].pop(0)
             oldest["dropped"] += 1
@@ -164,7 +165,7 @@ class LiveChat:
 
     def snapshot(self) -> dict[str, Any]:
         with self._lock:
-            threads = sorted(self._threads, key=lambda t: t["updated"], reverse=True)
+            threads = sorted(self._threads, key=lambda t: (t["updated"], t["seq"]), reverse=True)
             return {
                 "max_messages": self.max_messages,
                 "version": self._version,
