@@ -89,6 +89,7 @@ DEFAULTS: dict[str, Any] = {
     },
     "attach_url": "",  # talk to an already running llama.cpp/FLE server instead of starting one
     "attach_service": "",  # Linux: the systemd service that runs it (FLE Studio can then start and stop it)
+    "switch_url": "",  # a model switcher next to the service (FYOS: rhea-wechsel); the model menu then switches Rhea/Katy by hand
     "attach_key": "",  # API key of that server, if it wants one
     "attach_auto": False,  # connect again when FLE Studio starts (Connect sets it, Disconnect clears it)
     "last_model": "",

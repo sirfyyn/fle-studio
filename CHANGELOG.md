@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.3] - 2026-10-14
+
+### Model menu
+
+- **Switch the model by hand** from the model menu at the top right, for a service that runs next to a model switcher
+  (setting `switch_url`, or the environment variable `FLE_STUDIO_SWITCH_URL`; for example Rhea and Katy on one GPU).
+  The menu lists the models, marks the loaded one and switches on a click; the model that is loaded stays until you
+  switch again. FLE Studio only asks: the switcher decides when it is safe (free slots, no measurement running) and
+  FLE Studio shows the progress and, if it cannot switch, the reason. Without `switch_url` the menu is as before.
+
 ## [0.2.2] - 2026-10-13
 
 ### Live chat

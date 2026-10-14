@@ -63,6 +63,7 @@ from .forge import recipe as recipes
 from .forge.api import Forge
 from .library import Library
 from .metrics import Live
+from .switch import Switch
 
 LOOPBACK_NAMES = {"127.0.0.1", "::1", "localhost"}
 MAX_JSON = 4 * 1024 * 1024
@@ -116,6 +117,7 @@ class Studio:
         self.library = Library(lambda: self.config.models_dir, self.data_dir)
         self.profiles = launch.Profiles(self.data_dir)
         self.engine = Engine(self.data_dir)
+        self.switch = Switch(lambda: self.config.get("switch_url"))
         self.engine.restart_on_crash = bool(self.config.get("launch.restart_on_crash"))
         self.live = Live(self.engine)
         self.chats = Chats(self.data_dir)
@@ -345,6 +347,8 @@ ROUTES: list[tuple[str, re.Pattern[str], str]] = [
         ("POST", r"^/api/engine/stop$", "engine_stop"),
         ("POST", r"^/api/engine/attach$", "engine_attach"),
         ("POST", r"^/api/engine/service/(?P<action>start|stop|restart)$", "engine_service"),
+        ("GET", r"^/api/engine/switch$", "engine_switch_status"),
+        ("POST", r"^/api/engine/switch$", "engine_switch"),
         ("GET", r"^/api/live$", "live"),
         ("GET", r"^/api/settings$", "settings"),
         ("POST", r"^/api/settings$", "settings_update"),
@@ -906,6 +910,18 @@ class Handler(BaseHTTPRequestHandler):
         status = self.studio.engine.attach(url, self.studio.config.get("attach_key"), unit)
         self.studio.config.update({"attach_auto": True})
         self.send_json(200, status)
+
+    def api_engine_switch_status(self, query: dict[str, str]) -> None:
+        self.send_json(200, self.studio.switch.status())
+
+    def api_engine_switch(self, query: dict[str, str]) -> None:
+        body = self.read_json()
+        try:
+            self.send_json(200, self.studio.switch.start(str(body.get("target") or "")))
+        except ValueError as e:
+            self.send_json(400, {"error": {"message": str(e)}})
+        except RuntimeError as e:
+            self.send_json(409, {"error": {"message": str(e)}})
 
     def api_engine_service(self, query: dict[str, str], action: str) -> None:
         self.send_json(200, self.studio.engine.service_action(action))
