@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.4] - 2026-10-14
+### Fixes
+- Remote: the block on pairing and host administration now also covers the bare `/api/remote` path and dot segments (`..`, `%2e`).
+- Remote: large known-length answers are streamed instead of being read into memory whole (buffered up to 8 MiB).
+- Tests: the fake forge tools no longer need an installed package.
+### Cleanup
+- Removed four unused functions.
+
 ## [0.2.3] - 2026-10-14
 
 ### Model menu
