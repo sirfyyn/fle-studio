@@ -408,21 +408,3 @@ class Sink:
         gap = -self.written % alignment
         if gap:
             self.write(b"\0" * gap)
-
-
-def sha256_file(
-    path: str | os.PathLike[str], limit: int | None = None, cancelled: Callable[[], bool] = lambda: False
-) -> str:
-    h = hashlib.sha256()
-    left = limit
-    with open(path, "rb") as f:
-        while left is None or left > 0:
-            data = f.read(CHUNK if left is None else min(CHUNK, left))
-            if not data:
-                break
-            if cancelled():
-                raise Cancelled
-            h.update(data)
-            if left is not None:
-                left -= len(data)
-    return h.hexdigest()

@@ -118,9 +118,8 @@ MAX_EXPRESSION = 500
 
 
 def _power(base: Any, exponent: Any) -> Any:
-    if isinstance(base, int) and isinstance(exponent, int) and exponent > 0 and abs(base) > 1:
-        if abs(base).bit_length() * exponent > 20_000:
-            raise ToolError("That power is too large to compute")
+    if isinstance(base, int) and isinstance(exponent, int) and exponent > 0 and abs(base) > 1 and abs(base).bit_length() * exponent > 20_000:
+        raise ToolError("That power is too large to compute")
     return base**exponent
 
 

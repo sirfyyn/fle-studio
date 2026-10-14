@@ -1112,7 +1112,7 @@ remote.install(Handler, ROUTES, ApiError)  # /api/remote* (host side), /api/host
 
 class Server(ThreadingHTTPServer):
     daemon_threads = True
-    allow_reuse_address = False if paths.IS_WIN else True
+    allow_reuse_address = not paths.IS_WIN
 
     def handle_error(self, request: Any, client_address: Any) -> None:
         if isinstance(sys.exc_info()[1], (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, ssl.SSLError)):

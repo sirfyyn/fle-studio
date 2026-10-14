@@ -75,12 +75,6 @@ def _write_state(out: Path, state: dict[str, Any]) -> None:
     tmp.replace(p)
 
 
-def discard_partial(out: str | os.PathLike[str]) -> None:
-    out = Path(out)
-    for p in (out.with_name(out.name + ".part"), _state_path(out)):
-        p.unlink(missing_ok=True)
-
-
 def write_model(
     out: str | os.PathLike[str],
     kv: list[ggufio.KV],

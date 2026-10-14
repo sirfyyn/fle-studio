@@ -297,11 +297,3 @@ def run_stats(tests: list[dict[str, Any]]) -> dict[str, Any]:
         "decode_ci": stats.summarize(decode),
         "prefill_ci": stats.summarize(prefill),
     }
-
-
-def check_reachable(base: str, headers: dict[str, str]) -> bool:
-    try:
-        with urllib.request.urlopen(urllib.request.Request(base + "/health", headers=headers), timeout=2) as r:
-            return r.status == 200
-    except (urllib.error.URLError, OSError):
-        return False

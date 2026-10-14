@@ -550,7 +550,7 @@ class Provider:
 
 
 def callback_params(query: str) -> dict[str, str]:
-    return {k: v for k, v in parse_qsl(query, keep_blank_values=True)}
+    return dict(parse_qsl(query, keep_blank_values=True))
 
 
 __all__ = [

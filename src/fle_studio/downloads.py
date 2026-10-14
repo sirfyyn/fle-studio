@@ -124,15 +124,6 @@ class Downloads:
         with self._cv:
             return [self._public(j) for j in self.jobs]
 
-    def active_for(self, dest_prefix: str) -> dict[str, Any] | None:
-        with self._cv:
-            for j in self.jobs:
-                if j["state"] in ("queued", "downloading", "verifying") and any(
-                    f["dest"].startswith(dest_prefix) for f in j["files"]
-                ):
-                    return self._public(j)
-        return None
-
     @staticmethod
     def _public(job: dict[str, Any]) -> dict[str, Any]:
         total = sum(f["size"] for f in job["files"])
