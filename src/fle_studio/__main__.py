@@ -159,6 +159,7 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         print("Stopping FLE Studio …")
         studio.engine.shutdown()
+        studio.plugins.stop()
         server.server_close()
         from . import remote  # noqa: PLC0415
 

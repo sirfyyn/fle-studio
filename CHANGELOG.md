@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Plugins
+
+- **Plugins**: installed Python packages can add a page to the sidebar, static files under `/plugins/<id>/` and JSON
+  routes under `/api/p/<id>/` (entry point group `fle_studio.plugins`, see [docs/PLUGINS.md](docs/PLUGINS.md)). Every
+  plugin is off until it is turned on in Settings → Plugins; the list lives in `plugins.json` in the data folder.
+- Plugins belong to the machine they are installed on: a paired client of a host neither sees nor uses them, and the
+  page always calls them on its own Studio, also while another host is chosen.
+- A plugin that fails to load is shown in Settings and does not stop FLE Studio.
+
 ## [0.2.4] - 2026-10-14
 ### Fixes
 - Remote: the block on pairing and host administration now also covers the bare `/api/remote` path and dot segments (`..`, `%2e`).

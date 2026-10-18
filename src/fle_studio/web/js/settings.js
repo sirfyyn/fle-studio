@@ -1,7 +1,7 @@
 // Settings: looks, where models live, how the chat samples, the Hugging Face token and access from other machines.
 
 import { post } from "./api.js";
-import { applyTheme, on, refreshState, store, topbar } from "./app.js";
+import { applyTheme, on, refreshPlugins, refreshState, store, topbar } from "./app.js";
 import { toolsSection, stopToolsPolling } from "./settings-tools.js";
 import { captureSection } from "./settings-capture.js";
 import { remoteSections } from "./hosts.js";
@@ -34,7 +34,7 @@ export function mount(main) {
         h("p", null, `Stored in ${store.state.data_dir}. Start settings for the engine live on the Engine page.`))),
       look(s), models(s), chat(s), toolsSection(s, { section, field, toggle, save, render: () => render(true) }),
       captureSection(s, { section, field, toggle, save, render: () => render(true) }),
-      hub(s), network(s), updatesSection({ section, toggle, save }), ...remoteSections({ section, toggle }), about());
+      hub(s), network(s), updatesSection({ section, toggle, save }), ...remoteSections({ section, toggle }), plugins(), about());
   }
 
   // ------------------------------------------------------------------------------------------- sections
@@ -119,6 +119,26 @@ export function mount(main) {
         } }, lan ? "Save port and names" : "Save port")),
       h("label", { class: "row" }, toggle(srv.open_browser, (v) => save({ server: { open_browser: v } }, true)),
         h("span", null, "Open the browser when FLE Studio starts")));
+  }
+
+  function plugins() {
+    const list = store.plugins;
+    const rows = list.length ? list.map((p) => h("div", { class: "row wrap" },
+      toggle(p.enabled, async (on) => {
+        try {
+          await post(`/api/plugins/${p.id}/${on ? "enable" : "disable"}`, {});
+          await refreshPlugins();
+          render(true);
+          const now = store.plugins.find((x) => x.id === p.id);
+          if (now?.error) toast(`${p.id}: ${now.error}`, "bad", 8000);
+        } catch (e) { toast(e.message, "bad", 7000); render(true); }
+      }),
+      h("span", { class: "grow" }, h("b", null, p.page?.title || p.id), " ",
+        h("span", { class: "small muted mono" }, [p.package, p.version].filter(Boolean).join(" "))),
+      p.error ? h("span", { class: "pill bad", title: p.error }, "did not load") : p.loaded ? h("span", { class: "pill good" }, "on") : null))
+      : [h("span", { class: "small faint" }, "No plugins installed. A plugin is a Python package; see PLUGINS.md in the documentation.")];
+    return section("grid", "Plugins", "Extra pages from installed packages. A plugin runs inside FLE Studio with its rights: turn on only plugins you trust. They belong to this machine; a paired client does not see them.",
+      ...rows);
   }
 
   function about() {

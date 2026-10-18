@@ -17,6 +17,7 @@ export const store = {
   livechat: { count: 0, version: 0 }, // /api/livechat?summary=1: the Live chat, see live.js
   downloads: [],
   online: true,
+  plugins: [], // /api/plugins: the plugins of this machine, see plugin-page.js
 };
 
 const subs = new Map();
@@ -46,6 +47,14 @@ export async function refreshChats() {
   const r = await get("/api/chats");
   store.chats = r.chats;
   renderChatList();
+}
+
+export async function refreshPlugins() {
+  const r = await get("/api/plugins");
+  store.plugins = r.plugins;
+  navKey = "";
+  renderNav();
+  return r;
 }
 
 export const engineUp = () => ["ready", "attached"].includes(store.engine?.state);
@@ -119,10 +128,12 @@ const pages = {
   forge: () => import("./forge.js"),
   settings: () => import("./settings.js"),
   live: () => import("./live.js"),
+  plugin: () => import("./plugin-page.js"),
 };
 const routes = [
   [/^\/$/, "chat"], [/^\/c\/([0-9a-f]{16})$/, "chat"], [/^\/live\/?$/, "live"], [/^\/models\/?$/, "models"], [/^\/engine\/?$/, "engine"],
   [/^\/lab\/?$/, "lab"], [/^\/cache\/?$/, "cache"], [/^\/forge\/?$/, "forge"], [/^\/settings\/?$/, "settings"],
+  [/^\/p\/([a-z][a-z0-9-]{0,31})(?:\/.*)?$/, "plugin"],
 ];
 let current = null;
 let currentName = "";
@@ -175,10 +186,12 @@ function renderNav() {
   const activeDl = store.downloads.filter((d) => ACTIVE_DL.has(d.state)).length;
   // The live poll calls this every few seconds on /models and /engine; rebuilding the links there
   // replaced the link under a pressed mouse button and the click got lost.
-  const key = `${path} ${activeDl}`;
+  const pages = store.plugins.filter((p) => p.loaded && p.page).map((p) => [`/p/${p.id}`, p.page.icon, p.page.title]);
+  const key = `${path} ${activeDl} ${pages.map((p) => p[0]).join(",")}`;
   if (key === navKey && nav.childElementCount) return;
   navKey = key;
-  clear(nav, NAV.map(([href, ic, label]) => {
+  const items = [...NAV.slice(0, -1), ...pages, NAV[NAV.length - 1]]; // plugin pages go above Settings
+  clear(nav, items.map(([href, ic, label]) => {
     const active = href === "/" ? path === "/" || path.startsWith("/c/") : path.startsWith(href);
     return h("a", { href, "data-link": true, class: active ? "active" : "" }, icon(ic), label,
       ic === "models" && activeDl ? h("span", { class: "badge", title: "Downloads running" }, activeDl) : null);
@@ -278,6 +291,7 @@ async function start() {
   initUpdates();
   initHosts();
   refreshChats().catch(() => {});
+  await refreshPlugins().catch(() => {});
   route();
   tick();
 }
