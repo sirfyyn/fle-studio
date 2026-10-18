@@ -1,4 +1,5 @@
-"""The model switcher client (switch.py): lists the models of a switcher, switches by hand, shows progress and errors."""
+"""The model switcher client (switch.py): lists a switcher's models, switches by hand, shows progress and errors."""
+
 from __future__ import annotations
 
 import json
@@ -33,8 +34,15 @@ class Fake:
                 self.wfile.write(body)
 
             def do_GET(self):
-                self._send(200, {"familien": {"rhea": {"alias": "rhea"}, "katy": {"alias": "katy"}}, "geladen": fake.loaded,
-                                 "wechsel_laeuft": fake.busy, "wechsel_ziel": fake.target})
+                self._send(
+                    200,
+                    {
+                        "familien": {"rhea": {"alias": "rhea"}, "katy": {"alias": "katy"}},
+                        "geladen": fake.loaded,
+                        "wechsel_laeuft": fake.busy,
+                        "wechsel_ziel": fake.target,
+                    },
+                )
 
             def do_POST(self):
                 n = int(self.headers.get("Content-Length") or 0)

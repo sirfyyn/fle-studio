@@ -5,9 +5,12 @@ http://127.0.0.1:18424), FLE Studio lists its models in the model menu and asks 
 whether and when it can (free slots, no measurement running); FLE Studio only asks and shows the progress. Nothing
 switches by itself: the loaded model stays until the next click.
 
-Setting `switch_url` (or the environment variable FLE_STUDIO_SWITCH_URL); empty = no switching, the menu stays as it was.
-The switcher speaks:  GET /status -> {"familien": {id: {"alias": ...}}, "geladen": [alias] | null, "wechsel_laeuft": bool,
-"wechsel_ziel": id | null}   and   POST /umschalten {"ziel": id} -> {"ok": bool, ...} (answers when the switch is done).
+Setting `switch_url` (or the environment variable FLE_STUDIO_SWITCH_URL); empty = no switching, the menu stays as it
+was. The switcher speaks:
+
+    GET /status -> {"familien": {id: {"alias": ...}}, "geladen": [alias] | null, "wechsel_laeuft": bool,
+                    "wechsel_ziel": id | null}
+    POST /umschalten {"ziel": id} -> {"ok": bool, ...}   (answers when the switch is done)
 """
 
 from __future__ import annotations
@@ -18,7 +21,8 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 SWITCH_TIMEOUT = 1200  # a switch waits for free slots and a model load; the switcher itself gives up after 10 minutes
 
@@ -40,7 +44,14 @@ class Switch:
         base = self.url()
         if not base:
             return {"available": False}
-        out: dict[str, Any] = {"available": True, "targets": [], "active": None, "busy": False, "target": None, "error": ""}
+        out: dict[str, Any] = {
+            "available": True,
+            "targets": [],
+            "active": None,
+            "busy": False,
+            "target": None,
+            "error": "",
+        }
         try:
             st = self._get("/status")
         except Exception as e:  # noqa: BLE001 - the page shows the reason, the menu still works
@@ -77,7 +88,14 @@ class Switch:
         with self._lock:
             if self._job and not self._job["done"]:
                 raise RuntimeError("A switch is already running.")
-            self._job = {"target": target, "started": time.time(), "done": False, "ok": False, "error": "", "done_at": 0.0}
+            self._job = {
+                "target": target,
+                "started": time.time(),
+                "done": False,
+                "ok": False,
+                "error": "",
+                "done_at": 0.0,
+            }
             job = self._job
         threading.Thread(target=self._run, args=(job,), daemon=True, name="model-switch").start()
         return self.status()

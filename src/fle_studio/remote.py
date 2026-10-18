@@ -1081,8 +1081,9 @@ _BUFFER_MAX = 8 * 1024 * 1024  # larger answers are passed on as they arrive ins
 
 
 def _never_forwarded(rest: str) -> bool:
-    """Paths that stay on this machine: pairing and host management (`/api/remote`, `/api/remote/...`, `/api/hosts...`), and anything that tries to
-    reach them around the check with dot segments (`/api/../api/remote/...`, percent-encoded or not)."""
+    """Paths that stay on this machine: pairing and host management (`/api/remote`, `/api/remote/...`,
+    `/api/hosts...`), and anything that tries to reach them around the check with dot segments
+    (`/api/../api/remote/...`, percent-encoded or not)."""
     low = rest.lower()
     if "%2e" in low or "%2f" in low or "\\" in rest or any(seg in (".", "..") for seg in rest.split("?")[0].split("/")):
         return True
@@ -1152,7 +1153,8 @@ def forward(handler: Any, url: Any) -> None:
     ctype = resp.getheader("Content-Type", "application/octet-stream")
     size = resp.getheader("Content-Length")
     sse = "text/event-stream" in ctype
-    # Small known-length answers are read whole (and mirrored); large ones (an export, a download) are streamed so they never sit in memory.
+    # Small known-length answers are read whole (and mirrored); large ones (an export, a download) are streamed
+    # so they never sit in memory.
     if size is not None and not sse and size.isdigit() and int(size) <= _BUFFER_MAX:
         data = resp.read()
         conn.close()
