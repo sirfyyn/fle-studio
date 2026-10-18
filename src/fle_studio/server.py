@@ -43,6 +43,7 @@ from . import (
     mcp_api,
     net,
     paths,
+    plugins,
     quality,
     remote,
     service,
@@ -156,6 +157,8 @@ class Studio:
         self.listen: dict[str, Any] = {}
         self._sys: tuple[float, dict[str, Any] | None] = (0.0, None)
         self._sys_lock = threading.Lock()
+        self.plugins = plugins.Plugins(self.data_dir, __version__)  # extra pages and routes, see plugins.py
+        self.plugins.start()
 
     # ------------------------------------------------------------------------------------------ helpers
 
@@ -560,6 +563,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/login":
                 self.login()
                 return
+            if path.startswith("/api/p/"):  # a plugin's own routes, see plugins.py
+                plugins.dispatch(self, path, {k: v[-1] for k, v in parse_qs(url.query).items()})
+                return
             for method, rx, name in ROUTES:
                 m = rx.match(path)
                 if m and method == self.command:
@@ -601,15 +607,21 @@ class Handler(BaseHTTPRequestHandler):
         name = "index.html" if path in ("/", "/index.html") else path.lstrip("/")
         if not re.match(r"^[\w][\w./-]*$", name) or ".." in name:
             raise ApiError(404, "Not found")
-        node = resources.files("fle_studio").joinpath("web", *name.split("/"))
-        try:
-            data = node.read_bytes()
-        except (FileNotFoundError, IsADirectoryError, NotADirectoryError, OSError):
-            if "." not in name.rsplit("/", 1)[-1]:  # client-side routes fall back to the app
-                node = resources.files("fle_studio").joinpath("web", "index.html")
-                data, name = node.read_bytes(), "index.html"
-            else:
-                raise ApiError(404, "Not found") from None
+        if name.startswith("plugins/"):  # a plugin's static files, see plugins.py
+            try:
+                data, name = self.studio.plugins.static(path)
+            except plugins.PluginError as exc:
+                raise ApiError(exc.status, exc.message) from None
+        else:
+            node = resources.files("fle_studio").joinpath("web", *name.split("/"))
+            try:
+                data = node.read_bytes()
+            except (FileNotFoundError, IsADirectoryError, NotADirectoryError, OSError):
+                if "." not in name.rsplit("/", 1)[-1]:  # client-side routes fall back to the app
+                    node = resources.files("fle_studio").joinpath("web", "index.html")
+                    data, name = node.read_bytes(), "index.html"
+                else:
+                    raise ApiError(404, "Not found") from None
         if name == "index.html":
             data = data.replace(b"__FLE_TOKEN__", self.studio.token.encode())
         # Our own table first: on Windows `mimetypes` reads the registry, where .js is often text/plain, and
@@ -1108,6 +1120,9 @@ updates.install(Handler, ROUTES, ApiError)  # /api/update*: the update check and
 
 
 remote.install(Handler, ROUTES, ApiError)  # /api/remote* (host side), /api/hosts* (client side), /h/<id>/ pass-through
+
+
+plugins.install(Handler, ROUTES, ApiError)  # /api/plugins*: the list and turning plugins on and off (plugins.py)
 
 
 class Server(ThreadingHTTPServer):

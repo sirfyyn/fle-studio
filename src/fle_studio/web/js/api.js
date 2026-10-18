@@ -23,8 +23,10 @@ const HOST = (() => {
 export const activeHostId = () => HOST;
 
 // The address to use for a path that the page puts into a link or an <img>/<a download> itself.
+// Plugins (plugins.py) belong to this machine, so their calls always stay here, like the host list itself.
+const LOCAL_ONLY = /^\/api\/(?:hosts|plugins|p)(?:\/|$)/;
 export function hostUrl(path) {
-  return HOST && /^\/(api|v1|app-frame)\//.test(path) && !path.startsWith("/api/hosts") ? `/h/${HOST}${path}` : path;
+  return HOST && /^\/(api|v1|app-frame)\//.test(path) && !LOCAL_ONLY.test(path) ? `/h/${HOST}${path}` : path;
 }
 
 const nativeFetch = window.fetch.bind(window);

@@ -54,7 +54,8 @@ DEFAULT_PORT = 8642
 COLORS = ["#22d3ee", "#f59e0b", "#34d399", "#f472b6", "#a78bfa", "#fb7185", "#60a5fa", "#a3e635"]
 
 # Client tokens never reach these: a paired client must not manage clients or hosts, nor chain to other hosts.
-OWNER_ONLY = re.compile(r"^/(?:api/(?:hosts|remote)(?:/|$)|h/)")
+# Plugins belong to the machine they are installed on (plugins.py): a client neither sees nor uses the host's.
+OWNER_ONLY = re.compile(r"^/(?:api/(?:hosts|remote|plugins|p)(?:/|$)|h/|plugins/)")
 # What the default right allows beyond reading: chat, measure, and computing a command preview.
 STANDARD_WRITES = re.compile(
     r"^/(?:api/chats(?:/|$)|api/attachments$|api/bench(?:/|$)|api/engine/preview$|api/flags/explain$|v1/)"
