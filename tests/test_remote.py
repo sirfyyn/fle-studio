@@ -716,16 +716,28 @@ def test_every_write_route_of_the_other_parts_needs_admin_rights() -> None:
         assert (got[0] if got else None) == admin, (method, path, got)
 
 
-def test_remote_admin_paths_are_not_passed_on_not_even_the_bare_one_or_dotdot(engine_host: Rig, rigs: Callable[..., Rig]) -> None:
-    """`/api/remote` (without a slash after it) and `..` or percent-encoded dot segments must not slip past the guard that keeps
-    pairing and host management from being driven through another host."""
+def test_remote_admin_paths_are_not_passed_on_not_even_the_bare_one_or_dotdot(
+    engine_host: Rig, rigs: Callable[..., Rig]
+) -> None:
+    """`/api/remote` (without a slash after it) and `..` or percent-encoded dot segments must not slip past the guard
+    that keeps pairing and host management from being driven through another host."""
     client = rigs("client", False)
     host = add_host(client, engine_host)["host"]
     base = f"/h/{host['id']}"
     # the bare path is the one that really slipped through the old prefix test ("/api/remote/" needs the slash)
-    assert client.owner.call("GET", base + "/api/remote")[1]["error"]["message"] == "This path is not passed on to a host."
-    for path in ("/api/remote", "/api/remote?x=1", "/api/hosts", "/api/../api/remote/clients", "/api/%2e%2e/api/remote/code", "/api/./remote/code",
-                 "/api/state/../remote/code", "/v1/../api/remote"):
+    assert (
+        client.owner.call("GET", base + "/api/remote")[1]["error"]["message"] == "This path is not passed on to a host."
+    )
+    for path in (
+        "/api/remote",
+        "/api/remote?x=1",
+        "/api/hosts",
+        "/api/../api/remote/clients",
+        "/api/%2e%2e/api/remote/code",
+        "/api/./remote/code",
+        "/api/state/../remote/code",
+        "/v1/../api/remote",
+    ):
         status, body = client.owner.call("GET", base + path)
         assert status in (403, 404), (path, status, body)  # 403 = this check, 404 = this Studio's own router
         if status == 403:
