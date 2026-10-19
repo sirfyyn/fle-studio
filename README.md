@@ -11,7 +11,7 @@ live numbers while the model answers, a model loader and launch profiles. It wor
 - Python standard library only, no runtime dependencies. The installer brings its own Python.
 - MIT licensed.
 
-Status: 0.2, still early (0.x). It is new, so expect rough edges, and please open an issue when you find one.
+Status: 0.3, still early (0.x). It is new, so expect rough edges, and please open an issue when you find one.
 
 ## Install
 
@@ -65,7 +65,7 @@ uv tool upgrade fle-studio          # update (stays on the release you installed
 uv tool uninstall fle-studio        # remove the program (your data stays)
 ```
 
-The installer pins the release it installs (v0.2.4 at the time of writing), and `uv tool upgrade` follows that pin. To
+The installer pins the release it installs (v0.3.0 at the time of writing), and `uv tool upgrade` follows that pin. To
 move to a newer release, run the installer again; it always installs the release named in its own script, or the one
 you set with `FLE_STUDIO_REF`.
 
@@ -125,6 +125,9 @@ the everyday things (details in [docs/CHAT.md](docs/CHAT.md)):
   sign in (OAuth with PKCE; the token stays in Studio's data folder, mode 0600), older HTTP+SSE servers work as a
   fallback, and MCP Apps (`ui://` pages) show their result in a sandboxed frame in the chat. See
   [docs/MCP.md](docs/MCP.md): MCP: local, remote, sign-in, apps.
+- **Plugins.** Installed Python packages can add a page, static files and JSON routes. Each plugin is off until
+  you turn it on in Settings → Plugins, and it belongs to the machine it is installed on. See
+  [docs/PLUGINS.md](docs/PLUGINS.md).
 - **Edit, branch, search, export.** Edit a message of yours and the old version stays, with a `< 2 / 3 >` switch.
   Search all chats, export one as JSON or Markdown, import it again.
 
