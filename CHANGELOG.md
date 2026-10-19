@@ -11,6 +11,11 @@
   page always calls them on its own Studio, also while another host is chosen.
 - A plugin that fails to load is shown in Settings and does not stop FLE Studio.
 
+### Fixes
+
+- Engine → Best for my machine: "What to try and for how long" stays open while the page refreshes; before, a refresh
+  folded it shut under the cursor.
+
 ## [0.2.4] - 2026-10-14
 ### Fixes
 - Remote: the block on pairing and host administration now also covers the bare `/api/remote` path and dot segments (`..`, `%2e`).
