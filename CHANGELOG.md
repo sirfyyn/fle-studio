@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-19
+
 ### Plugins
 
 - **Plugins**: installed Python packages can add a page to the sidebar, static files under `/plugins/<id>/` and JSON
