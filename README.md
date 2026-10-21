@@ -1,9 +1,11 @@
 # FLE Studio
 
-Run large Mixture-of-Experts models on your own computer. FLE Studio is one local app: a chat in your browser,
+Run large Mixture-of-Experts models on your own computer. FLE Studio is one local LLM app for GGUF models: a chat in your browser,
 live numbers while the model answers, a model loader and launch profiles. It works with the
 [FLE engine](https://github.com/sirfyyn/FastLocalExperts) and with plain
 [llama.cpp](https://github.com/ggml-org/llama.cpp) on macOS, Linux and Windows.
+
+[Website](https://sirfyyn.de/fyos/en/studio/) · [YouTube](https://www.youtube.com/@sirfyyn)
 
 <a href="docs/media/fle-studio.mp4"><img alt="FLE Studio running Rhea: a question, the answer streaming, the live data (click for the full video)" src="docs/media/fle-studio.gif"></a>
 
