@@ -216,6 +216,8 @@ time, the budget, and (when the engine prints it) the hot experts per layer.
 FLE Studio installs the engine that suits your machine. You can always choose another one, use your own
 `llama-server`, or attach to a server that is already running.
 
+Models in the studio: the Rhea files from [FLE-GGUF](https://huggingface.co/sirfyyn/Qwen3.8-Flash-Next-FLE-GGUF) and the dense [Katy](https://huggingface.co/sirfyyn/Katy-27B-GGUF) model (IQ4_XS, 15.3 GB) load the same way. Project page: https://sirfyyn.de/en/katy/
+
 | Your machine | Engine |
 | --- | --- |
 | Linux or Windows (x64) with an NVIDIA GPU and a CPU with AVX2 | FLE engine, CUDA build |
