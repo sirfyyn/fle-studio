@@ -28,6 +28,16 @@ from . import paths
 from .system import GiB, MiB
 
 FIT_TARGET_MIB = 1115  # free GPU memory next to the expert cache, from the reference command
+# The automatic plan's presets. They are not saved commands; they only tune the values auto_plan derives.
+PRESETS = {
+    "auto": "Size the GPU expert cache and memory from this machine.",
+    "balanced": "Leave more GPU memory free; a little slower, but tolerant of other work.",
+    "max": "Spend the memory on the expert cache; fastest when this GPU is otherwise idle.",
+    "nvme": "For a model larger than RAM: memory-map it, keep the cache small, and prefer not to warm up.",
+    "off": "FLE features off; a plain llama.cpp baseline for comparisons.",
+    "debug": "Automatic settings plus extra engine timing lines in the live log.",
+}
+
 # GPU memory the engine needs besides the always-on weights, the KV cache, the expert cache and the fit margin: CUDA
 # context, compute buffers and the MTP head. Measured with the reference command on the reference machine (FLE-IQ3_M,
 # 262,144 tokens in two slots, -ub 4096 with ubatch lending): 32,623 MiB card - 4,460 always-on - 3,264 KV - 1,115
@@ -282,6 +292,9 @@ def auto_plan(
 ) -> Plan:
     """The command FLE Studio picks for this model on this machine."""
     launch, chat = settings["launch"], settings["chat"]
+    preset = str(launch.get("preset") or "auto").strip().lower()
+    if preset not in PRESETS:
+        preset = "auto"
     kind = engine["kind"]
     flavor = engine.get("flavor") or ("fle" if kind == "fle" else "upstream")  # what a custom binary turned out to be
     info = model.get("info") or {}
@@ -290,6 +303,14 @@ def auto_plan(
     if info.get("context_length") and ctx > info["context_length"]:
         ctx = int(info["context_length"])
         notes.append(f"Context capped at the model's maximum of {ctx:,} tokens.")
+    if preset == "nvme" and int(launch["context"] or 0) == 32768:
+        if ctx > 16384:
+            ctx = 16384
+            notes.append("NVMe preset: 16,384 tokens, so the KV cache leaves more RAM for the expert tier.")
+    elif preset == "max" and int(launch["context"] or 0) == 32768:
+        ctx = min(int(info.get("context_length") or 65536), 65536)
+        if ctx > 32768:
+            notes.append("Max preset: 65,536 tokens, spending memory on context instead of leaving it unused.")
     parallel = max(1, int(launch.get("parallel") or 1))
     args = ["-m", model["path"], "-c", str(ctx), "--jinja"]
     if parallel > 1:
@@ -305,7 +326,13 @@ def auto_plan(
     threads = int(launch.get("threads") or 0) or physical
     draft: str | None = None
 
-    if flavor == "fle":
+    if flavor == "fle" and preset == "off":
+        if not chosen:
+            raise PlanError("The FLE engine needs an NVIDIA GPU. Pick the upstream engine on the Engine page.")
+        notes.append("FLE features are off. This is the reproducibility baseline.")
+        args += ["-cmoe", "-ngl", "99", "-t", str(threads)]
+        pinned_bytes = 0.0
+    elif flavor == "fle":
         if not chosen:
             raise PlanError("The FLE engine needs an NVIDIA GPU. Pick the upstream engine on the Engine page.")
         vram_total = sum(g["memory_total"] for g in chosen)
@@ -314,16 +341,36 @@ def auto_plan(
         kv = float(info.get("kv_bytes_per_token_q8") or 0) * ctx
         overhead = ENGINE_OVERHEAD_MIB * MiB
         gpu_weights = float(info.get("gpu_bytes") or 0)
+        fit_target = FIT_TARGET_MIB
+        factor = 1.0
+        cap_mib = 0
+        if preset == "balanced":
+            factor = 0.7
+            fit_target = 1536
+            notes.append("Balanced preset: about 70% of the free memory goes to the expert cache, leaving room for other work.")
+        elif preset == "max":
+            fit_target = 512
+            notes.append("Max preset: the fit margin shrinks to 512 MiB, so the expert cache gets more memory.")
+        elif preset == "nvme":
+            fit_target = 1024
+            cap_mib = 2048
+            notes.append(
+                "NVMe preset: experts stay memory-mapped, the GPU cache stays at most 2 GiB, and warmup is skipped."
+            )
+        elif preset == "debug":
+            notes.append("Debug preset: extra FLE timing lines are written to the live log.")
         budget_mib = int(launch.get("gpu_cache_mib") or 0)
         if budget_mib <= 0:
             # The budget is added to the fit margin (FLE_MOE_CACHE_BUDGET_FIT=1): too large a budget makes the fit step
             # move weights to the CPU, so it errs on the small side.
-            budget_mib = _round_mib(vram_free - gpu_weights - kv - overhead - FIT_TARGET_MIB * MiB, 1)
+            budget_mib = _round_mib((vram_free - gpu_weights - kv - overhead - fit_target * MiB) * factor, 1)
+            if cap_mib:
+                budget_mib = min(budget_mib, cap_mib)
             notes.append(
                 f"GPU expert cache {budget_mib / 1024:.1f} GiB: {vram_free / GiB:.1f} GiB free GPU memory minus "
                 f"{gpu_weights / GiB:.1f} GiB of always-on weights, {kv / GiB:.1f} GiB KV cache, "
                 f"{overhead / GiB:.1f} GiB for compute buffers and the CUDA context (measured with the reference "
-                f"command) and {FIT_TARGET_MIB} MiB margin. Set it by hand on the Engine page if loading fails or "
+                f"command) and {fit_target} MiB margin. Set it by hand on the Engine page if loading fails or "
                 "memory is left over."
             )
         if budget_mib < 1024:
@@ -340,6 +387,8 @@ def auto_plan(
         env.update(FLE_POLICY_ENV)
         env["FLE_MOE_CACHE_BUDGET_MIB"] = str(budget_mib)
         env["FLE_MOE_PROFILE"] = str(paths.ensure(data_dir / "expert-profiles") / f"{model['id']}.bin")
+        if preset == "debug":
+            env.update({"FLE_TIME_PROFILE": "20000", "FLE_REUSE_REASON": "1"})
         args += [
             "-b",
             str(ub),
@@ -352,14 +401,18 @@ def auto_plan(
             "-fit",
             "on",
             "--fit-target",
-            str(FIT_TARGET_MIB),
+            str(fit_target),
             "--moe-expert-cache-inserts",
             "1",
             "-t",
             str(threads),
         ]
+        if preset == "nvme":
+            args += ["--no-warmup"]
         expert = float(info.get("expert_bytes") or 0)
         pinned = launch.get("pinned_load", "auto")
+        if preset == "nvme":
+            pinned = "off"
         if pinned == "auto":
             pinned = "on" if paths.IS_LINUX or paths.IS_WIN else "off"
             if mem["total"] - expert < 24 * GiB:
@@ -368,7 +421,10 @@ def auto_plan(
         if pinned == "on":
             args += ["--load-mode", "none"]
         mtp = model.get("mtp") or {}
-        if launch.get("mtp", True) and mtp.get("head") and mtp.get("vocab"):
+        if preset == "nvme":
+            if mtp.get("head"):
+                notes.append("MTP stays off in the NVMe preset; it needs memory that the expert tier can use.")
+        elif launch.get("mtp", True) and mtp.get("head") and mtp.get("vocab"):
             draft = mtp["head"]
             args += [
                 "-md",

@@ -43,6 +43,7 @@ from . import (
     mcp_api,
     net,
     paths,
+    qol,
     quality,
     remote,
     service,
@@ -342,6 +343,9 @@ ROUTES: list[tuple[str, re.Pattern[str], str]] = [
         ("POST", r"^/api/engines/(?P<id>[\w.-]+)/remove$", "engines_remove"),
         ("GET", r"^/api/engine$", "engine_status"),
         ("GET", r"^/api/engine/log$", "engine_log"),
+        ("GET", r"^/api/qol/doctor$", "qol_doctor"),
+        ("GET", r"^/api/qol/verify$", "qol_verify"),
+        ("GET", r"^/api/qol/report$", "qol_report"),
         ("POST", r"^/api/engine/preview$", "engine_preview"),
         ("POST", r"^/api/engine/start$", "engine_start"),
         ("POST", r"^/api/engine/stop$", "engine_stop"),
@@ -876,6 +880,26 @@ class Handler(BaseHTTPRequestHandler):
 
     def api_engine_log(self, query: dict[str, str]) -> None:
         self.send_json(200, self.studio.engine.log_since(int(query.get("since") or 0)))
+
+    def api_qol_verify(self, query: dict[str, str]) -> None:
+        ident = str(query.get("model") or self.studio.config.get("last_model") or "")
+        model = self.studio.library.get(ident) if ident else None
+        self.send_json(200, qol.verify(model))
+
+    def api_qol_doctor(self, query: dict[str, str]) -> None:
+        ident = str(query.get("model") or self.studio.config.get("last_model") or "")
+        self.send_json(200, qol.doctor(self.studio, ident))
+
+    def api_qol_report(self, query: dict[str, str]) -> None:
+        ident = str(query.get("model") or self.studio.config.get("last_model") or "")
+        body = qol.report_json(self.studio, ident).encode("utf-8")
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        self._send(
+            200,
+            body,
+            "application/json",
+            {"Content-Disposition": f'attachment; filename="fle-studio-report-{stamp}.json"'},
+        )
 
     def api_engine_preview(self, query: dict[str, str]) -> None:
         body = self.read_json()

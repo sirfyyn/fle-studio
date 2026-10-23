@@ -20,6 +20,14 @@ const PLACEHOLDERS = [
   ["{data}", "FLE Studio's data folder"],
 ];
 const CONTEXTS = [4096, 8192, 16384, 32768, 65536, 131072, 262144];
+const PRESETS = [
+  { id: "auto", label: "Automatic", hint: "Size the GPU expert cache and memory from this machine." },
+  { id: "balanced", label: "Balanced", hint: "Leave more GPU memory free; a little slower, but tolerant of other work." },
+  { id: "max", label: "Max speed", hint: "Spend the memory on the expert cache; fastest when the GPU is otherwise idle." },
+  { id: "nvme", label: "Larger than RAM", hint: "Memory-map the model, keep the cache small, and skip warmup." },
+  { id: "off", label: "FLE off", hint: "A plain llama.cpp baseline for comparisons." },
+  { id: "debug", label: "Debug", hint: "Automatic settings plus extra timing lines in the live log." },
+];
 const NEW_COMMAND = "{engine} -m {model} -c {context} -t {threads} --jinja";
 
 let savedMode = "simple";
@@ -49,6 +57,7 @@ export function mount(main) {
   }
   const boxes = {
     status: h("div", { class: "card pad-lg" }),
+    health: h("div", { class: "card" }),
     best: h("div", { class: "card" }),
     launch: h("div", { class: "card" }),
     preview: h("div", { class: "card" }),
@@ -62,6 +71,7 @@ export function mount(main) {
       h("p", null, "FLE Studio runs llama-server for you. Every start is a plain command that you can read, copy and change; "
         + "a profile keeps a command of your own, placeholders and all.")), modeSwitch),
     boxes.status,
+    boxes.health,
     boxes.best,
     h("div", { class: "grid two" }, boxes.launch, boxes.preview),
     boxes.profiles,
@@ -75,6 +85,11 @@ export function mount(main) {
   let previewError = "";
   let checkResult = null;
   let pending = {};
+  let health = null;
+  let healthError = "";
+  let healthBusy = false;
+  let healthSeq = 0;
+  let healthKey = "";
 
   // ------------------------------------------------------------------------------------------- data flow
 
@@ -129,6 +144,80 @@ export function mount(main) {
     }
     renderPreview();
   }, 200);
+
+  const refreshHealth = debounce(async (force = false) => {
+    const model = sel.model;
+    const key = JSON.stringify([
+      model,
+      settings().launch,
+      settings().engine?.choice,
+      settings().engine?.custom_path,
+    ]);
+    if (!force && key === healthKey) {
+      renderHealth();
+      return;
+    }
+    healthKey = key;
+    const seq = ++healthSeq;
+    healthError = "";
+    if (!model) {
+      health = null;
+      healthBusy = false;
+      renderHealth();
+      return;
+    }
+    healthBusy = true;
+    renderHealth();
+    try {
+      const result = await get(`/api/qol/doctor?model=${encodeURIComponent(model)}`);
+      if (seq !== healthSeq) return;
+      health = result;
+    } catch (e) {
+      if (seq !== healthSeq) return;
+      health = null;
+      healthError = e.message;
+    }
+    healthBusy = false;
+    renderHealth();
+  }, 350);
+
+  function renderHealth() {
+    const checks = health?.checks || [];
+    const failed = checks.filter((c) => c.status === "fail").length;
+    const warned = checks.filter((c) => c.status === "warn").length;
+    const status = failed ? "fail" : warned ? "warn" : health ? "ok" : "";
+    const badge = healthBusy && !health
+      ? h("span", { class: "pill info" }, "Checking…")
+      : status === "ok"
+        ? h("span", { class: "pill good" }, "Ready")
+        : status === "fail"
+          ? h("span", { class: "pill bad" }, `${failed} problem${failed === 1 ? "" : "s"}`)
+          : status === "warn"
+            ? h("span", { class: "pill warn" }, `${warned} warning${warned === 1 ? "" : "s"}`)
+            : null;
+    const model = sel.model ? `?model=${encodeURIComponent(sel.model)}` : "";
+    const rank = { fail: 0, warn: 1, ok: 2 };
+    const shown = [...checks]
+      .sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3))
+      .slice(0, 9);
+    clear(boxes.health,
+      h("div", { class: "card-head" }, icon("check"), h("div", { class: "grow" }, h("h3", null, "Setup check"),
+        h("p", null, "Model, engine, memory and the start command, read before you press Start.")),
+      badge,
+      h("button", { class: "btn ghost sm", onclick: () => refreshHealth(true), disabled: healthBusy },
+        icon("refresh", "sm"), healthBusy ? "Checking…" : "Check again"),
+      h("a", { class: "btn ghost sm", href: `/api/qol/report${model}`, download: "" },
+        icon("download", "sm"), "Report")),
+      healthError ? h("div", { class: "callout warn" }, icon("alert", "sm"), h("div", null, healthError)) : null,
+      !sel.model && !healthBusy ? h("div", { class: "muted small" }, "Choose a model to check the whole setup.") : null,
+      shown.length
+        ? h("div", { class: "stack tight" }, shown.map((c) => h("div", { class: "row small", style: { alignItems: "flex-start", gap: "8px" } },
+          icon(c.status === "ok" ? "ok" : c.status === "warn" ? "alert" : "x", "sm"),
+          h("div", { class: "grow" }, h("div", null, c.name, h("span", { class: "muted" }, c.detail ? ` · ${c.detail}` : "")),
+            c.hint ? h("div", { class: "hint" }, c.hint) : null))))
+        : healthBusy ? h("div", { class: "muted small" }, "Reading the model header and the start command…") : null,
+      checks.length > shown.length ? h("div", { class: "hint" }, `And ${checks.length - shown.length} more in the report.`) : null);
+  }
 
   // ------------------------------------------------------------------------------------------- status
 
@@ -300,7 +389,7 @@ export function mount(main) {
     const nvidia = (store.state?.system?.gpus || []).filter((g) => g.vendor === "nvidia");
 
     const modelSel = h("select", { class: "select", disabled: !models.length,
-      onchange: (e) => { sel.model = e.target.value; save({ last_model: sel.model }); renderStatus(); } },
+      onchange: (e) => { sel.model = e.target.value; save({ last_model: sel.model }); renderStatus(); refreshHealth(); } },
       models.length ? models.map((m) => h("option", { value: m.id, selected: m.id === sel.model }, `${m.name} · ${fmt.bytes(m.size)}`))
         : h("option", { value: "" }, "No model yet"));
     const profSel = h("select", { class: "select",
@@ -367,21 +456,37 @@ export function mount(main) {
 
   function renderSimpleLaunch(L, models) {
     const modelSel = h("select", { class: "select", disabled: !models.length,
-      onchange: (e) => { sel.model = e.target.value; save({ last_model: sel.model }); renderStatus(); refreshPreview(); bestCard?.reload(); } },
+      onchange: (e) => { sel.model = e.target.value; save({ last_model: sel.model }); renderStatus(); refreshPreview(); refreshHealth(); bestCard?.reload(); } },
       models.length ? models.map((m) => h("option", { value: m.id, selected: m.id === sel.model }, `${m.name} · ${fmt.bytes(m.size)}`))
         : h("option", { value: "" }, "No model yet"));
     const ctxValue = Number(L.context) || 32768;
     const ctxOptions = CONTEXTS.includes(ctxValue) ? CONTEXTS : [...CONTEXTS, ctxValue].sort((a, b) => a - b);
+    const preset = PRESETS.some((p) => p.id === L.preset) ? L.preset : "auto";
+    const presetInfo = PRESETS.find((p) => p.id === preset);
+    const presetSel = h("select", { class: "select",
+      onchange: (e) => {
+        const value = e.target.value;
+        sel.profile = "auto";
+        save({ launch: { preset: value, profile: "auto" } });
+        renderLaunch(true);
+        renderProfiles(true);
+        refreshPreview();
+        refreshHealth();
+      } },
+      PRESETS.map((p) => h("option", { value: p.id, selected: p.id === preset }, `${p.label}: ${p.hint}`)));
     clear(boxes.launch,
       h("div", { class: "card-head" }, icon("sliders"), h("div", null, h("h3", null, "Model"),
-        h("p", null, sel.profile === "auto" ? "Starts with automatic settings, sized for this machine."
+        h("p", null, sel.profile === "auto" ? `${presetInfo.label}: ${presetInfo.hint}`
           : `Starts with the profile “${profileName(sel.profile)}”.`))),
       h("div", { class: "stack" },
         field("Model", modelSel),
+        field("How to start", presetSel, sel.profile === "auto"
+          ? "Presets only tune the automatic command. Every flag stays visible on the right."
+          : "A saved profile decides the command. Choosing a preset switches back to automatic settings."),
         field("Context", h("select", { class: "select", onchange: (e) => save({ launch: { context: Number(e.target.value) } }) },
           ctxOptions.map((c) => h("option", { value: c, selected: c === ctxValue }, `${fmt.ctx(c)} tokens`))),
         "Tokens the model can see at once; more needs more memory."),
-        sel.profile !== "auto" ? h("button", { class: "btn", onclick: () => { sel.profile = "auto"; save({ launch: { profile: "auto" } }); renderLaunch(true); refreshPreview(); } },
+        sel.profile !== "auto" ? h("button", { class: "btn", onclick: () => { sel.profile = "auto"; save({ launch: { profile: "auto" } }); renderLaunch(true); refreshPreview(); refreshHealth(); } },
           "Use automatic settings") : null,
         h("p", { class: "small faint", style: { margin: 0 } }, "Switch to Advanced above for every setting, launch profiles, engines and servers that already run.")));
   }
@@ -785,6 +890,7 @@ export function mount(main) {
     renderEngines();
     renderAttach();
     refreshPreview();
+    refreshHealth();
   }
 
   let lastState = store.engine?.state;

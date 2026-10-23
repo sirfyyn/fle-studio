@@ -38,6 +38,7 @@ DEFAULTS: dict[str, Any] = {
     },
     "launch": {
         "profile": "auto",  # auto, or the id of a saved launch profile (a complete command)
+        "preset": "auto",  # auto | balanced | max | nvme | off | debug: how the automatic plan is tuned
         "context": 32768,
         "parallel": 1,  # requests served at the same time (each gets context / parallel tokens)
         "mtp": True,  # use the MTP head when the FLE engine and the head file are there

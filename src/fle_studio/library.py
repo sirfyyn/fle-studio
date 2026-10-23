@@ -109,7 +109,11 @@ class Library:
         error = ""
         if complete:
             try:
-                info = gguf.inspect_cached(first).public()
+                probe = gguf.inspect_cached(first)
+                if probe.missing:
+                    complete = False
+                else:
+                    info = probe.public()
             except (OSError, gguf.GGUFError) as exc:
                 error = str(exc)
         name = cat.name if cat else (info or {}).get("name") or gguf.SPLIT_RE.sub(r"\g<base>", first.name)

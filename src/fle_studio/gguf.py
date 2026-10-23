@@ -7,6 +7,7 @@ files use some) are measured correctly too.
 
 from __future__ import annotations
 
+import math
 import os
 import re
 import struct
@@ -36,6 +37,46 @@ KV_TYPE_BYTES = {
     "q4_1": 20 / 32,
     "q4_0": 18 / 32,
     "iq4_nl": 18 / 32,
+}
+
+# GGML quant layouts: block size, bytes per block, bytes before every row. Types 43-46 differ between the FLE release
+# and the DeepSeek41 port, so they are left out; for those the offsets in the header are the only size information.
+TYPE_SIZE = {
+    0: (1, 4, 0),
+    1: (1, 2, 0),
+    2: (32, 18, 0),
+    3: (32, 20, 0),
+    6: (32, 22, 0),
+    7: (32, 24, 0),
+    8: (32, 34, 0),
+    9: (32, 40, 0),
+    10: (256, 84, 0),
+    11: (256, 110, 0),
+    12: (256, 144, 0),
+    13: (256, 176, 0),
+    14: (256, 210, 0),
+    15: (256, 292, 0),
+    16: (256, 66, 0),
+    17: (256, 74, 0),
+    18: (256, 98, 0),
+    19: (256, 50, 0),
+    20: (32, 18, 0),
+    21: (256, 110, 0),
+    22: (256, 82, 0),
+    23: (256, 136, 0),
+    24: (1, 1, 0),
+    25: (1, 2, 0),
+    26: (1, 4, 0),
+    27: (1, 8, 0),
+    28: (1, 8, 0),
+    29: (256, 56, 0),
+    30: (1, 2, 0),
+    34: (256, 54, 0),
+    35: (256, 66, 0),
+    39: (32, 17, 0),
+    40: (64, 36, 0),
+    41: (128, 18, 0),
+    42: (64, 18, 0),
 }
 
 
@@ -99,6 +140,7 @@ class Tensor:
     shape: tuple[int, ...]
     type: int
     size: int
+    offset: int = 0
 
 
 @dataclass
@@ -108,6 +150,8 @@ class Header:
     meta: dict[str, Any]
     tensors: list[Tensor]
     file_size: int
+    data_start: int = 0
+    tensor_count: int = 0
 
 
 def read_header(path: str | os.PathLike[str], keep_array: int = 64) -> Header:
@@ -144,8 +188,23 @@ def read_header(path: str | os.PathLike[str], keep_array: int = 64) -> Header:
     for k, i in enumerate(order):
         end = raw[order[k + 1]][3] if k + 1 < len(order) else file_size - data_start
         sizes[i] = max(0, end - raw[i][3])
-    tensors = [Tensor(t[0], t[1], t[2], sizes[i]) for i, t in enumerate(raw)]
-    return Header(str(p), version, meta, tensors, file_size)
+    tensors = [Tensor(t[0], t[1], t[2], sizes[i], offset=raw[i][3]) for i, t in enumerate(raw)]
+    return Header(str(p), version, meta, tensors, file_size, data_start=data_start, tensor_count=n_tensors)
+
+
+def expected_tensor_bytes(tensor: Tensor) -> int | None:
+    """Bytes a tensor needs, from its type and shape. None when the type id is unknown or build-dependent."""
+    info = TYPE_SIZE.get(tensor.type)
+    if not info or not tensor.shape or any(d <= 0 for d in tensor.shape):
+        return None
+    block, size, row_meta = info
+    if block == 1:
+        return size * math.prod(tensor.shape)
+    if tensor.shape[0] % block:
+        return None
+    return (row_meta + size * (tensor.shape[0] // block)) * (
+        math.prod(tensor.shape[1:]) if len(tensor.shape) > 1 else 1
+    )
 
 
 def split_parts(first: Path) -> list[Path]:
@@ -235,13 +294,20 @@ def inspect(first: str | os.PathLike[str]) -> ModelInfo:
     for i, p in enumerate(present):
         h = head if i == 0 else read_header(p, keep_array=0)
         size += h.file_size
+        payload = max(0, h.file_size - h.data_start)
+        incomplete = False
         for t in h.tensors:
+            expected = expected_tensor_bytes(t)
+            if expected is not None and (t.offset < 0 or t.offset + expected > payload):
+                incomplete = True
             if EXPERT_RE.search(t.name):
                 expert += t.size
             elif t.name.startswith(INPUT_PREFIXES):
                 inputs += t.size
             else:
                 other += t.size
+        if incomplete and p.name not in missing:
+            missing.append(p.name)
 
     def num(key: str) -> int | None:
         v = head.meta.get(f"{arch}.{key}")

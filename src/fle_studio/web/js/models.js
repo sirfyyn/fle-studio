@@ -30,6 +30,7 @@ export function mount(main) {
 
   const mtpChoice = new Map(); // catalog id -> download the MTP head too
   let hfState = { q: "", results: [], repo: null, loading: false };
+  let verifyState = { id: "", busy: false, result: null, error: "" };
 
   unsub.push(on("state", renderAll));
   unsub.push(on("downloads", () => { renderCatalog(); renderDownloads(); }));
@@ -210,6 +211,9 @@ export function mount(main) {
         h("div", { style: { minWidth: 0 } }, h("div", { class: "name" }, m.name, loaded ? h("span", { class: "pill good", style: { marginLeft: "8px" } }, "loaded") : null),
           h("div", { class: "meta" }, meta), h("div", { class: "small faint mono", style: { marginTop: "3px", overflowWrap: "anywhere" } }, m.path)),
         h("div", { class: "row" },
+          m.kind === "model" ? h("button", { class: "btn ghost sm", disabled: verifyState.busy && verifyState.id === m.id,
+            title: "Read the headers and check parts, offsets, tensor counts and types",
+            onclick: () => verifyModel(m) }, icon("check", "sm"), verifyState.busy && verifyState.id === m.id ? "Checking…" : "Verify") : null,
           m.kind === "model" && m.complete && !loaded ? h("button", { class: "btn sm primary", onclick: () => loadModel(m.id) }, icon("play", "sm"), "Load") : null,
           h("button", { class: "btn ghost icon sm", title: m.source === "import" ? "Remove from the list" : "Delete the files",
             "aria-label": "Remove", onclick: () => removeModel(m) }, icon("trash", "sm"))));
@@ -218,7 +222,52 @@ export function mount(main) {
       h("div", { class: "card", style: { padding: 0 } },
         rows.length ? rows : h("div", { class: "empty" }, "No models yet. Download one above or add a GGUF file you already have."),
         h("div", { class: "lib-row", style: { borderTop: rows.length ? "1px solid var(--line)" : "0" } },
-          path, h("button", { class: "btn", onclick: add }, icon("plus", "sm"), "Add from disk")))));
+          path, h("button", { class: "btn", onclick: add }, icon("plus", "sm"), "Add from disk")))),
+      verifyCard());
+  }
+
+  async function verifyModel(m) {
+    verifyState = { id: m.id, busy: true, result: null, error: "" };
+    renderLibrary();
+    try {
+      const result = await get(`/api/qol/verify?model=${encodeURIComponent(m.id)}`);
+      verifyState = { id: m.id, busy: false, result, error: "" };
+    } catch (e) {
+      verifyState = { id: m.id, busy: false, result: null, error: e.message };
+    }
+    renderLibrary();
+  }
+
+  function verifyCard() {
+    if (!verifyState.id) return null;
+    const model = (store.state?.models || []).find((m) => m.id === verifyState.id);
+    const result = verifyState.result;
+    const dismiss = h("button", { class: "btn ghost icon sm", title: "Close", "aria-label": "Close",
+      onclick: () => { verifyState = { id: "", busy: false, result: null, error: "" }; renderLibrary(); } }, icon("x", "sm"));
+    if (verifyState.busy) {
+      return h("div", { class: "card" }, h("div", { class: "card-head" }, icon("check"), h("div", { class: "grow" }, h("h3", null, `Checking ${model?.name || "model"}`),
+        h("p", null, "Reading the header of every part.")), dismiss),
+        h("div", { class: "row small muted" }, h("div", { class: "bar indet", style: { width: "140px" } }, h("i")), "Checking…"));
+    }
+    if (verifyState.error) {
+      return h("div", { class: "card" }, h("div", { class: "card-head" }, icon("alert"), h("div", { class: "grow" }, h("h3", null, "Model check")), dismiss),
+        h("div", { class: "callout bad" }, icon("alert", "sm"), h("div", null, verifyState.error)));
+    }
+    if (!result) return null;
+    const errors = result.errors || [];
+    const warnings = result.warnings || [];
+    const status = errors.length ? "bad" : warnings.length ? "warn" : "good";
+    return h("div", { class: "card" },
+      h("div", { class: "card-head" }, icon("check"), h("div", { class: "grow" }, h("h3", null, `Model check: ${model?.name || "model"}`),
+        h("p", null, `${result.present} of ${result.parts} part(s), ${fmt.tokens(result.tensor_count)} tensors, ${fmt.bytes(result.size)} present.`)),
+      h("span", { class: `pill ${status}` }, errors.length ? `${errors.length} problem${errors.length === 1 ? "" : "s"}` : warnings.length ? `${warnings.length} warning${warnings.length === 1 ? "" : "s"}` : "Looks good"),
+      dismiss),
+      errors.length ? h("div", { class: "callout bad" }, icon("alert", "sm"), h("div", { class: "stack tight" }, errors.map((e) => h("div", null, e)))) : null,
+      warnings.length ? h("div", { class: "callout warn" }, icon("alert", "sm"), h("div", { class: "stack tight" }, warnings.map((w) => h("div", null, w)))) : null,
+      (result.checks || []).length ? h("div", { class: "stack tight", style: { marginTop: "10px" } },
+        result.checks.slice(0, 12).map((c) => h("div", { class: "row small", style: { alignItems: "flex-start", gap: "8px" } },
+          icon(c.status === "ok" ? "ok" : c.status === "warn" ? "alert" : "x", "sm"),
+          h("span", { class: "grow" }, c.name, h("span", { class: "muted" }, c.detail ? ` · ${c.detail}` : ""))))) : null);
   }
 
   async function removeModel(m) {

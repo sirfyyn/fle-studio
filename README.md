@@ -162,6 +162,13 @@ budget, and see the exact command line before anything starts.
   <img alt="The engine view of a systemd service" src="docs/media/engine-light.png">
 </picture>
 
+**Presets and a setup check.** The simple start view has six presets: `auto`, `balanced`, `max`, `nvme`, `off` and
+`debug`. They only tune the automatic command; every flag stays visible. Before you press Start, a check reads the
+model header, the engine and the free memory, and shows what would fail, with a hint. It can download a redacted JSON
+report for a bug report. The Models page has the same model check as a **Verify** action: parts, tensor count,
+offsets and quant types, including a download that is only half finished. The same checks are in the `fle` command of
+the engine checkout.
+
 **Experiments.** A short, repeatable speed test (a short answer, a piece of code, a long prompt) that records prefill
 and decode speed with the profile and engine used, so you can compare settings side by side.
 
