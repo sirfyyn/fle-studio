@@ -23,8 +23,9 @@ _MAX_STRING = 16 * 1024 * 1024  # a chat template is a few KB; anything this lon
 SPLIT_RE = re.compile(r"^(?P<base>.+)-(?P<no>\d{5})-of-(?P<count>\d{5})\.gguf$", re.IGNORECASE)
 # Routed expert weights. Shared experts (`*_shexp`) are dense and belong with the rest.
 EXPERT_RE = re.compile(r"\.ffn_(?:gate_up|gate|up|down)_exps\.")
-# Input tables llama.cpp keeps in system memory (memory-mapped) instead of on the GPU.
-INPUT_PREFIXES = ("token_embd.", "per_layer_token_embd.")
+# Input tables llama.cpp keeps in system memory (memory-mapped) instead of on the GPU. Project Maya
+# splits the Engram table into blk.N.engram_embd; it is the same host-side lookup data.
+INPUT_RE = re.compile(r"(?:^|\.)(?:token_embd|per_layer_token_embd|engram_embd)(?:\.|$)")
 
 # Bytes per element of the KV cache types llama.cpp accepts for -ctk/-ctv.
 KV_TYPE_BYTES = {
@@ -302,7 +303,7 @@ def inspect(first: str | os.PathLike[str]) -> ModelInfo:
                 incomplete = True
             if EXPERT_RE.search(t.name):
                 expert += t.size
-            elif t.name.startswith(INPUT_PREFIXES):
+            elif INPUT_RE.search(t.name):
                 inputs += t.size
             else:
                 other += t.size
