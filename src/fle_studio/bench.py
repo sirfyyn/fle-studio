@@ -10,6 +10,7 @@ run to run, so compare medians of several runs.
 from __future__ import annotations
 
 import json
+import re
 import secrets
 import statistics
 import threading
@@ -58,6 +59,81 @@ GEN_TESTS = ("Short answer", "Code")  # the requests that measure generation spe
 PREFILL_TESTS = ("Long prompt",)
 # What the tuner and the A/B/A comparison run per measurement: no 768-token code answer, which takes the most time.
 QUICK_TESTS = tuple(t for t in TESTS if t["name"] != "Code")
+
+
+REGRESSION_WARN_PCT = 10.0  # a decode speed this far below the last run of the same setting is flagged
+
+
+def _normalize_command(command: str) -> str:
+    """The command without the port (a free one is picked at every start) and without line continuations."""
+    text = re.sub(r"\\\r?\n", " ", command or "")
+    text = re.sub(r"--port(?:=|\s+)\S+", "", text)
+    return " ".join(text.split())
+
+
+def setting_key(context: dict[str, Any]) -> str:
+    """What makes two speed tests 'the same setting': the model, the context and the exact command (profile, engine
+    and build when the command is not known, e.g. for a server that was already running)."""
+    command = _normalize_command(str(context.get("command") or ""))
+    parts = [str(context.get("model") or ""), str(context.get("n_ctx") or "")]
+    parts += (
+        [command]
+        if command
+        else [str(context.get("profile") or ""), str(context.get("engine") or ""), str(context.get("build") or "")]
+    )
+    return "\n".join(parts)
+
+
+def _comparable_decode(tests: list[dict[str, Any]]) -> dict[str, list[float]]:
+    """Decode speeds per request name, only from requests that ended by themselves (not at the token limit) and that
+    were measured with the fixed sampling (they carry the ``truncated`` field)."""
+    out: dict[str, list[float]] = {}
+    for t in tests:
+        if t.get("name") in GEN_TESTS and t.get("decode") and "truncated" in t and not t["truncated"]:
+            out.setdefault(str(t["name"]), []).append(float(t["decode"]))
+    return out
+
+
+def compare_decode(new: dict[str, Any], old: dict[str, Any]) -> dict[str, Any]:
+    """How the decode speed of ``new`` differs from ``old``, a speed test result of the same setting.
+
+    Compared are the requests that finished by themselves in both results (a request cut off at the token limit
+    produced different text, so its speed says little); the median of those requests, in percent of the old one.
+    ``warn`` is set when the new speed is more than REGRESSION_WARN_PCT below the old one."""
+    a, b = _comparable_decode(new.get("tests") or []), _comparable_decode(old.get("tests") or [])
+    names = [n for n in GEN_TESTS if n in a and n in b]
+    ref = {"previous": old.get("id"), "previous_started": old.get("started"), "previous_label": old.get("label") or ""}
+    if not names:
+        return {
+            "comparable": False,
+            "reason": "No request finished by itself in both runs (cut off at the token limit)",
+            **ref,
+        }
+    new_med = statistics.median(v for n in names for v in a[n])
+    old_med = statistics.median(v for n in names for v in b[n])
+    if old_med <= 0:
+        return {"comparable": False, "reason": "The earlier run has no decode speed", **ref}
+    change = (new_med - old_med) / old_med * 100
+    return {
+        "comparable": True,
+        "tests": names,
+        "new": round(new_med, 2),
+        "old": round(old_med, 2),
+        "change_pct": round(change, 1),
+        "warn": change < -REGRESSION_WARN_PCT,
+        **ref,
+    }
+
+
+def compare_with_history(record: dict[str, Any], history: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Compare ``record`` with the newest earlier result of the same setting; None when there is none."""
+    key = setting_key(record.get("context") or {})
+    for old in history:  # newest first
+        if old.get("id") == record.get("id") or old.get("state") != "done" or not old.get("tests"):
+            continue
+        if setting_key(old.get("context") or {}) == key:
+            return compare_decode(record, old)
+    return None
 
 
 class Bench:
@@ -166,6 +242,12 @@ class Bench:
             cur["summary"] = self._summary(cur["tests"])
             cur["step"] = ""
             record = json.loads(json.dumps(cur))
+        if record["state"] == "done" and record["tests"]:
+            compare = compare_with_history(record, self.results())
+            if compare:
+                with self._lock:
+                    cur["compare"] = compare
+                record["compare"] = compare
         if record["tests"]:
             name = time.strftime("%Y%m%d-%H%M%S", time.localtime(record["started"])) + f"-{record['id']}.json"
             (self.dir / name).write_text(json.dumps(record, indent=1), encoding="utf-8")

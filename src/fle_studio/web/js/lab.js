@@ -84,12 +84,27 @@ export function mount(main) {
         cur.tests.length ? testsTable(cur.tests) : null) : null,
       !running && cur && cur.state !== "done" ? h("div", { class: `callout ${cur.state === "failed" ? "bad" : "warn"}`, style: { marginTop: "14px" } },
         icon("alert", "sm"), h("div", null, cur.state === "failed" ? `The last test failed: ${cur.error || "unknown error"}` : "The last test was cancelled.")) : null,
+      !running && cur?.state === "done" && cur.compare ? compareNote(cur.compare, { marginTop: "14px" }) : null,
       h("p", { class: "small faint", style: { margin: "12px 0 0" } },
         "With sampling on, decode speed and MTP acceptance vary from run to run; the summary uses medians, so repeat at least three times before comparing."));
   }
 
   function profileName(id) {
     return (store.state?.profiles || []).find((p) => p.id === id)?.name || id;
+  }
+
+  // The change against the last result of the same model and settings (bench.py compare_decode).
+  function compareNote(c, style = {}) {
+    const when = c.previous_started ? fmt.date(c.previous_started) : "the last run";
+    if (!c.comparable) {
+      return h("div", { class: "callout", style }, icon("info", "sm"),
+        h("div", { class: "small" }, `No comparison with ${when}: ${c.reason}.`));
+    }
+    const sign = c.change_pct > 0 ? "+" : "";
+    return h("div", { class: `callout ${c.warn ? "warn" : "info"}`, style }, icon(c.warn ? "alert" : "info", "sm"),
+      h("div", { class: "small" }, h("b", null, `${sign}${c.change_pct.toFixed(1)} % decode speed`),
+        ` against ${when} (${fmt.rate(c.old)} to ${fmt.rate(c.new)} tok/s, median of ${c.tests.join(" and ")})`,
+        c.warn ? ". That is a drop of more than 10 %: check what changed (settings, other load, thermal limits)." : "."));
   }
 
   async function start() {
@@ -188,6 +203,7 @@ export function mount(main) {
         c.profile ? [h("dt", null, "Start"), h("dd", null, c.profile === "auto" ? "Automatic settings" : profileName(c.profile))] : null,
         c.n_ctx ? [h("dt", null, "Context"), h("dd", null, `${fmt.int(c.n_ctx)} tokens`)] : null,
         [h("dt", null, "Runs"), h("dd", null, `${r.runs}, ${r.tests.length} requests`)]),
+      r.compare ? compareNote(r.compare) : null,
       testsTable(r.tests),
       c.command ? h("div", { class: "cmd" }, c.command, copyButton(c.command, "Copy the command")) : null);
   }
