@@ -416,7 +416,7 @@ def auto_plan(
                 notes.append("MTP is off: this engine does not know --spec-type. Update the engine.")
             elif launch.get("mtp", True) and head and vocab:
                 use_mtp = True
-            elif launch.get("mtp", True) and mtp.get("supported") and not head:
+            elif launch.get("mtp", True) and mtp.get("supported") and not (head and vocab):
                 notes.append("MTP is off: the MTP head or its vocabulary file is not downloaded (Models page).")
         if use_mtp:
             draft = head

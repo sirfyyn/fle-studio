@@ -58,7 +58,7 @@ COLORS = ["#22d3ee", "#f59e0b", "#34d399", "#f472b6", "#a78bfa", "#fb7185", "#60
 OWNER_ONLY = re.compile(r"^/(?:api/(?:hosts|remote|plugins|p)(?:/|$)|h/|plugins/)")
 # What the default right allows beyond reading: chat, measure, and computing a command preview.
 STANDARD_WRITES = re.compile(
-    r"^/(?:api/chats(?:/|$)|api/attachments$|api/bench(?:/|$)|api/engine/preview$|api/flags/explain$|v1/)"
+    r"^/(?:api/chats(?:/|$)|api/attachments$|api/bench(?:/|$)|api/engine/(?:preview|plan)$|api/flags/explain$|v1/)"
 )
 # Needs admin and, on top, a confirmation that the person at the client gave.
 NEEDS_CONFIRM = re.compile(r"^/api/(?:engines/install|engines/[\w.-]+/remove|update/apply|models/[0-9a-f]{12}/remove)$")

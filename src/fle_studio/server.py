@@ -265,6 +265,45 @@ class Studio:
             plan.notes.insert(1, "Falling back to upstream llama.cpp; FLE features and speculation are disabled.")
             return plan
 
+    def plan_fixes(self, model_ident: str, profile_ident: str | None) -> list[dict[str, Any]]:
+        """What the user can do in one click so that the plan can use MTP: machine-readable, shown as buttons.
+
+        A fix is {"kind": "download_mtp", "model": <catalog id>, "label", "size"}; the button posts to
+        /api/catalog/<model>/download with {"mtp": true}, as the Models page does."""
+        launch_cfg = self.config.data["launch"]
+        prof_id = profile_ident or launch_cfg.get("profile") or "auto"
+        model = self.library.get(model_ident) if model_ident else None
+        if prof_id != "auto" or not model or not model.get("catalog_id"):
+            return []
+        mtp = model.get("mtp") or {}
+        if not mtp.get("supported") or (mtp.get("head") and mtp.get("vocab")):
+            return []
+        spec = str(launch_cfg.get("spec") or "auto").lower()
+        if spec not in ("auto", "mtp") or not launch_cfg.get("mtp", True):
+            return []  # MTP is off on purpose (or contradicted): a download would not change the plan
+        entry = catalog.BY_ID.get(model["catalog_id"])
+        if not entry or not entry.mtp:
+            return []
+        return [
+            {
+                "kind": "download_mtp",
+                "model": entry.id,
+                "label": "Download MTP files",
+                "size": catalog.MTP_HEAD.size + catalog.MTP_VOCAB.size,
+            }
+        ]
+
+    def plan_view(self, model_ident: str, profile_ident: str | None) -> dict[str, Any]:
+        """make_plan for the live preview: a plan that cannot be built is an answer, not a failure.
+
+        {"ok": True, "plan": {...}, "fixes": [...]} or {"ok": False, "error": "<readable>", "fixes": [...]}."""
+        fixes = self.plan_fixes(model_ident, profile_ident)
+        try:
+            plan = self.make_plan(model_ident, profile_ident)
+        except (ApiError, launch.PlanError) as exc:
+            return {"ok": False, "error": getattr(exc, "message", None) or str(exc), "fixes": fixes}
+        return {"ok": True, "plan": plan.public(), "fixes": fixes}
+
     def _upstream_engine(self, info: dict[str, Any]) -> dict[str, Any] | None:
         """Return the best installed upstream llama-server, or None if none is installed."""
         try:
@@ -379,6 +418,7 @@ ROUTES: list[tuple[str, re.Pattern[str], str]] = [
         ("GET", r"^/api/engine$", "engine_status"),
         ("GET", r"^/api/engine/log$", "engine_log"),
         ("POST", r"^/api/engine/preview$", "engine_preview"),
+        ("POST", r"^/api/engine/plan$", "engine_plan"),
         ("POST", r"^/api/engine/start$", "engine_start"),
         ("POST", r"^/api/engine/stop$", "engine_stop"),
         ("POST", r"^/api/engine/attach$", "engine_attach"),
@@ -926,6 +966,11 @@ class Handler(BaseHTTPRequestHandler):
         body = self.read_json()
         plan = self.studio.make_plan(str(body.get("model") or ""), body.get("profile"))
         self.send_json(200, plan.public())
+
+    def api_engine_plan(self, query: dict[str, str]) -> None:
+        """Read-only plan for the live preview; never starts anything, answers 200 also when the plan cannot be built."""
+        body = self.read_json()
+        self.send_json(200, self.studio.plan_view(str(body.get("model") or ""), body.get("profile")))
 
     def api_engine_start(self, query: dict[str, str]) -> None:
         body = self.read_json()
