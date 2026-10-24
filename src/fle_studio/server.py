@@ -998,7 +998,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(200, plan.public())
 
     def api_engine_plan(self, query: dict[str, str]) -> None:
-        """Read-only plan for the live preview; never starts anything, answers 200 also when the plan cannot be built."""
+        """Read-only plan for the live preview: starts nothing, answers 200 also when the plan cannot be built."""
         body = self.read_json()
         self.send_json(200, self.studio.plan_view(str(body.get("model") or ""), body.get("profile")))
 

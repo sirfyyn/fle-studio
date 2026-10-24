@@ -35,7 +35,12 @@ def model(*, with_sidecars: bool, catalog_id: str | None = CAT.id) -> dict[str, 
         "complete": True,
         "catalog_id": catalog_id,
         "mtp": mtp,
-        "info": {"context_length": 32768, "gpu_bytes": 2 * GiB, "expert_bytes": 20 * GiB, "kv_bytes_per_token_q8": 1024},
+        "info": {
+            "context_length": 32768,
+            "gpu_bytes": 2 * GiB,
+            "expert_bytes": 20 * GiB,
+            "kv_bytes_per_token_q8": 1024,
+        },
     }
 
 
