@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fle-studio"
+dynamic = ["version"]
+description = "FLE Studio: run large MoE models on your own machine. Chat, live inference data and a model loader for the FLE engine (macOS, Linux, Windows)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE", "src/fle_studio/web/fonts/OFL-*.txt"]
+authors = [{ name = "Max Bitzer (sirfyyn)" }]
+keywords = ["llm", "llama.cpp", "moe", "gguf", "local-ai", "fle"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Web Environment",
+  "Intended Audience :: End Users/Desktop",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.optional-dependencies]
+# Text of PDF attachments in the chat. Pure Python; without it a PDF is refused with a message that says how to install it.
+pdf = ["pypdf>=4"]
+
+[project.urls]
+Homepage = "https://github.com/sirfyyn/fle-studio"
+Engine = "https://github.com/sirfyyn/FastLocalExperts"
+Report = "https://sirfyyn.github.io/FastLocalExperts/"
+
+[project.scripts]
+fle-studio = "fle_studio.__main__:main"
+
+[tool.hatch.version]
+path = "src/fle_studio/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fle_studio"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+# Fixed here, so the import order does not depend on the directory ruff runs from.
+known-first-party = ["fle_studio"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

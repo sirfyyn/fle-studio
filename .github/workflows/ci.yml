@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# One shell on all three systems: bash stops at the first failing command, PowerShell does not.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Unit tests and lint on every supported system, oldest and newest Python.
+  test:
+    name: test (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      # The package itself is installed too, so the tests import it the way users get it.
+      - name: Install FLE Studio and the test tools
+        run: python -m pip install -e ".[pdf]" pytest ruff==0.17.0
+
+      - name: Lint
+        run: ruff check src tests
+
+      - name: Format check
+        run: ruff format --check src tests
+
+      # A test that hangs prints its stack after two minutes, so a timeout still says where it stuck.
+      - name: Test
+        run: pytest -q -o faulthandler_timeout=120 --durations=15
+
+  # The wheel and the source archive build, hold the web files, and install into a clean environment.
+  package:
+    name: package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheel and source archive
+        run: |
+          python -m pip install build
+          python -m build --outdir dist
+
+      - name: Install the wheel into a clean environment and start it
+        run: |
+          python -m venv clean-env
+          if [ -d clean-env/Scripts ]; then BIN=clean-env/Scripts; else BIN=clean-env/bin; fi
+          "$BIN/python" -m pip install dist/*.whl
+          "$BIN/fle-studio" --version
+          "$BIN/python" -c "import importlib.resources as r; import fle_studio; root = r.files('fle_studio') / 'web'; [(root / n).read_bytes() for n in ('index.html', 'app.css', 'js/app.js', 'js/forge.js', 'fonts/dm-sans-latin-1.woff2')]; print('web files ok')"
+          "$BIN/python" -c "import tempfile, os; from fle_studio.forge import corpus; d = tempfile.mkdtemp(); m = corpus.bundled(os.path.join(d, 'c.txt')); assert m['chars'] > 500000, m; print('bundled corpus ok', m['chars'])"
+
+  # The two installers, run from the checkout (FLE_STUDIO_SOURCE) instead of GitHub, so that a change to an
+  # installer is tested before it is published. Both install uv first if the runner has none, and both end by
+  # running "fle-studio --version" from the installed launcher and fail when it does not answer.
+  installer:
+    name: installer (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install.sh
+        if: runner.os != 'Windows'
+        env:
+          FLE_STUDIO_SOURCE: ${{ github.workspace }}
+        run: sh install.sh --no-start
+
+      - name: install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          FLE_STUDIO_SOURCE: ${{ github.workspace }}
+        run: |
+          .\install.ps1 -NoStart
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+  # Drives the real app in a real browser against the fake llama-server (tests/fake_llama_server.py).
+  # Screenshots and logs are uploaded for every system, also when a step fails.
+  e2e:
+    name: e2e (${{ matrix.os }})
+    needs: test
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install FLE Studio
+        run: python -m pip install .
+
+      - name: Install Playwright
+        run: python -m pip install playwright
+
+      - name: Install Chromium (with system libraries)
+        if: runner.os == 'Linux'
+        run: python -m playwright install --with-deps chromium
+
+      - name: Install Chromium
+        if: runner.os != 'Linux'
+        run: python -m playwright install chromium
+
+      - name: Run the end-to-end test
+        run: python tests/e2e/run_e2e.py --out e2e-out
+
+      - name: Upload screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ matrix.os }}
+          path: e2e-out/
+          if-no-files-found: warn
+          retention-days: 14
