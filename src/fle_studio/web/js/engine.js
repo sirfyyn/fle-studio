@@ -73,6 +73,7 @@ export function mount(main) {
   let editing = null; // the profile in the editor: {id, name, engine, command, notes, builtin}
   let preview = null;
   let previewError = "";
+  let previewFixes = [];
   let checkResult = null;
   let pending = {};
 
@@ -113,22 +114,49 @@ export function mount(main) {
     flush();
   }
 
+  // The plan behind the command box: read-only, so it follows every setting without starting anything. A plan that
+  // cannot be built comes back as text (and maybe a fix), not as an error; only the newest answer is shown.
+  let previewSeq = 0;
   const refreshPreview = debounce(async () => {
+    const seq = ++previewSeq;
     if (!sel.model && sel.profile === "auto") {
       preview = null;
+      previewFixes = [];
       previewError = usableModels().length ? "Choose a model." : "Download or add a model first (Models page).";
       renderPreview();
       return;
     }
+    let answer;
     try {
-      preview = await post("/api/engine/preview", { model: sel.model, profile: sel.profile });
-      previewError = "";
+      answer = await post("/api/engine/plan", { model: sel.model, profile: sel.profile });
     } catch (e) {
-      preview = null;
-      previewError = e.message;
+      answer = { ok: false, error: e.message, fixes: [] };
     }
+    if (seq !== previewSeq) return;
+    preview = answer.ok ? answer.plan : null;
+    previewError = answer.ok ? "" : answer.error;
+    previewFixes = answer.fixes || [];
     renderPreview();
   }, 200);
+
+  async function applyFix(fix, button) {
+    if (fix.kind !== "download_mtp") return;
+    button.disabled = true;
+    try {
+      await post(`/api/catalog/${fix.model}/download`, { mtp: true });
+      toast("Downloading the MTP files. The command updates when they are there.", "good", 6000);
+    } catch (e) {
+      button.disabled = false;
+      toast(e.message, "bad", 9000);
+    }
+  }
+
+  function fixButtons() {
+    if (!previewFixes.length) return null;
+    return h("div", { class: "row wrap", style: { marginTop: "12px" } }, previewFixes.map((f) => h("button", {
+      class: "btn sm primary", onclick: (e) => applyFix(f, e.currentTarget) },
+    icon("download", "sm"), f.label + (f.size ? ` (${fmt.bytes(f.size)})` : ""))));
+  }
 
   // ------------------------------------------------------------------------------------------- status
 
@@ -202,6 +230,8 @@ export function mount(main) {
       h("div", { class: "status-hero" },
         h("div", { style: { minWidth: 0 } }, h("div", { class: "big" }, stateBadge(e.state), h("span", null, name || "No model loaded"))),
         h("div", { class: "row wrap" }, actions)),
+      e.plan?.fallback && ["starting", "ready"].includes(e.state)
+        ? h("div", { class: "callout warn", style: { marginTop: "14px" } }, icon("alert", "sm"), h("div", null, e.plan.fallback)) : null,
       detail ? h("div", { style: { marginTop: "14px" } }, detail) : null,
       unitInfo ? h("div", { style: { marginTop: "14px" } }, unitInfo) : null,
       endpoint ? h("div", { style: { marginTop: "14px" } }, endpoint) : null);
@@ -358,10 +388,13 @@ export function mount(main) {
               [["auto", "Auto (MTP when the sidecars exist)"], ["none", "Off"], ["mtp", "MTP only"], ["ngram-mod", "Ngram (modified)"], ["ngram-simple", "Ngram (simple)"]].map(([v, label]) => h("option", { value: v, selected: v === (L.spec || "auto") }, label))),
               "How the engine drafts ahead. auto only turns on MTP when its head and vocabulary file are present; ngram-mod/ngram-simple need an engine that supports --spec-type and are prompt-dependent."),
             field("Extra arguments", h("input", { class: "input mono", value: L.extra_args || "", placeholder: "--flash-attn on",
-              onchange: (e) => save({ launch: { extra_args: e.target.value } }) })),
+              oninput: (e) => save({ launch: { extra_args: e.target.value } }) })),
             field("Extra environment", h("textarea", { class: "textarea mono", rows: 2, placeholder: "KEY=value, one per line",
-              value: L.extra_env || "", onchange: (e) => save({ launch: { extra_env: e.target.value } }) })))) : null,
+              value: L.extra_env || "", oninput: (e) => save({ launch: { extra_env: e.target.value } }) })))) : null,
         h("div", { class: "divider" }),
+        auto ? h("label", { class: "row" }, toggle(L.fallback_on_failure !== false, (v) => save({ launch: { fallback_on_failure: v } })),
+          h("span", null, "Start upstream if loading fails ", h("span", { class: "muted small" },
+            "(once, without FLE features and speculation; needs an upstream engine)"))) : null,
         h("label", { class: "row" }, toggle(L.restart_on_crash, (v) => save({ launch: { restart_on_crash: v } })),
           h("span", null, "Start again if it crashes ", h("span", { class: "muted small" }, "(for a server that should stay up)"))),
         h("label", { class: "row" }, toggle(L.autostart, (v) => save({ launch: { autostart: v } })),
@@ -445,11 +478,13 @@ export function mount(main) {
       h("p", null, "What Start runs. Paste it into a terminal to run the engine without FLE Studio.")),
     preview ? copyButton(() => preview.command, "Copy the command") : null);
     if (!preview) {
-      clear(boxes.preview, head, previewError ? h("div", { class: "callout warn" }, icon("alert", "sm"), h("div", null, previewError)) : null);
+      clear(boxes.preview, head, previewError ? h("div", { class: "callout warn" }, icon("alert", "sm"), h("div", null, previewError)) : null,
+        fixButtons());
       return;
     }
     clear(boxes.preview, head,
       h("div", { class: "cmd" }, highlightCommand(preview.command)),
+      fixButtons(),
       explainBlock(preview, { open: mode === "simple" }),
       preview.notes?.length ? h("ul", { class: "small muted", style: { margin: "12px 0 0", paddingLeft: "1.2em", display: "grid", gap: "4px" } },
         preview.notes.map((n) => h("li", null, n))) : null,

@@ -18,6 +18,7 @@ class Fake:
         self.busy = False
         self.target = None
         self.delay = 0.0
+        self.gate: threading.Event | None = None  # when set, a switch request waits until the test opens it
         self.answer = (200, {"ok": True})
         self.posts: list[dict] = []
         fake = self
@@ -49,6 +50,8 @@ class Fake:
                 fake.posts.append(json.loads(self.rfile.read(n)))
                 fake.busy, fake.target = True, fake.posts[-1]["ziel"]
                 time.sleep(fake.delay)
+                if fake.gate is not None:
+                    fake.gate.wait(30)
                 code, data = fake.answer
                 if code == 200:
                     fake.loaded = [fake.target]
@@ -119,11 +122,14 @@ def test_a_refused_switch_shows_the_reason(fake):
 
 
 def test_second_switch_while_one_runs_is_refused(fake):
-    fake.delay = 0.5
+    fake.gate = threading.Event()  # the first switch stays running until the test lets it end, however slow the runner
     sw = Switch(lambda: fake.url)
     sw.start("katy")
-    with pytest.raises(RuntimeError):
-        sw.start("rhea")
+    try:
+        with pytest.raises(RuntimeError):
+            sw.start("rhea")
+    finally:
+        fake.gate.set()
     wait(sw, lambda s: not s["busy"])
 
 

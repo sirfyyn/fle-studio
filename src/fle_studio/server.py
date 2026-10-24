@@ -19,6 +19,7 @@ import mimetypes
 import re
 import secrets
 import socket
+import socketserver
 import ssl
 import sys
 import threading
@@ -120,6 +121,7 @@ class Studio:
         self.engine = Engine(self.data_dir)
         self.switch = Switch(lambda: self.config.get("switch_url"))
         self.engine.restart_on_crash = bool(self.config.get("launch.restart_on_crash"))
+        self.engine.on_load_failure = self.load_failure_fallback
         self.live = Live(self.engine)
         self.chats = Chats(self.data_dir)
         self.livechat = livechat.LiveChat()
@@ -245,25 +247,93 @@ class Studio:
             upstream = self._upstream_engine(info)
             if not upstream:
                 raise ApiError(400, f"{exc} No upstream llama.cpp is installed to fall back to.") from None
-            fb = json.loads(json.dumps(settings))
-            fb_launch = dict(fb["launch"])
-            fb_launch["mtp"] = False
-            fb_launch["spec"] = "none"
-            fb["launch"] = fb_launch
             try:
-                plan = launch.auto_plan(
-                    model=model,
-                    engine=upstream,
-                    settings=fb,
-                    sysinfo=info,
-                    port=port,
-                    data_dir=self.data_dir,
-                )
+                plan = self._upstream_plan(model, settings, upstream, info, port)
             except launch.PlanError as fb_exc:
                 raise ApiError(400, f"{exc} The upstream fallback failed too: {fb_exc}") from None
             plan.notes.insert(0, f"FLE plan failed: {exc}")
             plan.notes.insert(1, "Falling back to upstream llama.cpp; FLE features and speculation are disabled.")
             return plan
+
+    def _upstream_plan(
+        self,
+        model: dict[str, Any] | None,
+        settings: dict[str, Any],
+        upstream: dict[str, Any],
+        info: dict[str, Any],
+        port: int,
+    ) -> launch.Plan:
+        """The automatic plan for an upstream llama-server with speculation off (the fallback of the FLE plan)."""
+        fb = json.loads(json.dumps(settings))
+        fb["launch"]["mtp"] = False
+        fb["launch"]["spec"] = "none"
+        return launch.auto_plan(
+            model=model or {}, engine=upstream, settings=fb, sysinfo=info, port=port, data_dir=self.data_dir
+        )
+
+    def load_failure_fallback(self, failed: launch.Plan, rc: int, error: str) -> launch.Plan | None:
+        """The engine ended while loading. With the automatic profile, start upstream llama.cpp once instead.
+
+        Only for a plan that FLE Studio built itself (profile auto), not for one that already is the upstream engine,
+        and not when launch.fallback_on_failure is off or no upstream llama-server is installed."""
+        settings = json.loads(json.dumps(self.config.data))
+        if not settings["launch"].get("fallback_on_failure", True) or failed.profile != "auto":
+            return None
+        info = self.sysinfo(fresh=True)
+        upstream = self._upstream_engine(info)
+        if not upstream or upstream["path"] == failed.binary:
+            return None
+        port = launch.free_port(int(settings["launch"].get("port") or 0))
+        try:
+            plan = self._upstream_plan(failed.model, settings, upstream, info, port)
+        except launch.PlanError:
+            return None
+        what = f"exit code {rc}" + (f": {error}" if error else "")
+        plan.fallback = (
+            f"The engine ended while loading ({what}). Starting upstream llama.cpp instead, once; FLE features and "
+            "speculation are off. Switch this off under Engine > Advanced > Start upstream if loading fails."
+        )
+        plan.notes.insert(0, plan.fallback)
+        return plan
+
+    def plan_fixes(self, model_ident: str, profile_ident: str | None) -> list[dict[str, Any]]:
+        """What the user can do in one click so that the plan can use MTP: machine-readable, shown as buttons.
+
+        A fix is {"kind": "download_mtp", "model": <catalog id>, "label", "size"}; the button posts to
+        /api/catalog/<model>/download with {"mtp": true}, as the Models page does."""
+        launch_cfg = self.config.data["launch"]
+        prof_id = profile_ident or launch_cfg.get("profile") or "auto"
+        model = self.library.get(model_ident) if model_ident else None
+        if prof_id != "auto" or not model or not model.get("catalog_id"):
+            return []
+        mtp = model.get("mtp") or {}
+        if not mtp.get("supported") or (mtp.get("head") and mtp.get("vocab")):
+            return []
+        spec = str(launch_cfg.get("spec") or "auto").lower()
+        if spec not in ("auto", "mtp") or not launch_cfg.get("mtp", True):
+            return []  # MTP is off on purpose (or contradicted): a download would not change the plan
+        entry = catalog.BY_ID.get(model["catalog_id"])
+        if not entry or not entry.mtp:
+            return []
+        return [
+            {
+                "kind": "download_mtp",
+                "model": entry.id,
+                "label": "Download MTP files",
+                "size": catalog.MTP_HEAD.size + catalog.MTP_VOCAB.size,
+            }
+        ]
+
+    def plan_view(self, model_ident: str, profile_ident: str | None) -> dict[str, Any]:
+        """make_plan for the live preview: a plan that cannot be built is an answer, not a failure.
+
+        {"ok": True, "plan": {...}, "fixes": [...]} or {"ok": False, "error": "<readable>", "fixes": [...]}."""
+        fixes = self.plan_fixes(model_ident, profile_ident)
+        try:
+            plan = self.make_plan(model_ident, profile_ident)
+        except (ApiError, launch.PlanError) as exc:
+            return {"ok": False, "error": getattr(exc, "message", None) or str(exc), "fixes": fixes}
+        return {"ok": True, "plan": plan.public(), "fixes": fixes}
 
     def _upstream_engine(self, info: dict[str, Any]) -> dict[str, Any] | None:
         """Return the best installed upstream llama-server, or None if none is installed."""
@@ -379,6 +449,7 @@ ROUTES: list[tuple[str, re.Pattern[str], str]] = [
         ("GET", r"^/api/engine$", "engine_status"),
         ("GET", r"^/api/engine/log$", "engine_log"),
         ("POST", r"^/api/engine/preview$", "engine_preview"),
+        ("POST", r"^/api/engine/plan$", "engine_plan"),
         ("POST", r"^/api/engine/start$", "engine_start"),
         ("POST", r"^/api/engine/stop$", "engine_stop"),
         ("POST", r"^/api/engine/attach$", "engine_attach"),
@@ -927,6 +998,11 @@ class Handler(BaseHTTPRequestHandler):
         plan = self.studio.make_plan(str(body.get("model") or ""), body.get("profile"))
         self.send_json(200, plan.public())
 
+    def api_engine_plan(self, query: dict[str, str]) -> None:
+        """Read-only plan for the live preview: starts nothing, answers 200 also when the plan cannot be built."""
+        body = self.read_json()
+        self.send_json(200, self.studio.plan_view(str(body.get("model") or ""), body.get("profile")))
+
     def api_engine_start(self, query: dict[str, str]) -> None:
         body = self.read_json()
         model_ident = str(body.get("model") or self.studio.config.get("last_model") or "")
@@ -1161,6 +1237,13 @@ plugins.install(Handler, ROUTES, ApiError)  # /api/plugins*: the list and turnin
 class Server(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = not paths.IS_WIN
+
+    def server_bind(self) -> None:
+        # HTTPServer.server_bind asks socket.getfqdn() for the server name, a reverse lookup that can take many
+        # seconds on a machine with a slow resolver, for a name nothing here uses.
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.server_address[:2]
+        self.server_name, self.server_port = str(host), port
 
     def handle_error(self, request: Any, client_address: Any) -> None:
         if isinstance(sys.exc_info()[1], (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, ssl.SSLError)):

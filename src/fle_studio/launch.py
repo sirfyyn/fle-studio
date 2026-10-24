@@ -127,7 +127,12 @@ def shell_quote(word: str) -> str:
 
 
 class PlanError(ValueError):
-    """The engine cannot be started like this; the message says why in words a user can act on."""
+    """The engine cannot be started like this; the message says why in words a user can act on.
+
+    May carry a second argument, a hint on what to do; ``str()`` joins both."""
+
+    def __str__(self) -> str:
+        return " ".join(str(a) for a in self.args if a)
 
 
 @dataclass
@@ -141,6 +146,7 @@ class Plan:
     profile: str = "auto"
     notes: list[str] = field(default_factory=list)
     draft: str | None = None  # path of the draft/MTP model, for the load progress
+    fallback: str = ""  # set when this plan replaces one that failed to load: why (it is not tried a second time)
 
     def command_line(self) -> str:
         """The command as one would type it in this OS's shell, for display and copying."""
@@ -379,9 +385,22 @@ def auto_plan(
         vocab = mtp.get("vocab") or ""
         use_mtp = False
         ngram = ""
+        # Only an engine whose help does not list --spec-type is known to lack it; entries without the key are recent.
+        spec_type_ok = bool(engine.get("spec_type", True))
+        if spec in ("mtp", "ngram-mod", "ngram-simple") and not spec_type_ok:
+            raise PlanError(
+                f"Speculation mode {spec!r} needs an engine that knows --spec-type, and this one does not.",
+                "Update the engine, or set speculation to none.",
+            )
         if spec == "none":
             notes.append("Speculation is off.")
         elif spec == "mtp":
+            if not launch.get("mtp", True):
+                raise PlanError(
+                    "Speculation is set to mtp, but MTP is switched off (launch.mtp); the two settings contradict "
+                    "each other.",
+                    "Switch MTP on, or set speculation to auto or none.",
+                )
             if not (head and vocab):
                 raise PlanError(
                     "MTP was requested, but this model has no MTP head and vocabulary file.",
@@ -394,9 +413,11 @@ def auto_plan(
                 f"Self-speculation: {spec}. It drafts from the prompt/context; acceptance is prompt-dependent."
             )
         else:  # auto
-            if launch.get("mtp", True) and head and vocab:
+            if launch.get("mtp", True) and head and vocab and not spec_type_ok:
+                notes.append("MTP is off: this engine does not know --spec-type. Update the engine.")
+            elif launch.get("mtp", True) and head and vocab:
                 use_mtp = True
-            elif launch.get("mtp", True) and mtp.get("supported") and not head:
+            elif launch.get("mtp", True) and mtp.get("supported") and not (head and vocab):
                 notes.append("MTP is off: the MTP head or its vocabulary file is not downloaded (Models page).")
         if use_mtp:
             draft = head

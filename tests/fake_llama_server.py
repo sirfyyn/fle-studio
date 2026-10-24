@@ -2292,6 +2292,7 @@ def main(argv: list[str] | None = None) -> int:
             "usage: fake_llama_server.py -m MODEL.gguf [--host H] [--port N] [-c N] [-a ALIAS] "
             "[--metrics] [-np N] [-md DRAFT.gguf] [-lv N]",
             "-lv,   --verbosity, --log-verbosity N      Set the verbosity threshold (default: 3)",
+            "--spec-type TYPE                        speculative decoding type (none, draft-mtp, ngram-mod, ...)",
         ]
         if cfg.engine == "fle":
             lines.append("--moe-expert-cache-inserts N            expert-cache inserts per step")

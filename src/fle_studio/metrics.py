@@ -78,13 +78,13 @@ class Live:
     def _loop(self) -> None:
         tick = 0
         while True:
-            t0 = time.time()
+            t0 = time.monotonic()  # not the wall clock: a clock that steps back must not stretch the pause
             try:
                 self._sample(tick)
             except Exception:  # a sampler hiccup must never stop the sampler
                 pass
             tick += 1
-            time.sleep(max(0.2, self.interval - (time.time() - t0)))
+            time.sleep(min(max(0.2, self.interval - (time.monotonic() - t0)), max(0.2, self.interval)))
 
     def _get(self, base: str, path: str, headers: dict[str, str]) -> tuple[int, str]:
         try:

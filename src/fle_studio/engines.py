@@ -355,6 +355,7 @@ class Engines:
             "backend": backend,
             "flavor": flavor,
             "log_verbosity": "--log-verbosity" in help_text,
+            "spec_type": "--spec-type" in help_text,
             "problem": "" if ok else (out.strip().splitlines() or ["no output"])[-1][:300],
         }
         self._detect_cache[key] = result
@@ -377,6 +378,7 @@ class Engines:
                 "path": str(Path(path).expanduser()),
                 "version": info.get("version", ""),
                 "log_verbosity": info.get("log_verbosity", False),
+                "spec_type": info.get("spec_type", False),
             }
         if want == "auto":
             want = eng.get("choice", "auto")

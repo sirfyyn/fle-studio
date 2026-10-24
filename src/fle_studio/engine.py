@@ -125,6 +125,9 @@ class Engine:
         # expert-cache view (cachewatch.py) reads the engine's cache lines this way. Keep them quick.
         self.line_listeners: list[Callable[[str], object]] = []
         self.restart_on_crash = False
+        # Asked when the engine process ends before it was ready (not stopped by the user): (plan, exit code, error)
+        # -> a plan to start instead, or None. The Studio uses it for the upstream fallback (server.py).
+        self.on_load_failure: Callable[[Plan, int, str], Plan | None] | None = None
         self._crashes: collections.deque[float] = collections.deque(maxlen=10)
         self._stop_requested = False
         self._log_file: Any = None
@@ -512,6 +515,7 @@ class Engine:
 
     def _on_exit(self, proc: subprocess.Popen[bytes], rc: int) -> None:
         again: Plan | None = None
+        failed_load: Plan | None = None
         with self._lock:
             if self.proc is not proc:
                 return
@@ -523,6 +527,8 @@ class Engine:
                 if not self.error:
                     last = next((t for _, _, t in reversed(self.lines) if not t.startswith("FLE Studio:")), "")
                     self.error = f"The engine exited (code {rc})" + (f": {last}" if last else "")
+                if not self.ready_at and self.plan and not self.plan.fallback:
+                    failed_load = self.plan
                 now = time.time()
                 self._crashes.append(now)
                 recent = sum(1 for t in self._crashes if now - t < 600)
@@ -530,6 +536,9 @@ class Engine:
                     again = self.plan
         self._append(f"FLE Studio: engine exited with code {rc}")
         self._close_log()
+        if failed_load and self.on_load_failure:
+            self._start_fallback(failed_load, rc)
+            return
         if again:
             self._append("FLE Studio: restart on crash is on; starting the engine again in 5 s")
             plan = again
@@ -541,6 +550,19 @@ class Engine:
                     self._append(f"FLE Studio: not restarted. {exc}")
 
             threading.Timer(5.0, restart).start()
+
+    def _start_fallback(self, failed: Plan, rc: int) -> None:
+        """The engine ended while loading: start the plan the owner offers instead, once, and say so in the log."""
+        with self._lock:
+            error = self.error
+        try:
+            replacement = self.on_load_failure(failed, rc, error) if self.on_load_failure else None
+            if replacement is None:
+                return
+            self._append(f"FLE Studio: {replacement.fallback}")
+            self.start(replacement)
+        except Exception as exc:  # the failed state stays as it is; the user sees why in the log
+            self._append(f"FLE Studio: the fallback start did not work: {getattr(exc, 'message', exc)}")
 
     # ------------------------------------------------------------------------------------------ log
 

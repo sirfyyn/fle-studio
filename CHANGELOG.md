@@ -11,10 +11,29 @@
   not a per-slot share. The old hint said the opposite.
 - **Upstream fallback**: when the automatic FLE plan cannot be built (for example on a machine without an NVIDIA GPU)
   and an upstream `llama-server` is installed, Studio plans with that one, speculation off, and says so in the notes.
-  A model that fails after it started loading is not rescued. If the fallback cannot be planned either, the error
-  names both reasons.
+  If the fallback cannot be planned either, the error names both reasons.
+- **Fallback after a failed load**: with the automatic profile, an engine that ends while it is still loading (for
+  example too little GPU memory) is replaced once by the upstream `llama-server`, speculation off. The log, the plan
+  and the status say what happened and why. Setting `launch.fallback_on_failure` (default on; "Start upstream if
+  loading fails" in Engine → Advanced) turns it off. It does not cover an engine that dies after it was ready, a
+  profile of your own, or a fallback that fails itself.
+- **Live command preview**: Engine → Advanced updates the command, notes and warnings while you change a setting (text
+  fields while you type), without starting anything (`POST /api/engine/plan`). A plan that cannot be built is shown as a
+  readable hint.
+- **Download MTP files**: when MTP would be used but the head or vocabulary file is missing, the preview offers a
+  "Download MTP files" button (the same download as on the Models page). The plan answer carries it as
+  `fixes: [{"kind": "download_mtp", "model": <catalog id>}]`.
 
 ### Fixes
+
+- Speculation: `mtp` together with the "MTP" switch off is now an error that says the two settings contradict each
+  other (it used to start with MTP anyway); `mtp`, `ngram-mod` and `ngram-simple` on an engine whose help does not list
+  `--spec-type` fail the plan with that reason. The rules are pinned by `tests/spec_cases.json`, shared with the helper.
+- Plan errors with a hint no longer show as a Python tuple.
+- The "MTP is off" note also appears when only the vocabulary file is missing.
+- Experiments: after a speed test, Studio shows the change of the decode speed (median, in percent) against the last
+  test of the same model, context and command (the port is ignored), and warns above a 10 % drop. Requests that stopped
+  at the token limit, and results from before the fixed sampling, are left out.
 
 - Best for my machine: the benchmark now sends `temperature: 0`, so runs are comparable, and records the finish reason.
   A run that stopped at the token limit is marked `truncated`.

@@ -25,6 +25,7 @@ import hashlib
 import json
 import os
 import secrets
+import socketserver
 import sys
 import threading
 import time
@@ -515,11 +516,17 @@ class HttpHandler(BaseHTTPRequestHandler):
             self.reply(200, json.dumps(response).encode(), "application/json", extra)
 
 
+class QuickBindServer(ThreadingHTTPServer):
+    def server_bind(self) -> None:  # HTTPServer.server_bind does a getfqdn() lookup that can take seconds
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = str(self.server_address[0]), self.server_address[1]
+
+
 def serve_http(port: int, sse: bool, oauth: bool = False, legacy: bool = False, dcr: bool = True) -> int:
     HttpHandler.sse = sse
     HttpHandler.legacy = legacy
     AUTH.enabled, AUTH.dcr = oauth, dcr
-    httpd = ThreadingHTTPServer(("127.0.0.1", port), HttpHandler)
+    httpd = QuickBindServer(("127.0.0.1", port), HttpHandler)
     httpd.daemon_threads = True
     sys.stderr.write(f"fake mcp listening on {port}\n")
     sys.stderr.flush()
