@@ -19,6 +19,7 @@ import mimetypes
 import re
 import secrets
 import socket
+import socketserver
 import ssl
 import sys
 import threading
@@ -1236,6 +1237,13 @@ plugins.install(Handler, ROUTES, ApiError)  # /api/plugins*: the list and turnin
 class Server(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = not paths.IS_WIN
+
+    def server_bind(self) -> None:
+        # HTTPServer.server_bind asks socket.getfqdn() for the server name, a reverse lookup that can take many
+        # seconds on a machine with a slow resolver, for a name nothing here uses.
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.server_address[:2]
+        self.server_name, self.server_port = str(host), port
 
     def handle_error(self, request: Any, client_address: Any) -> None:
         if isinstance(sys.exc_info()[1], (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, ssl.SSLError)):

@@ -229,7 +229,19 @@ class Bench:
                 quality = probe(base, headers, say)
                 with self._lock:
                     cur["quality"] = quality
+            # Summary and comparison first, then "done": the page reads them as soon as it sees the state change.
             with self._lock:
+                tests = list(cur["tests"])
+            summary = self._summary(tests)
+            compare = None
+            if tests:
+                compare = compare_with_history(
+                    {"id": cur["id"], "context": cur["context"], "tests": tests}, self.results()
+                )
+            with self._lock:
+                cur["summary"] = summary
+                if compare:
+                    cur["compare"] = compare
                 cur["state"] = "done"
         except InterruptedError:
             with self._lock:
@@ -242,12 +254,6 @@ class Bench:
             cur["summary"] = self._summary(cur["tests"])
             cur["step"] = ""
             record = json.loads(json.dumps(cur))
-        if record["state"] == "done" and record["tests"]:
-            compare = compare_with_history(record, self.results())
-            if compare:
-                with self._lock:
-                    cur["compare"] = compare
-                record["compare"] = compare
         if record["tests"]:
             name = time.strftime("%Y%m%d-%H%M%S", time.localtime(record["started"])) + f"-{record['id']}.json"
             (self.dir / name).write_text(json.dumps(record, indent=1), encoding="utf-8")

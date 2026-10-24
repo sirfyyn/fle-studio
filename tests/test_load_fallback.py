@@ -22,6 +22,15 @@ from fle_studio.server import Studio
 @pytest.fixture
 def studio(tmp_path: Path) -> Iterator[Studio]:
     st = Studio(tmp_path / "home")
+    original = st.engine.on_load_failure
+    st.engine.hook_calls = []  # type: ignore[attr-defined]  # what the engine asked and what the Studio answered
+
+    def recording(failed: Plan, rc: int, error: str) -> Plan | None:
+        answer = original(failed, rc, error) if original else None
+        st.engine.hook_calls.append(answer)  # type: ignore[attr-defined]
+        return answer
+
+    st.engine.on_load_failure = recording
     yield st
     st.engine.shutdown()
 
@@ -64,11 +73,17 @@ def starts(studio: Studio) -> int:
     return sum(1 for _, _, text in studio.engine.lines if text.startswith("$ "))
 
 
-def stays_crashed(studio: Studio, starts_expected: int = 1) -> None:
-    wait_for(lambda: studio.engine.state == "crashed", 20, "the engine to fail")
-    time.sleep(1.5)  # a fallback, if there were one, begins right away
-    assert studio.engine.state == "crashed"
-    assert starts(studio) == starts_expected
+def stays_crashed(studio: Studio, starts_expected: int = 1, asked: int = 1) -> None:
+    """The engine ends crashed after exactly ``starts_expected`` starts, and was asked about a fallback ``asked`` times.
+
+    A crash is also the state between the failed load and the fallback start, so the end is told by the start count
+    and by the Studio's answer, not by a pause."""
+    if asked:
+        wait_for(lambda: len(studio.engine.hook_calls) >= asked, 40, "the Studio to be asked")
+    wait_for(lambda: studio.engine.state == "crashed" and starts(studio) == starts_expected, 40, "the final crash")
+    time.sleep(1.0)  # nothing may follow
+    assert studio.engine.state == "crashed" and starts(studio) == starts_expected
+    assert len(studio.engine.hook_calls) == asked
 
 
 def test_a_failed_load_starts_upstream_once(studio: Studio, parts: dict[str, Any]) -> None:
@@ -106,7 +121,7 @@ def test_a_profile_or_a_missing_upstream_engine_gets_no_fallback(
     monkeypatch.setattr(studio, "_upstream_engine", lambda info: None)
     studio.engine.lines.clear()
     studio.engine.start(failing_plan(parts))
-    stays_crashed(studio)
+    stays_crashed(studio, asked=2)
 
 
 def test_a_crash_after_ready_is_not_a_failed_load(studio: Studio, parts: dict[str, Any]) -> None:
@@ -115,7 +130,7 @@ def test_a_crash_after_ready_is_not_a_failed_load(studio: Studio, parts: dict[st
     plan.env["FAKE_CRASH_AFTER"] = "0.5"
     studio.engine.start(plan)
     wait_for(lambda: studio.engine.state == "ready", 20, "the engine to be ready")
-    stays_crashed(studio)
+    stays_crashed(studio, asked=0)
 
 
 def test_stopping_while_loading_is_not_a_failure(studio: Studio, parts: dict[str, Any]) -> None:
