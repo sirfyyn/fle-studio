@@ -230,6 +230,8 @@ export function mount(main) {
       h("div", { class: "status-hero" },
         h("div", { style: { minWidth: 0 } }, h("div", { class: "big" }, stateBadge(e.state), h("span", null, name || "No model loaded"))),
         h("div", { class: "row wrap" }, actions)),
+      e.plan?.fallback && ["starting", "ready"].includes(e.state)
+        ? h("div", { class: "callout warn", style: { marginTop: "14px" } }, icon("alert", "sm"), h("div", null, e.plan.fallback)) : null,
       detail ? h("div", { style: { marginTop: "14px" } }, detail) : null,
       unitInfo ? h("div", { style: { marginTop: "14px" } }, unitInfo) : null,
       endpoint ? h("div", { style: { marginTop: "14px" } }, endpoint) : null);
@@ -390,6 +392,9 @@ export function mount(main) {
             field("Extra environment", h("textarea", { class: "textarea mono", rows: 2, placeholder: "KEY=value, one per line",
               value: L.extra_env || "", oninput: (e) => save({ launch: { extra_env: e.target.value } }) })))) : null,
         h("div", { class: "divider" }),
+        auto ? h("label", { class: "row" }, toggle(L.fallback_on_failure !== false, (v) => save({ launch: { fallback_on_failure: v } })),
+          h("span", null, "Start upstream if loading fails ", h("span", { class: "muted small" },
+            "(once, without FLE features and speculation; needs an upstream engine)"))) : null,
         h("label", { class: "row" }, toggle(L.restart_on_crash, (v) => save({ launch: { restart_on_crash: v } })),
           h("span", null, "Start again if it crashes ", h("span", { class: "muted small" }, "(for a server that should stay up)"))),
         h("label", { class: "row" }, toggle(L.autostart, (v) => save({ launch: { autostart: v } })),

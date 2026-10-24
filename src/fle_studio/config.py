@@ -51,6 +51,7 @@ DEFAULTS: dict[str, Any] = {
         "port": 0,  # engine port; 0 = pick a free one
         "extra_args": "",  # appended to the engine command line, for experts
         "extra_env": "",  # KEY=VALUE lines added to the engine environment
+        "fallback_on_failure": True,  # automatic profile: if the engine dies while loading, try upstream llama.cpp once
         "restart_on_crash": False,  # start the engine again if it exits on its own (servers that should stay up)
         "autostart": False,  # load the last model with the last profile when FLE Studio starts
     },

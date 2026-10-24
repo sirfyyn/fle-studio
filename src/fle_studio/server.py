@@ -120,6 +120,7 @@ class Studio:
         self.engine = Engine(self.data_dir)
         self.switch = Switch(lambda: self.config.get("switch_url"))
         self.engine.restart_on_crash = bool(self.config.get("launch.restart_on_crash"))
+        self.engine.on_load_failure = self.load_failure_fallback
         self.live = Live(self.engine)
         self.chats = Chats(self.data_dir)
         self.livechat = livechat.LiveChat()
@@ -245,25 +246,54 @@ class Studio:
             upstream = self._upstream_engine(info)
             if not upstream:
                 raise ApiError(400, f"{exc} No upstream llama.cpp is installed to fall back to.") from None
-            fb = json.loads(json.dumps(settings))
-            fb_launch = dict(fb["launch"])
-            fb_launch["mtp"] = False
-            fb_launch["spec"] = "none"
-            fb["launch"] = fb_launch
             try:
-                plan = launch.auto_plan(
-                    model=model,
-                    engine=upstream,
-                    settings=fb,
-                    sysinfo=info,
-                    port=port,
-                    data_dir=self.data_dir,
-                )
+                plan = self._upstream_plan(model, settings, upstream, info, port)
             except launch.PlanError as fb_exc:
                 raise ApiError(400, f"{exc} The upstream fallback failed too: {fb_exc}") from None
             plan.notes.insert(0, f"FLE plan failed: {exc}")
             plan.notes.insert(1, "Falling back to upstream llama.cpp; FLE features and speculation are disabled.")
             return plan
+
+    def _upstream_plan(
+        self,
+        model: dict[str, Any] | None,
+        settings: dict[str, Any],
+        upstream: dict[str, Any],
+        info: dict[str, Any],
+        port: int,
+    ) -> launch.Plan:
+        """The automatic plan for an upstream llama-server with speculation off (the fallback of the FLE plan)."""
+        fb = json.loads(json.dumps(settings))
+        fb["launch"]["mtp"] = False
+        fb["launch"]["spec"] = "none"
+        return launch.auto_plan(
+            model=model or {}, engine=upstream, settings=fb, sysinfo=info, port=port, data_dir=self.data_dir
+        )
+
+    def load_failure_fallback(self, failed: launch.Plan, rc: int, error: str) -> launch.Plan | None:
+        """The engine ended while loading. With the automatic profile, start upstream llama.cpp once instead.
+
+        Only for a plan that FLE Studio built itself (profile auto), not for one that already is the upstream engine,
+        and not when launch.fallback_on_failure is off or no upstream llama-server is installed."""
+        settings = json.loads(json.dumps(self.config.data))
+        if not settings["launch"].get("fallback_on_failure", True) or failed.profile != "auto":
+            return None
+        info = self.sysinfo(fresh=True)
+        upstream = self._upstream_engine(info)
+        if not upstream or upstream["path"] == failed.binary:
+            return None
+        port = launch.free_port(int(settings["launch"].get("port") or 0))
+        try:
+            plan = self._upstream_plan(failed.model, settings, upstream, info, port)
+        except launch.PlanError:
+            return None
+        what = f"exit code {rc}" + (f": {error}" if error else "")
+        plan.fallback = (
+            f"The engine ended while loading ({what}). Starting upstream llama.cpp instead, once; FLE features and "
+            "speculation are off. Switch this off under Engine > Advanced > Start upstream if loading fails."
+        )
+        plan.notes.insert(0, plan.fallback)
+        return plan
 
     def plan_fixes(self, model_ident: str, profile_ident: str | None) -> list[dict[str, Any]]:
         """What the user can do in one click so that the plan can use MTP: machine-readable, shown as buttons.

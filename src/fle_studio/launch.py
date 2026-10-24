@@ -146,6 +146,7 @@ class Plan:
     profile: str = "auto"
     notes: list[str] = field(default_factory=list)
     draft: str | None = None  # path of the draft/MTP model, for the load progress
+    fallback: str = ""  # set when this plan replaces one that failed to load: why (it is not tried a second time)
 
     def command_line(self) -> str:
         """The command as one would type it in this OS's shell, for display and copying."""
