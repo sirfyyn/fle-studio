@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased]
+
+### Engine
+
+- **Speculation**: a new "Speculation" setting (Engine → Advanced) chooses how the engine drafts ahead: `auto` (MTP
+  when its head and vocabulary file are there, as before), `none`, `mtp` (an error that names the missing sidecars
+  instead of silently starting without), `ngram-mod` or `ngram-simple` (self-speculation, no extra file).
+- **Requests at once**: the plan explains that parallel slots share one unified KV cache, so the context is a total and
+  not a per-slot share. The old hint said the opposite.
+- **Upstream fallback**: when the automatic FLE plan cannot be built (for example on a machine without an NVIDIA GPU)
+  and an upstream `llama-server` is installed, Studio plans with that one, speculation off, and says so in the notes.
+  A model that fails after it started loading is not rescued. If the fallback cannot be planned either, the error
+  names both reasons.
+
+### Fixes
+
+- Best for my machine: the benchmark now sends `temperature: 0`, so runs are comparable, and records the finish reason.
+  A run that stopped at the token limit is marked `truncated`.
+
 ## [0.3.0] - 2026-10-19
 
 ### Plugins
