@@ -237,7 +237,40 @@ class Studio:
                 data_dir=self.data_dir,
             )
         except launch.PlanError as exc:
-            raise ApiError(400, str(exc)) from None
+            # Plan-time upstream fallback: if the FLE plan cannot be built (for example no NVIDIA GPU for the
+            # FLE engine), retry once with an installed upstream llama-server and speculation off. This does not
+            # rescue a model that fails after it has started loading.
+            if profile_ident or settings["launch"].get("profile") != "auto":
+                raise ApiError(400, str(exc)) from None
+            upstream = self._upstream_engine(info)
+            if not upstream:
+                raise ApiError(400, f"{exc} No upstream llama.cpp is installed to fall back to.") from None
+            fb = json.loads(json.dumps(settings))
+            fb_launch = dict(fb["launch"])
+            fb_launch["mtp"] = False
+            fb_launch["spec"] = "none"
+            fb["launch"] = fb_launch
+            try:
+                plan = launch.auto_plan(
+                    model=model,
+                    engine=upstream,
+                    settings=fb,
+                    sysinfo=info,
+                    port=port,
+                    data_dir=self.data_dir,
+                )
+            except launch.PlanError as fb_exc:
+                raise ApiError(400, f"{exc} The upstream fallback failed too: {fb_exc}") from None
+            plan.notes.insert(0, f"FLE plan failed: {exc}")
+            plan.notes.insert(1, "Falling back to upstream llama.cpp; FLE features and speculation are disabled.")
+            return plan
+
+    def _upstream_engine(self, info: dict[str, Any]) -> dict[str, Any] | None:
+        """Return the best installed upstream llama-server, or None if none is installed."""
+        try:
+            return self.engines.resolve("upstream", info)
+        except RuntimeError:
+            return None
 
     def catalog_view(self) -> list[dict[str, Any]]:
         info = self.sysinfo()

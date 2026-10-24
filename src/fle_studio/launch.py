@@ -24,7 +24,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import paths
+from . import paths, qol
 from .system import GiB, MiB
 
 FIT_TARGET_MIB = 1115  # free GPU memory next to the expert cache, from the reference command
@@ -294,6 +294,7 @@ def auto_plan(
     args = ["-m", model["path"], "-c", str(ctx), "--jinja"]
     if parallel > 1:
         args += ["--parallel", str(parallel), "--kv-unified"]
+        notes.append(qol.effective_context(ctx, parallel, True)["note"])
     env: dict[str, str] = {}
     nvidia = [g for g in sysinfo.get("gpus", []) if g.get("vendor") == "nvidia"]
     chosen, gpu_env, note = _gpu_selection(launch.get("gpus", "auto"), nvidia)
@@ -367,12 +368,41 @@ def auto_plan(
                 notes.append("Experts stay memory-mapped (not pinned): pinning them would leave less than 24 GiB RAM.")
         if pinned == "on":
             args += ["--load-mode", "none"]
+        spec = str(launch.get("spec") or "auto").lower()
+        if spec not in ("auto", "none", "mtp", "ngram-mod", "ngram-simple"):
+            raise PlanError(
+                f"Unknown speculation mode {spec!r}.",
+                "Use auto, none, mtp, ngram-mod or ngram-simple.",
+            )
         mtp = model.get("mtp") or {}
-        if launch.get("mtp", True) and mtp.get("head") and mtp.get("vocab"):
-            draft = mtp["head"]
+        head = mtp.get("head") or ""
+        vocab = mtp.get("vocab") or ""
+        use_mtp = False
+        ngram = ""
+        if spec == "none":
+            notes.append("Speculation is off.")
+        elif spec == "mtp":
+            if not (head and vocab):
+                raise PlanError(
+                    "MTP was requested, but this model has no MTP head and vocabulary file.",
+                    "Download the MTP sidecars on the Models page, or set speculation to auto or ngram-mod.",
+                )
+            use_mtp = True
+        elif spec in ("ngram-mod", "ngram-simple"):
+            ngram = spec
+            notes.append(
+                f"Self-speculation: {spec}. It drafts from the prompt/context; acceptance is prompt-dependent."
+            )
+        else:  # auto
+            if launch.get("mtp", True) and head and vocab:
+                use_mtp = True
+            elif launch.get("mtp", True) and mtp.get("supported") and not head:
+                notes.append("MTP is off: the MTP head or its vocabulary file is not downloaded (Models page).")
+        if use_mtp:
+            draft = head
             args += [
                 "-md",
-                mtp["head"],
+                head,
                 "--spec-type",
                 "draft-mtp",
                 "--spec-draft-n-max",
@@ -382,9 +412,9 @@ def auto_plan(
                 "--no-spec-draft-backend-sampling",
                 "-cmoed",
             ]
-            env.update({"FLE_MTP_VOCAB": mtp["vocab"], "FLE_MTP_VOCAB_N": "32768", "FLE_MTP_PENALTIES": "1"})
-        elif mtp.get("supported") and launch.get("mtp", True):
-            notes.append("MTP is off: the MTP head or its vocabulary file is not downloaded (Models page).")
+            env.update({"FLE_MTP_VOCAB": vocab, "FLE_MTP_VOCAB_N": "32768", "FLE_MTP_PENALTIES": "1"})
+        if ngram:
+            args += ["--spec-type", ngram]
         pinned_bytes = expert if pinned == "on" else 0.0
     else:
         args += ["-fit", "on"]

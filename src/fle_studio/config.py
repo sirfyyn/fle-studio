@@ -41,6 +41,7 @@ DEFAULTS: dict[str, Any] = {
         "context": 32768,
         "parallel": 1,  # requests served at the same time (each gets context / parallel tokens)
         "mtp": True,  # use the MTP head when the FLE engine and the head file are there
+        "spec": "auto",  # speculation: auto, none, mtp, ngram-mod or ngram-simple
         "gpu_cache_mib": 0,  # GPU expert cache budget; 0 = size it from free GPU memory
         "gpus": "auto",  # auto (the largest NVIDIA GPU) | all | a list like "0" or "0,1" (nvidia-smi numbering)
         "threads": 0,  # 0 = one thread per physical core

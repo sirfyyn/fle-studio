@@ -182,6 +182,7 @@ class Bench:
         body = {
             "messages": [{"role": "user", "content": test["prompt"]}],
             "max_tokens": test["max_tokens"],
+            "temperature": 0,
             "stream": True,
             "seed": seed,
             "cache_prompt": False,
@@ -196,6 +197,7 @@ class Bench:
         t0 = time.perf_counter()
         first = None
         timings: dict[str, Any] = {}
+        finish_reason = ""
         with urllib.request.urlopen(req, timeout=600) as r:
             for raw in r:
                 if cancel.is_set():
@@ -213,6 +215,9 @@ class Bench:
                 delta = (chunk.get("choices") or [{}])[0].get("delta") or {}
                 if first is None and (delta.get("content") or delta.get("reasoning_content")):
                     first = time.perf_counter()
+                finish = (chunk.get("choices") or [{}])[0].get("finish_reason") or ""
+                if finish:
+                    finish_reason = finish
                 if chunk.get("timings"):
                     timings = chunk["timings"]
         wall = time.perf_counter() - t0
@@ -225,6 +230,8 @@ class Bench:
             "ttft_ms": round((first - t0) * 1000) if first else None,
             "accept": round(timings.get("draft_n_accepted", 0) / draft_n, 4) if draft_n else None,
             "wall_s": round(wall, 2),
+            "finish_reason": finish_reason,
+            "truncated": finish_reason == "length",
         }
 
     def measure(
