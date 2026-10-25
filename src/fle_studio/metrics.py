@@ -37,9 +37,17 @@ def parse_prometheus(text: str) -> dict[str, float]:
 
 
 class Live:
-    def __init__(self, engine: Engine, interval: float = 1.0) -> None:
+    """The sampler runs only while somebody watches: a request for /api/live or /api/engine counts as a look, and it
+    keeps the sampler going for `watch_seconds` after the last one (a page in a hidden tab asks every few seconds).
+    With no page open nothing is sampled, so an idle FLE Studio next to a busy engine costs no CPU and sends the
+    engine no /metrics and /slots requests."""
+
+    def __init__(self, engine: Engine, interval: float = 1.0, watch_seconds: float = 20.0) -> None:
         self.engine = engine
         self.interval = interval
+        self.watch_seconds = watch_seconds
+        self._seen = 0.0  # time.monotonic() of the last look; 0 = never
+        self._wake = threading.Event()
         self.history: collections.deque[dict[str, Any]] = collections.deque(maxlen=900)
         self.responses: collections.deque[dict[str, Any]] = collections.deque(maxlen=100)
         self.metrics_available: bool | None = None
@@ -75,9 +83,23 @@ class Live:
         with self._lock:
             self.responses.append(entry)
 
+    def touch(self) -> None:
+        """Somebody looks (a page asked for the live data or the engine state)."""
+        self._seen = time.monotonic()
+        self._wake.set()
+
+    def watched(self) -> bool:
+        return self._seen > 0 and time.monotonic() - self._seen < self.watch_seconds
+
     def _loop(self) -> None:
         tick = 0
         while True:
+            if not self.watched():
+                self._wake.clear()
+                if not self.watched():  # a look between the check and the clear is not lost
+                    self._wake.wait()
+                    tick = 0  # the counters kept running meanwhile; the first rate covers the time not watched
+                continue
             t0 = time.monotonic()  # not the wall clock: a clock that steps back must not stretch the pause
             try:
                 self._sample(tick)
@@ -190,6 +212,7 @@ class Live:
         return out
 
     def snapshot(self, since: float = 0.0) -> dict[str, Any]:
+        self.touch()
         with self._lock:
             hist = [h for h in self.history if h["t"] > since] if since else list(self.history)
             last_resp = self.responses[-1] if self.responses else None

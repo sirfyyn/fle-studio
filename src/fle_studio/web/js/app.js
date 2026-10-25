@@ -69,11 +69,15 @@ const ACTIVE_DL = new Set(["queued", "downloading", "verifying", "installing"]);
 async function tick() {
   try {
     const eng = await get("/api/engine");
-    const key = JSON.stringify([eng.state, eng.phase, eng.error, eng.load, eng.model?.id, eng.n_ctx, eng.log_seq,
+    // The log has its own topic: a new log line must not make every page ask for the model, its capabilities and the
+    // launch preview again (a busy engine prints several lines a second).
+    const key = JSON.stringify([eng.state, eng.phase, eng.error, eng.load, eng.model?.id, eng.n_ctx,
       eng.cache, eng.accept_logged, eng.reachable]);
     const stateChanged = eng.state !== store.engine?.state;
+    const logMoved = eng.log_seq !== store.engine?.log_seq;
     store.engine = eng;
     if (key !== lastEngineKey) { lastEngineKey = key; emit("engine"); }
+    if (logMoved) emit("enginelog");
     if (stateChanged) renderEngineCard();
 
     const live = await get(`/api/live?since=${lastLive}`);

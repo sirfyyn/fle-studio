@@ -876,6 +876,11 @@ class Handler(BaseHTTPRequestHandler):
                 rec.done(resp.status, data)
             self._send(resp.status, data, ctype)
             return
+        # A stream is read for the Live chat, for Capture and for the speed of the last answer only when someone looks
+        # at them: Capture is on, or a page is open. Otherwise the bytes are just passed on.
+        if rec and not (self.studio.config.get("capture.enabled") or self.studio.live.watched()):
+            rec = None
+        watch = rec is not None or self.studio.live.watched()
         self.send_response(resp.status)
         self.send_header("Content-Type", ctype)
         self.send_header("Cache-Control", "no-cache")
@@ -891,7 +896,8 @@ class Handler(BaseHTTPRequestHandler):
                     break
                 self.wfile.write(chunk)
                 self.wfile.flush()
-                tail = (tail + chunk)[-262144:]
+                if watch:
+                    tail = (tail + chunk)[-262144:]
                 if rec:
                     rec.feed(chunk)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
@@ -900,7 +906,8 @@ class Handler(BaseHTTPRequestHandler):
             conn.close()
             if rec:
                 rec.done(resp.status)
-        self._record_stream(tail)
+        if watch:
+            self._record_stream(tail)
 
     def _record(self, data: bytes) -> None:
         try:
@@ -1047,6 +1054,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(200, {"ok": True})
 
     def api_engine_status(self, query: dict[str, str]) -> None:
+        self.studio.live.touch()
         self.send_json(200, self.studio.engine.status())
 
     def api_engine_log(self, query: dict[str, str]) -> None:

@@ -164,7 +164,9 @@ def test_star_data_is_a_chain_up_to_the_message() -> None:
 
 @pytest.fixture
 def stack(tmp_path: Path) -> Iterator[Stack]:
-    yield from make_stack(tmp_path)
+    for s in make_stack(tmp_path):
+        s.studio.live.touch()  # a page is open: streams are read for the Live chat
+        yield s
 
 
 BODY = {"messages": [{"role": "user", "content": "Say hello in one short sentence."}], "max_tokens": 16}
@@ -196,6 +198,17 @@ def test_a_streamed_request_and_its_follow_up_make_one_thread(stack: Stack) -> N
     assert stack.chat(follow)[0] == 200
     (thread,) = live_threads(stack)
     assert len(thread["messages"]) == 4 and thread["messages"][2]["content"] == "And again?"
+
+
+def test_a_stream_is_not_read_when_nobody_looks(stack: Stack) -> None:
+    stack.studio.live.watch_seconds = 0.0  # no page is open and Capture is off
+    status, _, raw = stack.call("POST", "/v1/chat/completions", {**BODY, "stream": True})
+    assert status == 200 and b"data:" in raw, "the stream itself is passed on whole"
+    assert live_threads(stack) == []
+    stack.studio.live.watch_seconds = 20.0
+    stack.studio.live.touch()
+    stack.call("POST", "/v1/chat/completions", {**BODY, "stream": True})
+    assert len(live_threads(stack)) == 1
 
 
 def test_nothing_goes_to_the_chat_archive_until_it_is_starred(stack: Stack) -> None:
