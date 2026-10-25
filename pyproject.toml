@@ -36,11 +36,21 @@ Report = "https://sirfyyn.github.io/FastLocalExperts/"
 [project.scripts]
 fle-studio = "fle_studio.__main__:main"
 
+# The plugins that ship in this package (docs/PLUGINS.md): on by default, one by one off in Settings. They are
+# separate packages next to the core, and they find the core through the same entry point as everybody's plugins.
+# FLE_STUDIO_NO_BUNDLED=1 leaves them out.
+[project.entry-points."fle_studio.plugins"]
+forge = "fle_studio_forge:register"
+recorder = "fle_studio_recorder:register"
+remote = "fle_studio_remote:register"
+switch = "fle_studio_switch:register"
+updater = "fle_studio_updater:register"
+
 [tool.hatch.version]
 path = "src/fle_studio/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/fle_studio"]
+packages = ["src/fle_studio", "src/fle_studio_forge", "src/fle_studio_recorder", "src/fle_studio_remote", "src/fle_studio_switch", "src/fle_studio_updater"]
 
 [tool.ruff]
 line-length = 120
@@ -51,7 +61,7 @@ select = ["E", "F", "W", "I", "B", "UP"]
 
 [tool.ruff.lint.isort]
 # Fixed here, so the import order does not depend on the directory ruff runs from.
-known-first-party = ["fle_studio"]
+known-first-party = ["fle_studio", "fle_studio_forge", "fle_studio_recorder", "fle_studio_remote", "fle_studio_switch", "fle_studio_updater"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

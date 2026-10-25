@@ -1,5 +1,7 @@
 # Forge: build your own quant
 
+Forge is a plugin that comes with FLE Studio and is on by default (Settings → Plugins turns it off; [PLUGINS.md](PLUGINS.md)).
+
 Forge is the page of FLE Studio that builds a model file for you. It does not contain a quantizer of its own: it
 rearranges GGUF files itself (hybrids, pruning) and drives the command-line tools of your llama.cpp build for
 everything else (`llama-quantize`, `llama-imatrix`, `llama-perplexity`, and in FLE builds `llama-fle-reap`). It runs
@@ -85,7 +87,7 @@ kept its finished matrix step and produced the same SHA-256 as a clean run (`lla
 ## Calibration text
 
 A mixture-of-experts model needs plenty of varied text: a short one never reaches many experts. Studio ships a
-mixed text of about 1 MB (`src/fle_studio/forge/corpus/`): English prose (Alice, Pride and Prejudice, Sherlock Holmes),
+mixed text of about 1 MB (`src/fle_studio_forge/corpus/`): English prose (Alice, Pride and Prejudice, Sherlock Holmes),
 German prose (Kafka, Goethe, Fontane), Python and JavaScript, question-and-answer dialogue in both languages, and
 tables and numbers. Every file is public domain, CC0 or MIT, with origin, license, retrieval date and SHA-256 in
 `corpus/SOURCES.md`; `scripts/make_corpus.py` rebuilds it. Forge uses it as the default. 85 % of its paragraphs form

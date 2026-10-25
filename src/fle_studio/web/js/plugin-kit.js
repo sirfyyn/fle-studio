@@ -2,7 +2,7 @@
 // mount(main, kit) and should use only what is here: this list stays stable within one KIT_VERSION.
 
 import { del, get, post, put } from "./api.js";
-import { navigate, on, store, topbar } from "./app.js";
+import { navigate, on, settingsSections, store, topbar } from "./app.js";
 import { clear, confirmDialog, fmt, h, icon, toast } from "./ui.js";
 
 export const KIT_VERSION = 1;
@@ -27,5 +27,9 @@ export function makeKit(plugin) {
     h, clear, icon, fmt, toast, confirmDialog, topbar, navigate,
     theme: () => store.state?.settings?.theme || "system",
     on, // on("state", fn) and friends; returns the function that unsubscribes
+    // For a boot script (ctx.boot): a card in Settings. build(settings, ui) returns an element; ui is {section, field,
+    // toggle, save, render}: section(icon, title, sub, ...body) makes the card, save(patch) stores settings. order puts it
+    // between the core sections (10 Appearance, 20 Models, 30 Chat, 40 Tools, 60 Hugging Face, 70 Access, 100 Plugins).
+    settingsSection: (order, build) => { settingsSections.push({ id: plugin.id, order, build }); },
   });
 }

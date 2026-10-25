@@ -25,6 +25,7 @@ import sys
 import threading
 import time
 import traceback
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from pathlib import Path
@@ -34,26 +35,21 @@ from urllib.parse import parse_qs, urlparse
 from . import (
     __version__,
     bench,
-    capture,
     catalog,
     chat_api,
     chats,
     hf,
     launch,
-    livechat,
     mcp_api,
     net,
     paths,
     planview,
     plugins,
     quality,
-    remote,
     service,
     system,
-    tlsgen,
     tuner,
     tuning_api,
-    updates,
 )
 from .cachewatch import CacheWatch
 from .chats import Chats
@@ -61,12 +57,8 @@ from .config import Config
 from .downloads import Downloads
 from .engine import Engine, EngineBusy
 from .engines import Engines, variants
-from .forge import plan as forge_plan
-from .forge import recipe as recipes
-from .forge.api import Forge
 from .library import Library
 from .metrics import Live
-from .switch import Switch
 
 LOOPBACK_NAMES = {"127.0.0.1", "::1", "localhost"}
 MAX_JSON = 4 * 1024 * 1024
@@ -120,27 +112,11 @@ class Studio:
         self.library = Library(lambda: self.config.models_dir, self.data_dir)
         self.profiles = launch.Profiles(self.data_dir)
         self.engine = Engine(self.data_dir)
-        self.switch = Switch(lambda: self.config.get("switch_url"))
         self.engine.restart_on_crash = bool(self.config.get("launch.restart_on_crash"))
         self.engine.on_load_failure = self.load_failure_fallback
         self.live = Live(self.engine)
         self.chats = Chats(self.data_dir)
-        self.livechat = livechat.LiveChat()
-        self.capture = capture.Capture(
-            self.data_dir,
-            lambda: self.config.get("capture.enabled"),
-            lambda: self.config.get("capture.max_mb"),
-            self.livechat,
-        )
         self.bench = bench.Bench(self.engine, self.data_dir)
-        self.forge = Forge(
-            self.data_dir,
-            self.config.get,
-            lambda: self.config.models_dir,
-            self.forge_engine_paths,
-            self.library,
-            self.profiles,
-        )
         self.quality = quality.Quality(self.data_dir)
         self.cache = CacheWatch()
         self.engine.line_listeners.append(self.cache.feed)
@@ -156,11 +132,14 @@ class Studio:
         )
         self.token = secrets.token_urlsafe(24)
         self.lan = False
-        self.tls_fingerprint = ""  # host mode: SHA-256 of the certificate the server shows (see remote.py)
+        self.tls_fingerprint = ""  # host mode: SHA-256 of the certificate the server shows (Remote access plugin)
         self.listen: dict[str, Any] = {}
+        # Set by the launcher (__main__.py): ends this process and runs the given command line again (None: just end).
+        # The update plugin uses it after an update.
+        self.restart_process: Callable[[list[str] | None], None] | None = None
         self._sys: tuple[float, dict[str, Any] | None] = (0.0, None)
         self._sys_lock = threading.Lock()
-        self.plugins = plugins.Plugins(self.data_dir, __version__)  # extra pages and routes, see plugins.py
+        self.plugins = plugins.Plugins(self.data_dir, __version__, studio=self)  # see plugins.py
         self.plugins.start()
 
     # ------------------------------------------------------------------------------------------ helpers
@@ -172,14 +151,6 @@ class Studio:
                 cached = system.info(self.config.models_dir)
                 self._sys = (time.time(), cached)
             return cached
-
-    def forge_engine_paths(self) -> list[tuple[str, str]]:
-        """The llama-server files whose folders are searched for the Forge tools."""
-        out = [("engine", e["path"]) for e in self.engines.installed()]
-        custom = self.config.get("engine").get("custom_path")
-        if custom:
-            out.append(("custom engine", custom))
-        return out
 
     def session_cookie(self) -> str:
         key = self.config.get("access_key")
@@ -513,8 +484,6 @@ ROUTES: list[tuple[str, re.Pattern[str], str]] = [
         ("POST", r"^/api/engine/stop$", "engine_stop"),
         ("POST", r"^/api/engine/attach$", "engine_attach"),
         ("POST", r"^/api/engine/service/(?P<action>start|stop|restart)$", "engine_service"),
-        ("GET", r"^/api/engine/switch$", "engine_switch_status"),
-        ("POST", r"^/api/engine/switch$", "engine_switch"),
         ("GET", r"^/api/live$", "live"),
         ("GET", r"^/api/settings$", "settings"),
         ("POST", r"^/api/settings$", "settings_update"),
@@ -530,29 +499,6 @@ ROUTES: list[tuple[str, re.Pattern[str], str]] = [
         ("POST", r"^/api/bench/start$", "bench_start"),
         ("POST", r"^/api/bench/cancel$", "bench_cancel"),
         ("POST", r"^/api/bench/(?P<id>[0-9a-f]+)/delete$", "bench_delete"),
-        ("GET", r"^/api/forge$", "forge"),
-        ("POST", r"^/api/forge/tools$", "forge_tools"),
-        ("POST", r"^/api/forge/inspect$", "forge_inspect"),
-        ("POST", r"^/api/forge/calculate$", "forge_calculate"),
-        ("POST", r"^/api/forge/corpus$", "forge_corpus"),
-        ("POST", r"^/api/forge/recipe/import$", "forge_recipe_import"),
-        ("GET", r"^/api/livechat$", "live_chat"),
-        ("DELETE", r"^/api/livechat$", "live_chat_clear"),
-        ("DELETE", r"^/api/livechat/(?P<id>[0-9a-f]{12})$", "live_chat_delete"),
-        ("POST", r"^/api/livechat/(?P<id>[0-9a-f]{12})/star$", "live_chat_star"),
-        ("GET", r"^/api/capture$", "capture"),
-        ("POST", r"^/api/capture/clear$", "capture_clear"),
-        ("POST", r"^/api/forge/recipe/share$", "forge_recipe_share"),
-        ("POST", r"^/api/forge/check$", "forge_check"),
-        ("POST", r"^/api/forge/jobs$", "forge_job_create"),
-        ("GET", r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})$", "forge_job"),
-        ("GET", r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})/log$", "forge_job_log"),
-        ("GET", r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})/recipe$", "forge_job_recipe"),
-        (
-            "POST",
-            r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})/(?P<action>cancel|resume|delete|publish)$",
-            "forge_job_action",
-        ),
     ]
 ]
 
@@ -573,7 +519,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = f"FLEStudio/{__version__}"
     protocol_version = "HTTP/1.1"
     studio: Studio  # set on the subclass made by make_server
-    client: dict[str, Any] | None = None  # the paired client of this request (remote.py), if it came with a token
+    client: dict[str, Any] | None = None  # the paired client of this request (Remote access plugin), if any
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002 - signature from the base class
         return  # quiet; the engine log is what users read
@@ -652,9 +598,10 @@ class Handler(BaseHTTPRequestHandler):
         return name in allowed or any(name.startswith(a + ".") for a in allowed if a)
 
     def _authed(self) -> bool:
-        paired = remote.authenticate(self)  # a client token counts, also from loopback (an SSH tunnel)
-        if paired is not None:
-            return paired
+        for check in self.studio.plugins.hooks("request_auth"):
+            paired = check(self)  # a client token counts, also from loopback (an SSH tunnel)
+            if paired is not None:
+                return bool(paired)
         if _is_loopback(self.client_address[0]):
             return True
         expected = self.studio.session_cookie()
@@ -673,15 +620,15 @@ class Handler(BaseHTTPRequestHandler):
         if not self._host_ok():
             self._send(403, b"FLE Studio: this host name is not allowed.", "text/plain; charset=utf-8")
             return False
-        if path in ("/login", "/api/remote/pair"):  # pairing proves itself with the code, see remote.py
-            return True
+        if path == "/login" or any(f(path) for f in self.studio.plugins.hooks("request_open")):
+            return True  # (pairing proves itself with its code)
         if not self._authed():
             if path.startswith(("/api/", "/v1/")):
                 self.send_json(401, {"error": {"message": "Sign in with the access key", "type": "auth"}})
             else:
                 self._send(303, b"", "text/plain", {"Location": "/login"})
             return False
-        if self.client is not None and not remote.enforce(self, path):
+        if self.client is not None and not all(f(self, path) for f in self.studio.plugins.hooks("request_enforce")):
             return False
         if self.command in ("POST", "PUT", "DELETE", "PATCH"):
             origin = self.headers.get("Origin")
@@ -717,8 +664,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if not self._guard(path):
                 return
-            if path.startswith("/h/"):  # a host this Studio is a client of, see remote.py
-                remote.forward(self, url)
+            if path.startswith("/h/"):  # a host this Studio is a client of (Remote access plugin)
+                if not any(f(self, url) for f in self.studio.plugins.hooks("forward")):
+                    raise ApiError(404, "Not found")
                 return
             if path.startswith("/v1/"):
                 self.proxy()
@@ -742,6 +690,10 @@ class Handler(BaseHTTPRequestHandler):
                     status, data = func(self.studio, query, self.read_json, **m.groupdict())
                     self.send_json(status, data)
                     return
+            if path.startswith("/api/") and self.studio.plugins.handle_raw(
+                self, self.command, path, {k: v[-1] for k, v in parse_qs(url.query).items()}
+            ):  # the routes that the plugins of FLE Studio's own package add to /api
+                return
             if self.command in ("GET", "HEAD") and not path.startswith("/api/"):
                 self.static(path)
                 return
@@ -846,7 +798,11 @@ class Handler(BaseHTTPRequestHandler):
             return
         body = self._body(MAX_PROXY) or None
         chat_api.screen_proxy_body(self.path, body)  # tools and a forced answer format must not share a request
-        rec = self.studio.capture.begin(self.path, body)
+        rec = None  # a recorder of the request, from a plugin (hook proxy_record: the recorder plugin)
+        for make in self.studio.plugins.hooks("proxy_record"):
+            rec = make(self.path, body)
+            if rec is not None:
+                break
         u = urlparse(base)
         if u.scheme == "https":
             conn: http.client.HTTPConnection = http.client.HTTPSConnection(
@@ -876,6 +832,12 @@ class Handler(BaseHTTPRequestHandler):
                 rec.done(resp.status, data)
             self._send(resp.status, data, ctype)
             return
+        # A stream is read only when someone looks at what comes of it: a recorder that wants it (Capture is on, or a
+        # page may show the Live chat), or a page that shows the speed of the last answer. Otherwise the bytes are
+        # just passed on.
+        if rec is not None and not rec.wants_stream():
+            rec = None
+        read_here = rec is None and self.studio.live.watched()  # no recorder reads it: the tail gives the speed
         self.send_response(resp.status)
         self.send_header("Content-Type", ctype)
         self.send_header("Cache-Control", "no-cache")
@@ -891,16 +853,20 @@ class Handler(BaseHTTPRequestHandler):
                     break
                 self.wfile.write(chunk)
                 self.wfile.flush()
-                tail = (tail + chunk)[-262144:]
-                if rec:
+                if read_here:
+                    tail = (tail + chunk)[-262144:]
+                if rec is not None:
                     rec.feed(chunk)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
             pass  # the browser stopped reading (Stop button); closing our side cancels the generation
         finally:
             conn.close()
-            if rec:
+            if rec is not None:
                 rec.done(resp.status)
-        self._record_stream(tail)
+        if rec is not None and rec.timings:
+            self.studio.live.record_response(rec.timings, rec.usage)  # the recorder has read the stream already
+        elif read_here:
+            self._record_stream(tail)
 
     def _record(self, data: bytes) -> None:
         try:
@@ -924,39 +890,6 @@ class Handler(BaseHTTPRequestHandler):
 
     def api_ping(self, query: dict[str, str]) -> None:
         self.send_json(200, {"app": "fle-studio", "version": __version__})
-
-    def api_live_chat(self, query: dict[str, str]) -> None:
-        if query.get("summary"):
-            self.send_json(200, self.studio.livechat.summary())
-        else:
-            self.send_json(200, self.studio.livechat.snapshot())
-
-    def api_live_chat_clear(self, query: dict[str, str]) -> None:
-        self.send_json(200, {"deleted": self.studio.livechat.clear()})
-
-    def api_live_chat_delete(self, query: dict[str, str], id: str) -> None:  # noqa: A002
-        if not self.studio.livechat.delete(id):
-            raise ApiError(404, "That conversation is already gone")
-        self.send_json(200, {"ok": True})
-
-    def api_live_chat_star(self, query: dict[str, str], id: str) -> None:  # noqa: A002
-        """Copy a Live conversation (up to one message, if the body names it) into the chat archive as a favorite."""
-        message = self.read_json().get("message")
-        try:
-            data = self.studio.livechat.star_data(id, str(message) if message else None)
-        except KeyError:
-            raise ApiError(404, "That conversation or message is already gone") from None
-        saved = self.studio.chats.save(None, data)
-        self.studio.livechat.mark_starred(id)
-        self.send_json(200, saved)
-
-    def api_capture(self, query: dict[str, str]) -> None:
-        self.send_json(200, self.studio.capture.status())
-
-    def api_capture_clear(self, query: dict[str, str]) -> None:
-        if self.read_json().get("confirm") is not True:
-            raise ApiError(400, 'Send {"confirm": true} to delete all captured files')
-        self.send_json(200, {"deleted": self.studio.capture.clear()})
 
     def api_state(self, query: dict[str, str]) -> None:
         self.send_json(200, self.studio.state())
@@ -1047,6 +980,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(200, {"ok": True})
 
     def api_engine_status(self, query: dict[str, str]) -> None:
+        self.studio.live.touch()
         self.send_json(200, self.studio.engine.status())
 
     def api_engine_log(self, query: dict[str, str]) -> None:
@@ -1090,18 +1024,6 @@ class Handler(BaseHTTPRequestHandler):
         status = self.studio.engine.attach(url, self.studio.config.get("attach_key"), unit)
         self.studio.config.update({"attach_auto": True})
         self.send_json(200, status)
-
-    def api_engine_switch_status(self, query: dict[str, str]) -> None:
-        self.send_json(200, self.studio.switch.status())
-
-    def api_engine_switch(self, query: dict[str, str]) -> None:
-        body = self.read_json()
-        try:
-            self.send_json(200, self.studio.switch.start(str(body.get("target") or "")))
-        except ValueError as e:
-            self.send_json(400, {"error": {"message": str(e)}})
-        except RuntimeError as e:
-            self.send_json(409, {"error": {"message": str(e)}})
 
     def api_engine_service(self, query: dict[str, str], action: str) -> None:
         self.send_json(200, self.studio.engine.service_action(action))
@@ -1204,90 +1126,9 @@ class Handler(BaseHTTPRequestHandler):
         self.studio.bench.delete(id)
         self.send_json(200, {"ok": True})
 
-    # ------------------------------------------------------------------------------------------ Forge
-
-    def api_forge(self, query: dict[str, str]) -> None:
-        self.send_json(200, self.studio.forge.overview())
-
-    def api_forge_tools(self, query: dict[str, str]) -> None:
-        self.studio.config.update({"forge": {"tools_dir": str(self.read_json().get("tools_dir") or "")}})
-        self.send_json(200, self.studio.forge.overview())
-
-    def api_forge_inspect(self, query: dict[str, str]) -> None:
-        self.send_json(200, self.studio.forge.inspect(str(self.read_json().get("path") or "")))
-
-    def api_forge_calculate(self, query: dict[str, str]) -> None:
-        try:
-            self.send_json(200, self.studio.forge.calculate(self.read_json()))
-        except forge_plan.PlanError as exc:
-            raise ApiError(400, str(exc)) from None
-
-    def api_forge_corpus(self, query: dict[str, str]) -> None:
-        self.send_json(200, self.studio.forge.make_corpus(self.read_json()))
-
-    def api_forge_recipe_import(self, query: dict[str, str]) -> None:
-        body = self.read_json()
-        self.send_json(200, self.studio.forge.import_recipe(json.dumps(body.get("recipe") or body)))
-
-    def api_forge_recipe_share(self, query: dict[str, str]) -> None:
-        try:
-            self.send_json(200, {"recipe": recipes.portable(self.read_json().get("recipe") or {})})
-        except recipes.RecipeError as exc:
-            raise ApiError(400, str(exc)) from None
-
-    def api_forge_check(self, query: dict[str, str]) -> None:
-        try:
-            self.send_json(200, self.studio.forge.jobs.check(self.read_json().get("recipe") or {}))
-        except recipes.RecipeError as exc:
-            raise ApiError(400, str(exc)) from None
-
-    def api_forge_job_create(self, query: dict[str, str]) -> None:
-        try:
-            self.send_json(200, self.studio.forge.jobs.create(self.read_json().get("recipe") or {}))
-        except recipes.RecipeError as exc:
-            raise ApiError(400, str(exc)) from None
-        except RuntimeError as exc:
-            raise ApiError(409, str(exc)) from None
-
-    def api_forge_job(self, query: dict[str, str], id: str) -> None:  # noqa: A002
-        self.send_json(200, self.studio.forge.jobs.get(id))
-
-    def api_forge_job_log(self, query: dict[str, str], id: str) -> None:  # noqa: A002
-        self.send_json(200, self.studio.forge.jobs.log_since(id, int(query.get("since") or 0)))
-
-    def api_forge_job_recipe(self, query: dict[str, str], id: str) -> None:  # noqa: A002
-        self.send_json(200, self.studio.forge.recipe_of(id))
-
-    def api_forge_job_action(self, query: dict[str, str], id: str, action: str) -> None:  # noqa: A002
-        forge = self.studio.forge
-        try:
-            if action == "cancel":
-                self.send_json(200, forge.jobs.cancel(id))
-            elif action == "resume":
-                self.send_json(200, forge.jobs.resume(id))
-            elif action == "delete":
-                forge.jobs.delete(id, keep_model=not self.read_json().get("delete_model"))
-                self.send_json(200, {"ok": True})
-            else:
-                info = self.studio.sysinfo()
-                gpus = info.get("gpus") or []
-                installed = {e["kind"] for e in self.studio.engines.installed()}
-                engine = "fle" if "fle" in installed else "upstream"
-                self.send_json(
-                    200, forge.publish(id, engine=engine, gpu=bool(gpus), unified=any(g.get("unified") for g in gpus))
-                )
-        except RuntimeError as exc:
-            raise ApiError(409, str(exc)) from None
-
 
 chat_api.install(Handler, ROUTES, ApiError)  # attachments, tools, chat search/export/import (chat_api.py)
 mcp_api.install(Handler, ROUTES, ApiError)  # MCP sign-in (OAuth) and MCP Apps frames (mcp_api.py)
-
-
-updates.install(Handler, ROUTES, ApiError)  # /api/update*: the update check and the one-click update (updates.py)
-
-
-remote.install(Handler, ROUTES, ApiError)  # /api/remote* (host side), /api/hosts* (client side), /h/<id>/ pass-through
 
 
 plugins.install(Handler, ROUTES, ApiError)  # /api/plugins*: the list and turning plugins on and off (plugins.py)
@@ -1314,7 +1155,8 @@ def make_server(studio: Studio, host: str, port: int, tries: int = 20, tls: bool
     """Bind to host:port, or the next free port above it.
 
     `tls`: None is automatic: a server that listens beyond this machine (host mode) speaks TLS with its own
-    certificate (settings server.tls, `--no-tls`), a loopback one does not. True forces it, False turns it off."""
+    certificate (settings server.tls, `--no-tls`), a loopback one does not. True forces it, False turns it off.
+    TLS is the Remote access plugin's work: without it the server speaks plain http (studio.listen["tls"] says)."""
     handler = type("BoundHandler", (Handler,), {"studio": studio})
     studio.lan = host not in ("127.0.0.1", "localhost", "::1")
     if tls is None:
@@ -1329,12 +1171,13 @@ def make_server(studio: Studio, host: str, port: int, tries: int = 20, tls: bool
             last = exc
             continue
         studio.tls_fingerprint = ""
-        if tls:
-            cert, key, studio.tls_fingerprint = tlsgen.ensure(studio.data_dir, remote.host_name(studio))
-            # The handshake happens in the thread of the connection, so a slow client cannot hold up the others.
-            server.socket = tlsgen.server_context(cert, key).wrap_socket(
-                server.socket, server_side=True, do_handshake_on_connect=False
-            )
-        studio.listen = {"host": host, "port": int(server.server_address[1]), "tls": bool(tls)}
+        wrapped = None
+        if tls:  # TLS comes from the Remote access plugin; without it the server speaks plain http
+            for wrap in studio.plugins.hooks("tls_wrap"):
+                wrapped = wrap(studio, server.socket, host)
+                if wrapped is not None:
+                    server.socket, studio.tls_fingerprint = wrapped
+                    break
+        studio.listen = {"host": host, "port": int(server.server_address[1]), "tls": wrapped is not None}
         return server
     raise OSError(f"No free port from {port} to {port + tries - 1}: {last}")

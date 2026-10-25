@@ -843,9 +843,9 @@ export function mount(main) {
   let lastState = store.engine?.state;
   unsub.push(on("state", renderAll));
   let lastUnit = store.engine?.service?.unit;
+  unsub.push(on("enginelog", () => { if (store.engine?.log_seq !== logSeq) fetchLog(); }));
   unsub.push(on("engine", () => {
     renderStatus();
-    if (store.engine?.log_seq !== logSeq) fetchLog();
     if (store.engine?.state !== lastState || store.engine?.service?.unit !== lastUnit) {
       lastState = store.engine?.state;
       lastUnit = store.engine?.service?.unit;

@@ -85,11 +85,46 @@ The kit (`KIT_VERSION` 1) holds what a page should use, and stays stable within 
 FLE Studio's style sheet applies to plugin pages, so classes like `page`, `page-inner`, `card`, `btn`, `pill` and `row`
 look as they do everywhere else. A plugin may add its own style sheet with a `<link>` to `kit.asset("style.css")`.
 
+## Plugins that ship with FLE Studio
+
+Parts of FLE Studio that not everybody needs are plugins of FLE Studio's own package, so the core stays small:
+
+| id | what it is |
+| --- | --- |
+| `forge` | the Forge page and its `/api/forge` routes: build your own FLE quant (docs/FORGE.md) |
+| `updater` | the daily look for a newer FLE Studio or engine, the notice and the one-click update |
+| `recorder` | the Live page (answers through `/v1` as a conversation in memory) and Capture (answers as files) |
+| `remote` | Remote access (docs/REMOTE.md): hosts and clients, pairing, TLS, the host chooser in the sidebar |
+| `switch` | the model switcher next to an attached service, in the chat's model menu |
+
+They are separate Python packages (`fle_studio_<id>`) in the same wheel, registered through the entry point group
+`fle_studio.plugins` of the distribution `fle-studio` like any plugin. They are **on by default**; Settings → Plugins
+turns each one off (the page reloads), and turning it on again brings it back. `plugins.json` then holds a
+`"disabled"` list next to `"enabled"`. With the environment variable `FLE_STUDIO_NO_BUNDLED=1` they are not even
+looked for: FLE Studio runs with its core alone, and nothing in the core breaks for their absence (the CI runs the core
+tests like this).
+
+For these plugins the context offers a little more than for the plugins of others. They may change in any release:
+
+| | |
+| --- | --- |
+| `ctx.studio` | the running `Studio` (settings, engine, library …) |
+| `ctx.api(method, pattern, fn)` | a route in FLE Studio's own `/api` space; `fn(handler, query, **groups)` answers with `handler.send_json(...)` |
+| `ctx.boot("boot.js")` | a script that runs on every page when it starts: `export function init(kit)`; it adds Settings sections (`kit.settingsSection`), model menu entries (`modelMenuProviders` in app.js), sidebar notices |
+| `ctx.page(title, icon, script, path="/forge")` | a page at a path of its own |
+| `ctx.describe(title, summary)` | the name and a line for the list in Settings |
+| `ctx.hook(name, fn)` | take part in something the core does at a named point: `proxy_record` (a recorder for a request), `request_auth`, `request_open`, `request_enforce`, `forward` (who may ask, and the pass-through to another machine), `tls_wrap` (TLS on the listening socket) and `cli` (command line events); the list with arguments is `HOOKS` in `plugins.py` |
+| `ctx.boot(script, early=True)` | run the boot script before the page asks for the state of FLE Studio; the hosts of Remote access need it (they change where the page's calls go, `transport` in api.js) |
+
+Their scripts may import FLE Studio's own modules (`/js/ui.js`, `/js/api.js`, `/js/app.js`); the scripts of other
+plugins use the kit.
+
 ## Safety
 
 - **Only installed packages.** FLE Studio loads nothing from the network or from a folder.
-- **Off until turned on.** A plugin runs inside FLE Studio with its rights. Each one is turned on by hand in Settings;
-  the list of plugins that are on lives in `plugins.json` in the data folder.
+- **Off until turned on.** A plugin runs inside FLE Studio with its rights. Each plugin of someone else is turned on
+  by hand in Settings; the list of plugins that are on lives in `plugins.json` in the data folder. (The plugins of
+  FLE Studio's own package are on by default, as above: they are part of the same download.)
 - **Same guard as everything else.** Plugin routes need the access key in LAN mode, and every change (POST, PUT,
   DELETE) needs the page token. Pages get the same Content-Security-Policy as FLE Studio's own: scripts and connections
   only from FLE Studio itself.

@@ -114,7 +114,11 @@ def test_the_stand_in_engine_feeds_the_view_through_the_engine_log(tmp_path: Pat
     try:
         assert start_engine(engine, plan) == "ready"
         chat(engine.base_url, "hello", max_tokens=1000)
-        snap = wait_for(lambda: (s := watch.snapshot(layer=0))["available"]["hot"] and s, 20, "the cache lines")
+        snap = wait_for(
+            lambda: (s := watch.snapshot(layer=0))["available"]["hot"] and s["enabled"]["layers"] == 6 and s,
+            20,
+            "the cache lines of all six layers",
+        )
     finally:
         stop_engine(engine)
     assert snap["available"] == {"overall": True, "layers": True, "hot": True}

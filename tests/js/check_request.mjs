@@ -71,6 +71,38 @@ test("a tool round expands to assistant tool_calls plus tool messages", () => {
   assert.match(out[3].content, /interrupted/);
 });
 
+test("tools go out sorted by name, whatever order they arrive in", () => {
+  const t = (name) => ({ type: "function", function: { name, parameters: { type: "object" } } });
+  const a = req.buildRequest({ nodes: [user("hi")], tools: [t("web_search"), t("calculator"), t("mcp__x")] });
+  const b = req.buildRequest({ nodes: [user("hi")], tools: [t("mcp__x"), t("calculator"), t("web_search")] });
+  assert.deepEqual(a.tools.map((x) => x.function.name), ["calculator", "mcp__x", "web_search"]);
+  assert.equal(JSON.stringify(a.tools), JSON.stringify(b.tools));
+});
+
+test("the last round keeps the tools and forbids the call", () => {
+  const body = req.buildRequest({ nodes: [user("hi")], tools: TOOLS, noMoreTools: true });
+  assert.equal(body.tools.length, 1);
+  assert.equal(body.tool_choice, "none");
+  assert.equal("tool_choice" in req.buildRequest({ nodes: [user("hi")], tools: TOOLS }), false);
+  assert.equal("tool_choice" in req.buildRequest({ nodes: [user("hi")], tools: [], noMoreTools: true }), false);
+});
+
+test("thoughts travel back only after the last user message", () => {
+  const think = (content, reasoning, extra = {}) => ({ role: "assistant", content, reasoning, ...extra });
+  const nodes = [
+    user("old question"), think("old answer", "old thoughts"),
+    user("new question"),
+    think("", "step one", { tool_calls: [{ id: "c1", name: "calculator", arguments: "{}", result: "2" }] }),
+    think("It is 2.", "step two"),
+  ];
+  const out = req.apiMessages(nodes);
+  assert.equal("reasoning_content" in out[1], false, "before the last user message: no thoughts");
+  const asked = out.find((m) => m.tool_calls);
+  assert.equal(asked.reasoning_content, "step one");
+  assert.equal(out[out.length - 1].reasoning_content, "step two");
+  assert.equal("reasoning_content" in req.apiMessages([user("q"), think("a", "")])[1], false, "nothing to send");
+});
+
 test("the token estimate matches the server's rule", () => {
   assert.equal(req.estimateTokens(""), 0);
   assert.equal(req.estimateTokens("a"), 1);
@@ -78,6 +110,39 @@ test("the token estimate matches the server's rule", () => {
   assert.equal(req.estimateTokens("ü".repeat(10)), 9);
   const body = req.buildRequest({ nodes: [user("x".repeat(360))], tools: TOOLS });
   assert.ok(req.estimateRequest(body) > 100);
+});
+
+// ---- the markdown of a streaming answer
+
+const md = await load("md.js");
+const DOC = [
+  "# Title", "", "Intro with **bold** and `code`.", "", "- one", "- two", "", "  more of two", "", "- three", "",
+  "Plain text after the list.", "", "Before the list:", "", "1. first", "", "2. second", "",
+  "```py", "def f():", "", "    return 1", "```", "", "| a | b |", "|---|---|", "| 1 | 2 |", "",
+  "> quoted", "> still", "", "$$", "x = 1", "", "y = 2", "$$", "", "The end.", "",
+].join("\n");
+
+test("a streamed answer renders like the whole text, at every point", () => {
+  const r = md.createStreamRenderer();
+  let shown = "";
+  for (let n = 0; n <= DOC.length; n += 1) {
+    const { reset, fresh, tail } = r.update(DOC.slice(0, n));
+    shown = reset ? fresh : shown + fresh;
+    assert.equal(shown + tail, md.renderMarkdown(DOC.slice(0, n)), `after ${n} characters`);
+    assert.equal(r.html, shown);
+  }
+});
+
+test("finished blocks are rendered once; a text that is not a continuation starts again", () => {
+  const r = md.createStreamRenderer();
+  const first = r.update("one\n\ntwo\n\nthree");
+  assert.match(first.fresh, /one/);
+  const again = r.update("one\n\ntwo\n\nthree and more\n\nfour\n\nfive");
+  assert.doesNotMatch(again.fresh, /one/, "the first block is not rendered again");
+  assert.equal(again.reset, false);
+  const other = r.update("something else\n\nentirely\n\nnew");
+  assert.equal(other.reset, true);
+  assert.equal(other.fresh + other.tail, md.renderMarkdown("something else\n\nentirely\n\nnew"));
 });
 
 // ---- the tree

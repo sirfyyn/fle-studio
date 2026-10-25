@@ -13,7 +13,7 @@ live numbers while the model answers, a model loader and launch profiles. It wor
 - Python standard library only, no runtime dependencies. The installer brings its own Python.
 - MIT licensed.
 
-Status: 0.3, still early (0.x). It is new, so expect rough edges, and please open an issue when you find one.
+Status: 0.4 in development (the last release is 0.3.2), still early (0.x). It is new, so expect rough edges, and please open an issue when you find one.
 
 ## Install
 
@@ -127,9 +127,9 @@ the everyday things (details in [docs/CHAT.md](docs/CHAT.md)):
   sign in (OAuth with PKCE; the token stays in Studio's data folder, mode 0600), older HTTP+SSE servers work as a
   fallback, and MCP Apps (`ui://` pages) show their result in a sandboxed frame in the chat. See
   [docs/MCP.md](docs/MCP.md): MCP: local, remote, sign-in, apps.
-- **Plugins.** Installed Python packages can add a page, static files and JSON routes. Each plugin is off until
-  you turn it on in Settings → Plugins, and it belongs to the machine it is installed on. See
-  [docs/PLUGINS.md](docs/PLUGINS.md).
+- **Plugins.** Installed Python packages can add a page, static files and JSON routes. A plugin you install is off
+  until you turn it on in Settings → Plugins, and it belongs to the machine it is installed on. Parts of Studio are
+  plugins too (see below). See [docs/PLUGINS.md](docs/PLUGINS.md).
 - **Edit, branch, search, export.** Edit a message of yours and the old version stays, with a `< 2 / 3 >` switch.
   Search all chats, export one as JSON or Markdown, import it again.
 
@@ -180,16 +180,10 @@ quantize a full-precision model with `llama-quantize` and an importance matrix, 
 and check the result against the original (KL divergence, top-1 agreement, perplexity ratio). Jobs show progress and
 can be cancelled and resumed; recipes are small JSON files that can be shared; a finished quant is published to the
 library with a start profile. A small calibration text (public domain, CC0 or MIT, listed in
-`src/fle_studio/forge/corpus/SOURCES.md`) ships with Studio. See [docs/FORGE.md](docs/FORGE.md).
+`src/fle_studio_forge/corpus/SOURCES.md`) ships with Studio. See [docs/FORGE.md](docs/FORGE.md).
 
 <!-- Screenshots of Forge, the expert cache and the chat with an MCP app come with the release, made on the real
      hardware (the test screenshots show temporary folders of the test run). -->
-
-**Tools and MCP.** The model can call a calculator, the clock, read files in one folder and search the web, and the
-tools of MCP servers: programs (stdio), web servers (Streamable HTTP, with a **Sign in** button when a server wants
-OAuth, and the older HTTP+SSE as a fallback) and MCP Apps, whose `ui://` pages show a tool's result in a sandboxed frame
-in the chat. Anything that writes or starts a program asks first. See [docs/MCP.md](docs/MCP.md) and
-[docs/CHAT.md](docs/CHAT.md).
 
 **Updates.** About once a day (and with **Check now**) Studio asks GitHub for the latest release and shows a quiet
 card in the sidebar; installs made with uv tool update with one click, others get the command to copy. It can be
@@ -210,6 +204,24 @@ the Expert cache page is described in [docs/EXPERT-CACHE-DATA.md](docs/EXPERT-CA
 
 **Expert cache.** A page that reads the engine's log and shows how well the GPU expert cache works: hit rate over
 time, the budget, and (when the engine prints it) the hot experts per layer.
+
+## Plugins that come with Studio
+
+The core of FLE Studio is the chat, the engine, models, tools and settings. Five parts that not everybody needs are
+plugins in the same package. They are **on by default** and each one can be turned off in Settings → Plugins (the page
+reloads):
+
+| Plugin | What it is |
+| --- | --- |
+| Forge | the Forge page: build your own quant ([docs/FORGE.md](docs/FORGE.md)) |
+| Remote access | host and client mode, pairing and TLS ([docs/REMOTE.md](docs/REMOTE.md)) |
+| Updates | the daily look for a newer Studio or engine, and the one-click update |
+| Recorder | Live (the conversations that pass through `/v1`, in memory) and Capture (as files) |
+| Model switcher | the model menu of a service with a switcher next to it (`switch_url`) |
+
+Without them Studio still chats, loads models, tunes, measures and calls tools; it just has no Forge page, no
+update check, no hosts and no Live page, and a server opened to the network speaks plain http with the access key.
+`FLE_STUDIO_NO_BUNDLED=1` starts Studio without any of them.
 
 ## Engines
 
@@ -292,7 +304,7 @@ confirmation. Chats live on the host, with an optional read-only copy. Details: 
 
 ## What is open
 
-Studio 0.2 is built and tested with stand-in engines. Still to come: runs on real hardware (see
+Studio 0.3 is built and tested with stand-in engines. Still to come: runs on real hardware (see
 [docs/HARDWARE-TESTS.md](docs/HARDWARE-TESTS.md)), a Forge run on a model of the size of the FLE quants, and the
 Windows updater on a real Windows machine.
 
@@ -305,6 +317,7 @@ python -m pip install -e ".[pdf]" pytest ruff==0.17.0
 ruff check src tests
 ruff format --check src tests
 pytest -q
+FLE_STUDIO_NO_BUNDLED=1 pytest -q --ignore=tests/plugins  # the core alone, without the plugins that ship with it
 ```
 
 `tests/fake_llama_server.py` is a stand-in for `llama-server` (standard library only, runs on macOS, Linux and
