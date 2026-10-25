@@ -13,7 +13,7 @@ live numbers while the model answers, a model loader and launch profiles. It wor
 - Python standard library only, no runtime dependencies. The installer brings its own Python.
 - MIT licensed.
 
-Status: 0.4 in development (the last release is 0.3.2), still early (0.x). It is new, so expect rough edges, and please open an issue when you find one.
+Status: 0.4, still early (0.x). It is new, so expect rough edges, and please open an issue when you find one.
 
 ## Install
 
@@ -67,7 +67,7 @@ uv tool upgrade fle-studio          # update (stays on the release you installed
 uv tool uninstall fle-studio        # remove the program (your data stays)
 ```
 
-The installer pins the release it installs (v0.3.2 at the time of writing), and `uv tool upgrade` follows that pin. To
+The installer pins the release it installs (v0.4.0 at the time of writing), and `uv tool upgrade` follows that pin. To
 move to a newer release, run the installer again; it always installs the release named in its own script, or the one
 you set with `FLE_STUDIO_REF`.
 

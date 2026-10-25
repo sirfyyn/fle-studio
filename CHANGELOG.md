@@ -1,8 +1,8 @@
 # Changelog
 
-## [Unreleased]
+## [0.4.0] - 2026-10-25
 
-Version 0.4.0.dev1. Two aims: the prompt cache of llama-server holds across a tool conversation, and the core gets
+Two aims: the prompt cache of llama-server holds across a tool conversation, and the core gets
 smaller because Forge, Remote access, Updates, Live and Capture and the model switcher are plugins now (decision 592:
 shipped by default, removable).
 
