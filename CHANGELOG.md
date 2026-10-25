@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.3.2] - 2026-10-25
 
 - **Speculation menu**: Engine → Advanced disables the Speculation setting, with the reason underneath, when it would
   change nothing: with an upstream llama.cpp engine or a start profile. The plan answer
