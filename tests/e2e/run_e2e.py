@@ -67,6 +67,9 @@ NEEDLE = "zebra-crossing-token"  # sits inside an attached file, to find it with
 FORMAT_FIELDS = ("response_format", "json_schema", "grammar")
 VIEWPORT = {"width": 1440, "height": 900}  # wide enough for the live panel to be open from the start
 WAIT_MS = 30_000  # how long the browser waits for one thing to show up
+# How long the Forge steps wait for a build-side result (the check, the published profile). Slow macOS runners needed
+# more than the 15 s used before; FLE_E2E_FORGE_WAIT (seconds) changes it. A real failure still fails, only later.
+FORGE_WAIT_S = float(os.environ.get("FLE_E2E_FORGE_WAIT", "45"))
 MAX_SHOT_HEIGHT = 6000
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 # Makes the stand-in engine fast and gives the settings a sweet spot, so the tuner and the A/B/A test have something to
@@ -1223,7 +1226,9 @@ class Session:
             page.locator("#fg-eval").fill(str(folder / "evaluation.txt"))
             next_step()
             page.locator("#fg-check").click()
-            self.expect(page.locator("#fg-check-box")).to_contain_text("Everything is in place", timeout=WAIT_MS)
+            self.expect(page.locator("#fg-check-box")).to_contain_text(
+                "Everything is in place", timeout=int(FORGE_WAIT_S * 1000)
+            )
             for title in ("Build the model", "Prune experts", "KL divergence"):
                 self.expect(page.locator("#fg-check-box .fg-plan")).to_contain_text(title, timeout=WAIT_MS)
             with page.expect_download() as download:
@@ -1243,7 +1248,7 @@ class Session:
                 names = [p["name"] for p in studio.api("GET", "/api/state")["profiles"]]
                 return "Forge: e2e-forge" in names
 
-            wait_until(published, 15, "the profile 'Forge: e2e-forge' to be saved")
+            wait_until(published, FORGE_WAIT_S, "the profile 'Forge: e2e-forge' to be saved")
             built = studio.home / "models" / "forge" / "e2e-forge.gguf"
             if not built.is_file() or not (built.parent / "e2e-forge.recipe.json").is_file():
                 raise E2EError(f"the result or its recipe is missing in {built.parent}")

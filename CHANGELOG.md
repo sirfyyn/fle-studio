@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+- **Speculation menu**: Engine → Advanced disables the Speculation setting, with the reason underneath, when it would
+  change nothing: with an upstream llama.cpp engine or a start profile. The plan answer
+  (`POST /api/engine/plan`) carries `speculation: {applies, reason}` for this.
+- **e2e**: the Forge step waits up to 45 s (was 15 s) for the published profile on slow macOS runners; the limit can be
+  set with `FLE_E2E_FORGE_WAIT`.
+
 ## [0.3.1] - 2026-10-25
 
 ### Engine
