@@ -150,3 +150,43 @@ def test_the_fix_runs_the_download_the_models_page_uses(api: Client, monkeypatch
     fix = api.post("/api/engine/plan", {"model": "abc123abc123"})[1]["fixes"][0]
     status, job = api.post(f"/api/catalog/{fix['model']}/download", {"mtp": True})
     assert status == 200 and job == {"id": "job"} and calls == [(CAT.id, True)]
+
+
+def test_speculation_applies_with_the_fle_engine(api: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    use(api, monkeypatch, model(with_sidecars=True))
+    out = api.post("/api/engine/plan", {"model": "abc123abc123"})[1]
+    assert out["ok"] and out["speculation"] == {"applies": True, "reason": ""}
+
+
+def test_speculation_does_not_apply_with_an_upstream_engine(api: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    upstream = {"kind": "upstream", "flavor": "upstream", "path": "/engines/up/llama-server", "backend": "cuda"}
+    monkeypatch.setattr(api.studio, "engine_for", lambda want, info: dict(upstream))
+    use(api, monkeypatch, model(with_sidecars=True), spec="ngram-mod")
+    out = api.post("/api/engine/plan", {"model": "abc123abc123"})[1]
+    assert out["ok"] and "--spec-type" not in out["plan"]["args"]  # the command really is unchanged by the setting
+    assert out["speculation"]["applies"] is False
+    assert "FLE engine" in out["speculation"]["reason"] and "upstream" in out["speculation"]["reason"]
+
+
+def test_speculation_answer_also_comes_with_a_failed_plan(api: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    upstream = {"kind": "upstream", "flavor": "upstream", "path": "/engines/up/llama-server", "backend": "cuda"}
+    monkeypatch.setattr(api.studio, "engine_for", lambda want, info: dict(upstream))
+    use(api, monkeypatch, None)  # no model: the plan cannot be built, the engine is still known
+    out = api.post("/api/engine/plan", {"model": ""})[1]
+    assert out["ok"] is False and out["speculation"]["applies"] is False
+
+
+def test_speculation_stays_available_when_the_engine_is_unknown(api: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    def none_installed(want: str, info: Any) -> dict[str, Any]:
+        raise RuntimeError("no engine installed")
+
+    monkeypatch.setattr(api.studio, "engine_for", none_installed)
+    use(api, monkeypatch, None)
+    out = api.post("/api/engine/plan", {"model": ""})[1]
+    assert out["ok"] is False and out["speculation"] == {"applies": True, "reason": ""}
+
+
+def test_speculation_does_not_apply_to_a_profile(api: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    use(api, monkeypatch, model(with_sidecars=True))
+    out = api.post("/api/engine/plan", {"model": "abc123abc123", "profile": "some-profile"})[1]
+    assert out["speculation"]["applies"] is False and "profile" in out["speculation"]["reason"]

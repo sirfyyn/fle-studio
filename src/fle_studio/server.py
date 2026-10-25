@@ -332,8 +332,47 @@ class Studio:
         try:
             plan = self.make_plan(model_ident, profile_ident)
         except (ApiError, launch.PlanError) as exc:
-            return {"ok": False, "error": getattr(exc, "message", None) or str(exc), "fixes": fixes}
-        return {"ok": True, "plan": plan.public(), "fixes": fixes}
+            speculation = self.speculation_view(profile_ident, None)
+            return {
+                "ok": False,
+                "error": getattr(exc, "message", None) or str(exc),
+                "fixes": fixes,
+                "speculation": speculation,
+            }
+        return {
+            "ok": True,
+            "plan": plan.public(),
+            "fixes": fixes,
+            "speculation": self.speculation_view(profile_ident, plan),
+        }
+
+    def speculation_view(self, profile_ident: str | None, plan: launch.Plan | None) -> dict[str, Any]:
+        """Whether the Speculation setting changes the command: {"applies": bool, "reason": "<why not, or empty>"}.
+
+        It does only in the automatic plan of the FLE engine. A profile's own command decides, and an upstream engine
+        gets no speculation flags. An engine that is not known (none chosen or installed yet) counts as applying, so the
+        menu stays usable until there is something to say against it."""
+        prof_id = profile_ident or self.config.data["launch"].get("profile") or "auto"
+        if prof_id != "auto":
+            return {
+                "applies": False,
+                "reason": "A start profile's own command decides; speculation applies to the automatic start only.",
+            }
+        if plan is not None and plan.profile == "auto" and plan.engine in ("fle", "upstream"):
+            flavor: str | None = plan.engine
+        else:
+            try:
+                eng = self.engine_for("auto", self.sysinfo())
+            except (ApiError, RuntimeError):
+                eng = None
+            flavor = (eng.get("flavor") or eng.get("kind")) if eng else None
+        if flavor == "upstream":
+            return {
+                "applies": False,
+                "reason": "Speculation needs the FLE engine; the selected engine is upstream llama.cpp. "
+                "Pick an FLE engine to use it.",
+            }
+        return {"applies": True, "reason": ""}
 
     def _upstream_engine(self, info: dict[str, Any]) -> dict[str, Any] | None:
         """Return the best installed upstream llama-server, or None if none is installed."""

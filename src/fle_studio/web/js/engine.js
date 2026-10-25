@@ -74,6 +74,7 @@ export function mount(main) {
   let preview = null;
   let previewError = "";
   let previewFixes = [];
+  let previewSpec = null; // {applies, reason} from the plan answer; null = not known yet, the menu stays usable
   let checkResult = null;
   let pending = {};
 
@@ -136,7 +137,10 @@ export function mount(main) {
     preview = answer.ok ? answer.plan : null;
     previewError = answer.ok ? "" : answer.error;
     previewFixes = answer.fixes || [];
+    const wasOff = previewSpec?.applies === false;
+    previewSpec = answer.speculation || null;
     renderPreview();
+    if ((previewSpec?.applies === false) !== wasOff) renderLaunch(); // the Speculation menu follows the engine
   }, 200);
 
   async function applyFix(fix, button) {
@@ -346,6 +350,7 @@ export function mount(main) {
     if (!gpuOptions.some(([v]) => v === L.gpus)) gpuOptions.push([L.gpus, `GPUs ${L.gpus}`]);
     const coresHint = h("span", { class: "hint" }, maskHint(L.cpu_mask));
     const eng = store.engine;
+    const specOff = previewSpec?.applies === false; // the plan says speculation would change nothing here
     const boundTo = eng?.attached ? eng.service?.unit || "a running server" : "";
 
     clear(boxes.launch,
@@ -384,9 +389,11 @@ export function mount(main) {
               (v) => save({ launch: { pinned_load: v } })), "FLE engine: faster expert loading on Linux and Windows, costs RAM that cannot be swapped."),
             h("label", { class: "row" }, toggle(L.mtp, (v) => save({ launch: { mtp: v } })),
               h("span", null, "MTP drafting when the MTP head is there ", h("span", { class: "muted small" }, "(FLE engine)"))),
-            field("Speculation", h("select", { class: "select", onchange: (e) => save({ launch: { spec: e.target.value } }) },
+            field("Speculation", h("select", { class: "select", disabled: specOff, title: specOff ? previewSpec.reason : "",
+              onchange: (e) => save({ launch: { spec: e.target.value } }) },
               [["auto", "Auto (MTP when the sidecars exist)"], ["none", "Off"], ["mtp", "MTP only"], ["ngram-mod", "Ngram (modified)"], ["ngram-simple", "Ngram (simple)"]].map(([v, label]) => h("option", { value: v, selected: v === (L.spec || "auto") }, label))),
-              "How the engine drafts ahead. auto only turns on MTP when its head and vocabulary file are present; ngram-mod/ngram-simple need an engine that supports --spec-type and are prompt-dependent."),
+              specOff ? previewSpec.reason
+                : "How the engine drafts ahead. auto only turns on MTP when its head and vocabulary file are present; ngram-mod/ngram-simple need an engine that supports --spec-type and are prompt-dependent."),
             field("Extra arguments", h("input", { class: "input mono", value: L.extra_args || "", placeholder: "--flash-attn on",
               oninput: (e) => save({ launch: { extra_args: e.target.value } }) })),
             field("Extra environment", h("textarea", { class: "textarea mono", rows: 2, placeholder: "KEY=value, one per line",
