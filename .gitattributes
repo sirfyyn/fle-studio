@@ -1,2 +1,2 @@
 # The corpus files are checked by SHA-256 (corpus/SOURCES.md): never let git change their line endings.
-src/fle_studio/forge/corpus/* -text
+src/fle_studio_forge/corpus/* -text
