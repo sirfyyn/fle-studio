@@ -180,7 +180,7 @@ quantize a full-precision model with `llama-quantize` and an importance matrix, 
 and check the result against the original (KL divergence, top-1 agreement, perplexity ratio). Jobs show progress and
 can be cancelled and resumed; recipes are small JSON files that can be shared; a finished quant is published to the
 library with a start profile. A small calibration text (public domain, CC0 or MIT, listed in
-`src/fle_studio/forge/corpus/SOURCES.md`) ships with Studio. See [docs/FORGE.md](docs/FORGE.md).
+`src/fle_studio_forge/corpus/SOURCES.md`) ships with Studio. See [docs/FORGE.md](docs/FORGE.md).
 
 <!-- Screenshots of Forge, the expert cache and the chat with an MCP app come with the release, made on the real
      hardware (the test screenshots show temporary folders of the test run). -->

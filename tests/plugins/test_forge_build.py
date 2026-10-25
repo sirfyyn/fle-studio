@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 from forge_synth import make_model, make_split
 
-from fle_studio.forge import build, ggufio, plan
-from fle_studio.forge import recipe as recipes
+from fle_studio_forge import build, ggufio, plan
+from fle_studio_forge import recipe as recipes
 
 LAYERS = 6
 

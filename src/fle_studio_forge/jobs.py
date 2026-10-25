@@ -21,7 +21,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .. import paths, procutil
+from fle_studio import paths, procutil
+
 from . import recipe as recipes
 from . import tools as toolbox
 from .ggufio import Cancelled

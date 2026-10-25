@@ -14,7 +14,7 @@ import pytest
 from fle_studio import plugins
 from fle_studio.server import Studio, make_server
 
-SHIPPED = {"switch"}
+SHIPPED = {"forge", "switch"}
 
 
 @pytest.fixture
@@ -68,3 +68,21 @@ def test_they_are_on_by_default_and_each_can_be_turned_off(running: tuple[Studio
 
     call(studio, port, "POST", "/api/plugins/switch/enable")
     assert call(studio, port, "GET", "/api/engine/switch")[0] == 200
+
+
+def test_forge_is_a_page_and_routes_that_come_and_go_with_the_plugin(running: tuple[Studio, int]) -> None:
+    studio, port = running
+    _, view = call(studio, port, "GET", "/api/plugins")
+    forge = {p["id"]: p for p in view["plugins"]}["forge"]
+    assert forge["page"] == {"title": "Forge", "icon": "forge", "script": "forge.js", "path": "/forge"}
+    status, body = call(studio, port, "GET", "/plugins/forge/forge.js")
+    assert status == 200 and b"export function mount" in body
+    assert call(studio, port, "GET", "/plugins/forge/forge.css")[0] == 200
+    status, data = call(studio, port, "GET", "/api/forge")
+    assert status == 200 and {t["name"] for t in data["tools"]} >= {"llama-quantize"}
+    assert call(studio, port, "GET", "/forge")[0] == 200, "the page path falls back to the app"
+
+    call(studio, port, "POST", "/api/plugins/forge/disable")
+    assert call(studio, port, "GET", "/api/forge")[0] == 404
+    assert call(studio, port, "GET", "/plugins/forge/forge.js")[0] == 404
+    assert call(studio, port, "GET", "/api/models")[0] == 200

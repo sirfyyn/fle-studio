@@ -17,7 +17,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .. import gguf
+from fle_studio import gguf
+
 from . import ggufio
 from .ggufio import CHUNK
 

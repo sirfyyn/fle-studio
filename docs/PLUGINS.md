@@ -91,6 +91,7 @@ Parts of FLE Studio that not everybody needs are plugins of FLE Studio's own pac
 
 | id | what it is |
 | --- | --- |
+| `forge` | the Forge page and its `/api/forge` routes: build your own FLE quant (docs/FORGE.md) |
 | `switch` | the model switcher next to an attached service, in the chat's model menu |
 
 They are separate Python packages (`fle_studio_<id>`) in the same wheel, registered through the entry point group

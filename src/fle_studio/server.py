@@ -61,9 +61,6 @@ from .config import Config
 from .downloads import Downloads
 from .engine import Engine, EngineBusy
 from .engines import Engines, variants
-from .forge import plan as forge_plan
-from .forge import recipe as recipes
-from .forge.api import Forge
 from .library import Library
 from .metrics import Live
 
@@ -131,14 +128,6 @@ class Studio:
             self.livechat,
         )
         self.bench = bench.Bench(self.engine, self.data_dir)
-        self.forge = Forge(
-            self.data_dir,
-            self.config.get,
-            lambda: self.config.models_dir,
-            self.forge_engine_paths,
-            self.library,
-            self.profiles,
-        )
         self.quality = quality.Quality(self.data_dir)
         self.cache = CacheWatch()
         self.engine.line_listeners.append(self.cache.feed)
@@ -170,14 +159,6 @@ class Studio:
                 cached = system.info(self.config.models_dir)
                 self._sys = (time.time(), cached)
             return cached
-
-    def forge_engine_paths(self) -> list[tuple[str, str]]:
-        """The llama-server files whose folders are searched for the Forge tools."""
-        out = [("engine", e["path"]) for e in self.engines.installed()]
-        custom = self.config.get("engine").get("custom_path")
-        if custom:
-            out.append(("custom engine", custom))
-        return out
 
     def session_cookie(self) -> str:
         key = self.config.get("access_key")
@@ -526,29 +507,12 @@ ROUTES: list[tuple[str, re.Pattern[str], str]] = [
         ("POST", r"^/api/bench/start$", "bench_start"),
         ("POST", r"^/api/bench/cancel$", "bench_cancel"),
         ("POST", r"^/api/bench/(?P<id>[0-9a-f]+)/delete$", "bench_delete"),
-        ("GET", r"^/api/forge$", "forge"),
-        ("POST", r"^/api/forge/tools$", "forge_tools"),
-        ("POST", r"^/api/forge/inspect$", "forge_inspect"),
-        ("POST", r"^/api/forge/calculate$", "forge_calculate"),
-        ("POST", r"^/api/forge/corpus$", "forge_corpus"),
-        ("POST", r"^/api/forge/recipe/import$", "forge_recipe_import"),
         ("GET", r"^/api/livechat$", "live_chat"),
         ("DELETE", r"^/api/livechat$", "live_chat_clear"),
         ("DELETE", r"^/api/livechat/(?P<id>[0-9a-f]{12})$", "live_chat_delete"),
         ("POST", r"^/api/livechat/(?P<id>[0-9a-f]{12})/star$", "live_chat_star"),
         ("GET", r"^/api/capture$", "capture"),
         ("POST", r"^/api/capture/clear$", "capture_clear"),
-        ("POST", r"^/api/forge/recipe/share$", "forge_recipe_share"),
-        ("POST", r"^/api/forge/check$", "forge_check"),
-        ("POST", r"^/api/forge/jobs$", "forge_job_create"),
-        ("GET", r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})$", "forge_job"),
-        ("GET", r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})/log$", "forge_job_log"),
-        ("GET", r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})/recipe$", "forge_job_recipe"),
-        (
-            "POST",
-            r"^/api/forge/jobs/(?P<id>[0-9a-f]{12})/(?P<action>cancel|resume|delete|publish)$",
-            "forge_job_action",
-        ),
     ]
 ]
 
@@ -1199,81 +1163,6 @@ class Handler(BaseHTTPRequestHandler):
     def api_bench_delete(self, query: dict[str, str], id: str) -> None:  # noqa: A002
         self.studio.bench.delete(id)
         self.send_json(200, {"ok": True})
-
-    # ------------------------------------------------------------------------------------------ Forge
-
-    def api_forge(self, query: dict[str, str]) -> None:
-        self.send_json(200, self.studio.forge.overview())
-
-    def api_forge_tools(self, query: dict[str, str]) -> None:
-        self.studio.config.update({"forge": {"tools_dir": str(self.read_json().get("tools_dir") or "")}})
-        self.send_json(200, self.studio.forge.overview())
-
-    def api_forge_inspect(self, query: dict[str, str]) -> None:
-        self.send_json(200, self.studio.forge.inspect(str(self.read_json().get("path") or "")))
-
-    def api_forge_calculate(self, query: dict[str, str]) -> None:
-        try:
-            self.send_json(200, self.studio.forge.calculate(self.read_json()))
-        except forge_plan.PlanError as exc:
-            raise ApiError(400, str(exc)) from None
-
-    def api_forge_corpus(self, query: dict[str, str]) -> None:
-        self.send_json(200, self.studio.forge.make_corpus(self.read_json()))
-
-    def api_forge_recipe_import(self, query: dict[str, str]) -> None:
-        body = self.read_json()
-        self.send_json(200, self.studio.forge.import_recipe(json.dumps(body.get("recipe") or body)))
-
-    def api_forge_recipe_share(self, query: dict[str, str]) -> None:
-        try:
-            self.send_json(200, {"recipe": recipes.portable(self.read_json().get("recipe") or {})})
-        except recipes.RecipeError as exc:
-            raise ApiError(400, str(exc)) from None
-
-    def api_forge_check(self, query: dict[str, str]) -> None:
-        try:
-            self.send_json(200, self.studio.forge.jobs.check(self.read_json().get("recipe") or {}))
-        except recipes.RecipeError as exc:
-            raise ApiError(400, str(exc)) from None
-
-    def api_forge_job_create(self, query: dict[str, str]) -> None:
-        try:
-            self.send_json(200, self.studio.forge.jobs.create(self.read_json().get("recipe") or {}))
-        except recipes.RecipeError as exc:
-            raise ApiError(400, str(exc)) from None
-        except RuntimeError as exc:
-            raise ApiError(409, str(exc)) from None
-
-    def api_forge_job(self, query: dict[str, str], id: str) -> None:  # noqa: A002
-        self.send_json(200, self.studio.forge.jobs.get(id))
-
-    def api_forge_job_log(self, query: dict[str, str], id: str) -> None:  # noqa: A002
-        self.send_json(200, self.studio.forge.jobs.log_since(id, int(query.get("since") or 0)))
-
-    def api_forge_job_recipe(self, query: dict[str, str], id: str) -> None:  # noqa: A002
-        self.send_json(200, self.studio.forge.recipe_of(id))
-
-    def api_forge_job_action(self, query: dict[str, str], id: str, action: str) -> None:  # noqa: A002
-        forge = self.studio.forge
-        try:
-            if action == "cancel":
-                self.send_json(200, forge.jobs.cancel(id))
-            elif action == "resume":
-                self.send_json(200, forge.jobs.resume(id))
-            elif action == "delete":
-                forge.jobs.delete(id, keep_model=not self.read_json().get("delete_model"))
-                self.send_json(200, {"ok": True})
-            else:
-                info = self.studio.sysinfo()
-                gpus = info.get("gpus") or []
-                installed = {e["kind"] for e in self.studio.engines.installed()}
-                engine = "fle" if "fle" in installed else "upstream"
-                self.send_json(
-                    200, forge.publish(id, engine=engine, gpu=bool(gpus), unified=any(g.get("unified") for g in gpus))
-                )
-        except RuntimeError as exc:
-            raise ApiError(409, str(exc)) from None
 
 
 chat_api.install(Handler, ROUTES, ApiError)  # attachments, tools, chat search/export/import (chat_api.py)

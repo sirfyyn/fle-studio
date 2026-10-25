@@ -17,7 +17,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from .. import gguf
+from fle_studio import gguf
+
 from . import ggufio
 
 EXPERT_LAYER = re.compile(r"^blk\.(\d+)\.ffn_(gate_up|gate|up|down)_exps\.weight$")

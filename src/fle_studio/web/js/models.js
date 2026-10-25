@@ -24,8 +24,7 @@ export function mount(main) {
     section("FLE quants of Qwen3.8-Flash-Next", "Made for the FLE engine: experts in RAM, the busy ones cached on the GPU, MTP drafting for faster answers.", catGrid),
     dlBox,
     libBox,
-    hfBox,
-    forgeCard());
+    hfBox);
   main.replaceChildren(topbar("Models"), h("div", { class: "page" }, page));
 
   const mtpChoice = new Map(); // catalog id -> download the MTP head too
@@ -324,19 +323,4 @@ function section(title, sub, body) {
   return h("section", { class: "stack" },
     h("div", null, h("h3", { style: { margin: 0, fontSize: "16px" } }, title), sub ? h("p", { class: "muted small", style: { margin: "2px 0 0" } }, sub) : null),
     body);
-}
-
-function forgeCard() {
-  const report = store.state?.reference?.report || "https://sirfyyn.github.io/FastLocalExperts/";
-  return h("div", { class: "card pad-lg forge" },
-    h("div", { class: "card-head" }, icon("spark"), h("div", { class: "grow" }, h("h3", null, "Studio Forge: build your own FLE quant"),
-      h("p", null, "Coming next. The recipe behind the FLE files, as a guided job for any mixture-of-experts model.")),
-      h("span", { class: "pill info" }, "Roadmap")),
-    h("ol", null,
-      h("li", null, h("b", null, "Pick a base model"), " in BF16 from Hugging Face."),
-      h("li", null, h("b", null, "Measure"), ": an importance matrix from public prompts and a profile of which experts each layer actually uses."),
-      h("li", null, h("b", null, "Prune with REAP"), ": drop the least salient experts per layer (FLE-IQ3_M-REAP448 keeps 448 of 512)."),
-      h("li", null, h("b", null, "Quantize"), " with the FLE tensor recipe: busy experts and shared weights at higher precision, rarely used experts lower."),
-      h("li", null, h("b", null, "Check"), ": KL divergence against BF16 on three text sets, then a speed test on the Experiments page.")),
-    h("div", { class: "row small" }, h("a", { href: report, target: "_blank", rel: "noopener" }, "How the FLE quants were made ", icon("external", "sm"))));
 }

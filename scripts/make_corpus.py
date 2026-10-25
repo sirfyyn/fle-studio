@@ -1,4 +1,4 @@
-"""Builds the calibration corpus that ships with Forge (src/fle_studio/forge/corpus/).
+"""Builds the calibration corpus that ships with Forge (src/fle_studio_forge/corpus/).
 
     python scripts/make_corpus.py
 
@@ -16,7 +16,7 @@ import re
 import urllib.request
 from pathlib import Path
 
-OUT = Path(__file__).resolve().parent.parent / "src" / "fle_studio" / "forge" / "corpus"
+OUT = Path(__file__).resolve().parent.parent / "src" / "fle_studio_forge" / "corpus"
 PG = "https://www.gutenberg.org/cache/epub/{n}/pg{n}.txt"
 
 # (id, title, author, language, characters to keep)

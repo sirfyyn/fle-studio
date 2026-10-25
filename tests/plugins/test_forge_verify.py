@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from fake_llama_tools import STATS
 
-from fle_studio.forge import verify
+from fle_studio_forge import verify
 
 SAMPLE = STATS.format(kld=0.012345)
 

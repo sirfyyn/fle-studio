@@ -19,7 +19,8 @@ import re
 import time
 from typing import Any
 
-from .. import __version__
+from fle_studio import __version__
+
 from . import ggufio
 
 SCHEMA = 1

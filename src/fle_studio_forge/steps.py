@@ -9,7 +9,8 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .. import __version__
+from fle_studio import __version__
+
 from . import build, ggufio, reap, verify
 from . import recipe as recipes
 from .jobs import Ctx, StepError

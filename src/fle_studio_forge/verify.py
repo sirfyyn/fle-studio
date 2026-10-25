@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .. import catalog
+from fle_studio import catalog
 
 PM = r"(?:±|\+/-|Â±|�+)"  # the plus-minus sign, also as it arrives from a console in another code page
 NUM = r"(-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?|nan|-?inf)"

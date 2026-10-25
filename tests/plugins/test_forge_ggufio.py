@@ -6,7 +6,7 @@ import pytest
 from forge_synth import HIDDEN, INTER, make_model, make_split
 
 from fle_studio import gguf
-from fle_studio.forge import ggufio
+from fle_studio_forge import ggufio
 
 
 def test_type_sizes_follow_the_block_layouts():

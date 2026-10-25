@@ -4,9 +4,9 @@ import shutil
 import sys
 from pathlib import Path
 
-from fle_studio.forge import tools
+from fle_studio_forge import tools
 
-FAKES = Path(__file__).parent / "fake_tools"
+FAKES = Path(__file__).parent.parent / "fake_tools"
 
 
 def test_fake_tools_are_found_probed_and_report_their_features():

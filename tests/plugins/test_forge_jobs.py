@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 from forge_synth import make_imatrix, make_model
 
-from fle_studio.forge import ggufio, jobs, tools
-from fle_studio.forge import recipe as recipes
+from fle_studio_forge import ggufio, jobs, tools
+from fle_studio_forge import recipe as recipes
 
-FAKES = Path(__file__).parent / "fake_tools"
+FAKES = Path(__file__).parent.parent / "fake_tools"
 LAYERS = 4
 
 

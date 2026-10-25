@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .. import paths
+from fle_studio import paths
 
 TOOL_NAMES = ("llama-imatrix", "llama-quantize", "llama-perplexity", "llama-fle-reap")
 REQUIRED = {

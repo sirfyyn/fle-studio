@@ -40,13 +40,14 @@ fle-studio = "fle_studio.__main__:main"
 # separate packages next to the core, and they find the core through the same entry point as everybody's plugins.
 # FLE_STUDIO_NO_BUNDLED=1 leaves them out.
 [project.entry-points."fle_studio.plugins"]
+forge = "fle_studio_forge:register"
 switch = "fle_studio_switch:register"
 
 [tool.hatch.version]
 path = "src/fle_studio/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/fle_studio", "src/fle_studio_switch"]
+packages = ["src/fle_studio", "src/fle_studio_forge", "src/fle_studio_switch"]
 
 [tool.ruff]
 line-length = 120
@@ -57,7 +58,7 @@ select = ["E", "F", "W", "I", "B", "UP"]
 
 [tool.ruff.lint.isort]
 # Fixed here, so the import order does not depend on the directory ruff runs from.
-known-first-party = ["fle_studio"]
+known-first-party = ["fle_studio", "fle_studio_forge", "fle_studio_switch"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

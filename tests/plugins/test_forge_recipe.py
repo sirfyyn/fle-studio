@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from fle_studio.forge import recipe as recipes
+from fle_studio_forge import recipe as recipes
 
 
 def test_a_new_recipe_has_the_defaults_and_the_schema():

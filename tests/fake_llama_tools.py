@@ -91,7 +91,7 @@ def quantize(argv: list[str]) -> int:
 def imatrix(argv: list[str]) -> int:
     from forge_synth import make_imatrix
 
-    from fle_studio.forge import ggufio
+    from fle_studio_forge import ggufio
 
     model = ggufio.open_model(value(argv, "-m") or "")
     layers, experts = model.number("block_count") or 1, model.number("expert_count") or 1
@@ -127,7 +127,7 @@ def perplexity(argv: list[str]) -> int:
 
 
 def fle_reap(argv: list[str]) -> int:
-    from fle_studio.forge import ggufio
+    from fle_studio_forge import ggufio
 
     model = ggufio.open_model(value(argv, "-m") or "")
     layers, experts = model.number("block_count") or 1, model.number("expert_count") or 1

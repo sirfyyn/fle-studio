@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from fle_studio.forge import corpus
+from fle_studio_forge import corpus
 
 
 def test_the_corpus_is_about_a_megabyte_and_mixed(tmp_path: Path):
@@ -41,7 +41,7 @@ def test_the_corpus_is_the_same_every_time(tmp_path: Path):
 
 
 def test_every_file_has_origin_license_and_a_matching_checksum():
-    folder = resources.files("fle_studio").joinpath("forge", "corpus")
+    folder = resources.files("fle_studio_forge").joinpath("corpus")
     sources = folder.joinpath("SOURCES.md").read_text(encoding="utf-8")
     rows = re.findall(r"^\| `([^`]+)` \| (\d+) \| `([0-9a-f]{64})` \| (.+) \|$", sources, re.M)
     listed = {name for name, *_ in rows}
@@ -58,7 +58,7 @@ def test_every_file_has_origin_license_and_a_matching_checksum():
 
 
 def test_no_gutenberg_license_text_is_left_in_the_prose():
-    folder = Path(str(resources.files("fle_studio").joinpath("forge", "corpus")))
+    folder = Path(str(resources.files("fle_studio_forge").joinpath("corpus")))
     for p in folder.glob("prose-*.txt"):
         text = p.read_text(encoding="utf-8")
         assert "Project Gutenberg" not in text and "www.gutenberg.org" not in text, p.name

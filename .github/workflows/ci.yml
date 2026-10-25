@@ -83,7 +83,7 @@ jobs:
           "$BIN/python" -m pip install dist/*.whl
           "$BIN/fle-studio" --version
           "$BIN/python" -c "import importlib.resources as r; import fle_studio; root = r.files('fle_studio') / 'web'; [(root / n).read_bytes() for n in ('index.html', 'app.css', 'js/app.js', 'js/forge.js', 'fonts/dm-sans-latin-1.woff2')]; print('web files ok')"
-          "$BIN/python" -c "import tempfile, os; from fle_studio.forge import corpus; d = tempfile.mkdtemp(); m = corpus.bundled(os.path.join(d, 'c.txt')); assert m['chars'] > 500000, m; print('bundled corpus ok', m['chars'])"
+          "$BIN/python" -c "import tempfile, os; from fle_studio_forge import corpus; d = tempfile.mkdtemp(); m = corpus.bundled(os.path.join(d, 'c.txt')); assert m['chars'] > 500000, m; print('bundled corpus ok', m['chars'])"
 
   # The two installers, run from the checkout (FLE_STUDIO_SOURCE) instead of GitHub, so that a change to an
   # installer is tested before it is published. Both install uv first if the runner has none, and both end by

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from forge_synth import make_imatrix, make_model
 
-from fle_studio.forge import ggufio, reap
+from fle_studio_forge import ggufio, reap
 
 LAYERS, EXPERTS = 3, 8
 

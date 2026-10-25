@@ -10,7 +10,7 @@ import random
 import struct
 from pathlib import Path
 
-from fle_studio.forge import ggufio
+from fle_studio_forge import ggufio
 
 HIDDEN, INTER, VOCAB = 64, 32, 16
 

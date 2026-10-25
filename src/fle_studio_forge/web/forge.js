@@ -2,9 +2,9 @@
 // can be saved, shared and built again. The work itself runs in jobs on the server; this page only collects the
 // choices, shows the numbers the calculator returns, and follows a running job.
 
-import { get, post } from "./api.js";
-import { topbar } from "./app.js";
-import { clear, confirmDialog, copyText, fmt, h, icon, toast } from "./ui.js";
+import { get, post } from "/js/api.js";
+import { topbar } from "/js/app.js";
+import { clear, confirmDialog, copyText, fmt, h, icon, toast } from "/js/ui.js";
 
 const STEPS = [
   ["start", "Start"], ["models", "Models"], ["recipe", "Recipe"], ["prune", "Prune"], ["verify", "Verify"], ["build", "Build"],
@@ -173,6 +173,9 @@ function download(name, text) {
 // ----------------------------------------------------------------------------------------------- page
 
 export function mount(main) {
+  if (!document.getElementById("forge-css")) {
+    document.head.append(h("link", { id: "forge-css", rel: "stylesheet", href: "/plugins/forge/forge.css" }));
+  }
   let step = "start";
   let overview = null;
   let toolsDirText = null; // what was typed in the tools folder box; survives a redraw (the overview can arrive late)

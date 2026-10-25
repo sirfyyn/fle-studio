@@ -13,10 +13,10 @@ from typing import Any
 import pytest
 from forge_synth import make_model
 
-from fle_studio.forge import recipe as recipes
 from fle_studio.server import Studio, make_server
+from fle_studio_forge import recipe as recipes
 
-FAKES = Path(__file__).parent / "fake_tools"
+FAKES = Path(__file__).parent.parent / "fake_tools"
 
 
 class Client:

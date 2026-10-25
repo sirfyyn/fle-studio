@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from forge_synth import make_model
 
-from fle_studio.forge import ggufio, plan
+from fle_studio_forge import ggufio, plan
 
 LAYERS = 6
 TYPES = {

@@ -7,7 +7,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .. import paths
+from fle_studio import paths
+
 from . import corpus, ggufio, plan, reap, tools, verify
 from . import recipe as recipes
 from .jobs import ForgeJobs

@@ -19,8 +19,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, BinaryIO
 
-from ..gguf import GGUFError, split_parts
-from ..gguf import _Reader as _HeaderReader
+from fle_studio.gguf import GGUFError, split_parts
+from fle_studio.gguf import _Reader as _HeaderReader
 
 MAGIC = b"GGUF"
 DEFAULT_ALIGNMENT = 32

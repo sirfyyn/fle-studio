@@ -155,14 +155,13 @@ const pages = {
   engine: () => import("./engine.js"),
   lab: () => import("./lab.js"),
   cache: () => import("./cache.js"),
-  forge: () => import("./forge.js"),
   settings: () => import("./settings.js"),
   live: () => import("./live.js"),
   plugin: () => import("./plugin-page.js"),
 };
 const routes = [
   [/^\/$/, "chat"], [/^\/c\/([0-9a-f]{16})$/, "chat"], [/^\/live\/?$/, "live"], [/^\/models\/?$/, "models"], [/^\/engine\/?$/, "engine"],
-  [/^\/lab\/?$/, "lab"], [/^\/cache\/?$/, "cache"], [/^\/forge\/?$/, "forge"], [/^\/settings\/?$/, "settings"],
+  [/^\/lab\/?$/, "lab"], [/^\/cache\/?$/, "cache"], [/^\/settings\/?$/, "settings"],
   [/^\/p\/([a-z][a-z0-9-]{0,31})(?:\/.*)?$/, "plugin"],
 ];
 let current = null;
@@ -207,7 +206,7 @@ export function topbar(title, ...right) {
 
 const NAV = [
   ["/", "chat", "Chat"], ["/models", "models", "Models"], ["/engine", "engine", "Engine"],
-  ["/lab", "lab", "Experiments"], ["/cache", "grid", "Expert cache"], ["/forge", "forge", "Forge"],
+  ["/lab", "lab", "Experiments"], ["/cache", "grid", "Expert cache"],
   ["/settings", "settings", "Settings"],
 ];
 
