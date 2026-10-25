@@ -516,6 +516,10 @@ table.t tr.click:hover td { background: var(--soft); }
 .md { overflow-wrap: anywhere; min-width: 0; }
 .md > :first-child { margin-top: 0; }
 .md > :last-child { margin-bottom: 0; }
+/* An answer that streams is built from two parts (md.js createStreamRenderer); they take no box of their own. */
+.md-stable, .md-tail { display: contents; }
+.md > .md-stable:not(:empty) > :first-child, .md > .md-stable:empty + .md-tail > :first-child { margin-top: 0; }
+.md > .md-tail:not(:empty) > :last-child, .md > .md-stable:has(+ .md-tail:empty) > :last-child { margin-bottom: 0; }
 .md p { margin: 0 0 0.8em; }
 .md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { margin: 1.2em 0 0.5em; line-height: 1.3; font-weight: 600; }
 .md h1 { font-size: 1.45em; }
