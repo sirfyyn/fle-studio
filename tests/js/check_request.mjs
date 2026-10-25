@@ -71,6 +71,38 @@ test("a tool round expands to assistant tool_calls plus tool messages", () => {
   assert.match(out[3].content, /interrupted/);
 });
 
+test("tools go out sorted by name, whatever order they arrive in", () => {
+  const t = (name) => ({ type: "function", function: { name, parameters: { type: "object" } } });
+  const a = req.buildRequest({ nodes: [user("hi")], tools: [t("web_search"), t("calculator"), t("mcp__x")] });
+  const b = req.buildRequest({ nodes: [user("hi")], tools: [t("mcp__x"), t("calculator"), t("web_search")] });
+  assert.deepEqual(a.tools.map((x) => x.function.name), ["calculator", "mcp__x", "web_search"]);
+  assert.equal(JSON.stringify(a.tools), JSON.stringify(b.tools));
+});
+
+test("the last round keeps the tools and forbids the call", () => {
+  const body = req.buildRequest({ nodes: [user("hi")], tools: TOOLS, noMoreTools: true });
+  assert.equal(body.tools.length, 1);
+  assert.equal(body.tool_choice, "none");
+  assert.equal("tool_choice" in req.buildRequest({ nodes: [user("hi")], tools: TOOLS }), false);
+  assert.equal("tool_choice" in req.buildRequest({ nodes: [user("hi")], tools: [], noMoreTools: true }), false);
+});
+
+test("thoughts travel back only after the last user message", () => {
+  const think = (content, reasoning, extra = {}) => ({ role: "assistant", content, reasoning, ...extra });
+  const nodes = [
+    user("old question"), think("old answer", "old thoughts"),
+    user("new question"),
+    think("", "step one", { tool_calls: [{ id: "c1", name: "calculator", arguments: "{}", result: "2" }] }),
+    think("It is 2.", "step two"),
+  ];
+  const out = req.apiMessages(nodes);
+  assert.equal("reasoning_content" in out[1], false, "before the last user message: no thoughts");
+  const asked = out.find((m) => m.tool_calls);
+  assert.equal(asked.reasoning_content, "step one");
+  assert.equal(out[out.length - 1].reasoning_content, "step two");
+  assert.equal("reasoning_content" in req.apiMessages([user("q"), think("a", "")])[1], false, "nothing to send");
+});
+
 test("the token estimate matches the server's rule", () => {
   assert.equal(req.estimateTokens(""), 0);
   assert.equal(req.estimateTokens("a"), 1);

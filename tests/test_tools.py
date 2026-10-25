@@ -309,6 +309,48 @@ def test_status_reports_servers_and_problems(tmp_path: Path) -> None:
         box.close()
 
 
+def test_tools_come_sorted_by_name(tmp_path: Path) -> None:
+    box = make_box(tmp_path, calculator=True, datetime=True, mcp_enabled=True, mcp_json=mcp_config())
+    try:
+        box.sync_mcp()
+        assert box.mcp.wait_idle(20)
+        names = [t.name for t in box.tools()]
+        assert names == sorted(names) and "calculator" in names and "fake__echo" in names
+        assert [t["name"] for t in box.status()["tools"]] == names
+    finally:
+        box.close()
+
+
+def test_a_late_server_keeps_its_last_known_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from fle_studio import mcp as mcp_module
+
+    data = tmp_path / "data"
+    config = Config(tmp_path / "settings.json")
+    config.update({"tools": {"mcp_enabled": True, "mcp_json": mcp_config()}})
+    first = tools.ToolBox(config, data)
+    try:
+        first.sync_mcp()
+        assert first.mcp.wait_idle(20)
+        before = [(t.name, t.parameters) for t in first.tools()]
+        assert any(n == "fake__echo" for n, _ in before) and not any(t.stale for t in first.tools())
+    finally:
+        first.close()
+
+    # A new start where the server is slow to become ready: it never leaves "idle" here.
+    monkeypatch.setattr(mcp_module.McpServer, "connect", lambda self: None)
+    second = tools.ToolBox(config, data)
+    try:
+        second.sync_mcp()
+        late = second.tools()
+        assert [(t.name, t.parameters) for t in late] == before, "the same tools in the same order"
+        assert all(t.stale for t in late if t.source == "mcp")
+        # a different configuration is another server: nothing is carried over
+        config.update({"tools": {"mcp_json": mcp_config("--other")}})
+        assert not any(t.source == "mcp" for t in second.tools())
+    finally:
+        second.close()
+
+
 def test_wire_names_are_safe_and_unique() -> None:
     taken: set[str] = set()
     first = tools._wire_name("my server", "do.it!", taken)

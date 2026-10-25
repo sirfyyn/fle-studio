@@ -55,6 +55,7 @@ class Tool:
     remote_name: str = ""  # the tool's own name at its MCP server
     confirm: bool = False
     ui: str = ""  # the ui:// resource of an MCP App that shows this tool's result
+    stale: bool = False  # from the remembered list of an MCP server that is still connecting
     run: Callable[[dict[str, Any]], str] | None = field(default=None, repr=False)
 
     def openai(self) -> dict[str, Any]:
@@ -419,9 +420,11 @@ class ToolBox:
 
     def __init__(self, config: Config, data_dir: Path | None = None) -> None:
         self.config = config
+        self.data_dir = data_dir
         self.oauth = OAuthManager(data_dir) if data_dir is not None else None
         self.mcp = McpManager(self.oauth)
         self._synced = ""
+        self._known: dict[str, Any] = self._load_known()
 
     # ---- settings
 
@@ -554,10 +557,9 @@ class ToolBox:
             self.sync_mcp()
             taken = {t.name for t in out}
             trusted = self.trusted()
-            for server in self.mcp.servers():
-                if server.status != "ready":
-                    continue
-                for t in server.tools:
+            for server in sorted(self.mcp.servers(), key=lambda sv: sv.name):
+                raw_tools, stale = self._server_tools(server)
+                for t in raw_tools:
                     if "model" not in tool_visibility(t):  # a tool only the app may call
                         continue
                     name = _wire_name(server.name, str(t["name"]), taken)
@@ -574,9 +576,66 @@ class ToolBox:
                             remote_name=str(t["name"]),
                             confirm=server.name not in trusted,
                             ui=tool_ui_uri(t),
+                            stale=stale,
                         )
                     )
+        # By name, always: llama-server renders the tools at the very front of the prompt for the common chat
+        # templates (Qwen), so a different order is a different prompt and the whole cache is lost.
+        out.sort(key=lambda t: t.name)
         return out
+
+    # ---- the last known tools of each MCP server
+
+    def _known_file(self) -> Path | None:
+        return self.data_dir / "mcp-tools.json" if self.data_dir is not None else None
+
+    def _load_known(self) -> dict[str, Any]:
+        path = self._known_file()
+        if path is None:
+            return {}
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def _save_known(self) -> None:
+        path = self._known_file()
+        if path is None:
+            return
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(self._known, ensure_ascii=False), encoding="utf-8")
+            tmp.replace(path)
+        except OSError:
+            pass  # only a cache; the next start simply has no earlier list
+
+    def _server_tools(self, server: Any) -> tuple[list[dict[str, Any]], bool]:
+        """(tools, stale). A ready server gives its own list and it is remembered. A server that is still connecting
+        (it started late, or FLE Studio just started) gives the list it had last time, as long as its settings are the
+        same, so the tools in a request do not change when the server becomes ready; those are `stale`."""
+        if server.status == "ready":
+            tools = sorted(server.tools, key=lambda t: str(t.get("name")))
+            entry = self._known.get(server.name)
+            if not isinstance(entry, dict) or entry.get("spec") != server.spec or entry.get("tools") != tools:
+                self._known[server.name] = {"spec": server.spec, "tools": tools}
+                self._save_known()
+            return tools, False
+        if server.status in ("idle", "connecting"):
+            entry = self._known.get(server.name)
+            if isinstance(entry, dict) and entry.get("spec") == server.spec and isinstance(entry.get("tools"), list):
+                return [t for t in entry["tools"] if isinstance(t, dict) and isinstance(t.get("name"), str)], True
+        return [], False
+
+    def _wait_ready(self, name: str, timeout: float = 20.0) -> None:
+        """A call to a tool from the remembered list waits a moment for its server to finish connecting."""
+        end = time.monotonic() + timeout
+        while time.monotonic() < end:
+            server = self.mcp.get(name)
+            if server is None or server.status not in ("idle", "connecting"):
+                return
+            time.sleep(0.05)
 
     def status(self) -> dict[str, Any]:
         """What the page needs: the tools, the MCP servers and why something is missing."""
@@ -627,6 +686,9 @@ class ToolBox:
     def call(self, name: str, arguments: Any, approved: bool = False) -> dict[str, Any]:
         """Run one tool. Returns {"content", "is_error", "ms"}. Raises NeedsApproval or KeyError (unknown tool)."""
         tool = next((t for t in self.tools() if t.name == name), None)
+        if tool is not None and tool.stale:
+            self._wait_ready(tool.server)
+            tool = next((t for t in self.tools() if t.name == name), None)
         if tool is None:
             raise KeyError(name)
         if tool.confirm and not approved:

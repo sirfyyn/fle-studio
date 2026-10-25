@@ -694,12 +694,13 @@ export function mount(main, chatId) {
     if (chat.id) await save();
   }
 
-  function requestFor(node, useTools, images) {
+  // lastRound: no more tool calls. The tools stay in the request (same prompt, cache kept); tool_choice "none" stops the call.
+  function requestFor(node, useTools, images, lastRound = false) {
     const c = store.state?.settings?.chat || {};
     const idx = indexOf(chat);
     const nodes = [];
     for (let cur = node.parent ? idx.byId.get(node.parent) : null; cur; cur = cur.parent ? idx.byId.get(cur.parent) : null) nodes.unshift(cur);
-    return buildRequest({ nodes, system: chat.system || c.system_prompt, settings: c,
+    return buildRequest({ nodes, system: chat.system || c.system_prompt, settings: c, noMoreTools: lastRound,
       tools: useTools ? toolInfo.tools.map((t) => t.schema) : [], images: caps.vision ? images : new Map() });
   }
 
@@ -711,8 +712,9 @@ export function mount(main, chatId) {
     let node = first;
     try {
       for (let round = 0; ; round += 1) {
-        const useTools = toolsActive() && round < (toolInfo.max_rounds || 8);
-        await generateInto(node, useTools, ctrl);
+        const lastRound = round >= (toolInfo.max_rounds || 8);
+        await generateInto(node, toolsActive(), ctrl, lastRound);
+        if (lastRound) { delete node.tool_calls; break; } // the limit is reached; a call that came anyway does not run
         if (ctrl.signal.aborted || node.error || !(node.tool_calls || []).length) break;
         await save();
         await executeCalls(node, ctrl);
@@ -732,7 +734,7 @@ export function mount(main, chatId) {
     }
   }
 
-  async function generateInto(asst, useTools, ctrl) {
+  async function generateInto(asst, useTools, ctrl, lastRound = false) {
     const images = await loadImages(pathOf(chat).filter((m) => m !== asst));
     streaming = { msg: asst, ctrl, t0: performance.now(), tFirst: 0, thinking: false, thinkStart: 0, raw: "", split: false,
       openThink: new Set(), frame: 0 };
@@ -740,7 +742,7 @@ export function mount(main, chatId) {
     scrollBottom();
     renderComposer();
     try {
-      await streamChat(requestFor(asst, useTools, images), { signal: ctrl.signal, onChunk });
+      await streamChat(requestFor(asst, useTools, images, lastRound), { signal: ctrl.signal, onChunk });
     } catch (e) {
       if (e.name === "AbortError") asst.stopped = true;
       else {
