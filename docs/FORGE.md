@@ -1,5 +1,7 @@
 # Forge: build your own quant
 
+Forge is a plugin that comes with FLE Studio and is on by default (Settings → Plugins turns it off; [PLUGINS.md](PLUGINS.md)).
+
 Forge is the page of FLE Studio that builds a model file for you. It does not contain a quantizer of its own: it
 rearranges GGUF files itself (hybrids, pruning) and drives the command-line tools of your llama.cpp build for
 everything else (`llama-quantize`, `llama-imatrix`, `llama-perplexity`, and in FLE builds `llama-fle-reap`). It runs

@@ -82,7 +82,9 @@ jobs:
           if [ -d clean-env/Scripts ]; then BIN=clean-env/Scripts; else BIN=clean-env/bin; fi
           "$BIN/python" -m pip install dist/*.whl
           "$BIN/fle-studio" --version
-          "$BIN/python" -c "import importlib.resources as r; import fle_studio; root = r.files('fle_studio') / 'web'; [(root / n).read_bytes() for n in ('index.html', 'app.css', 'js/app.js', 'js/forge.js', 'fonts/dm-sans-latin-1.woff2')]; print('web files ok')"
+          "$BIN/python" -c "import importlib.resources as r; import fle_studio; root = r.files('fle_studio') / 'web'; [(root / n).read_bytes() for n in ('index.html', 'app.css', 'js/app.js', 'js/chat.js', 'fonts/dm-sans-latin-1.woff2')]; print('web files ok')"
+          # The plugins that ship in the wheel: found through the entry points, with their web files.
+          "$BIN/python" -c "from fle_studio import plugins; import importlib.resources as r; found = {f.id for f in plugins.discover()}; assert found == {'forge', 'recorder', 'remote', 'switch', 'updater'}, found; [(r.files(p) / 'web' / n).read_bytes() for p, n in (('fle_studio_forge', 'forge.js'), ('fle_studio_recorder', 'boot.js'), ('fle_studio_remote', 'boot.js'), ('fle_studio_switch', 'boot.js'), ('fle_studio_updater', 'boot.js'))]; print('plugins ok', sorted(found))"
           "$BIN/python" -c "import tempfile, os; from fle_studio_forge import corpus; d = tempfile.mkdtemp(); m = corpus.bundled(os.path.join(d, 'c.txt')); assert m['chars'] > 500000, m; print('bundled corpus ok', m['chars'])"
 
   # The two installers, run from the checkout (FLE_STUDIO_SOURCE) instead of GitHub, so that a change to an

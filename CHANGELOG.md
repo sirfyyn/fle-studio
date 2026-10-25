@@ -1,5 +1,62 @@
 # Changelog
 
+## [Unreleased]
+
+Version 0.4.0.dev1. Two aims: the prompt cache of llama-server holds across a tool conversation, and the core gets
+smaller because Forge, Remote access, Updates, Live and Capture and the model switcher are plugins now (decision 592:
+shipped by default, removable).
+
+### Prompt cache
+
+- **Tools in a fixed order.** The tools of a request are sorted by name (the server's list and the request), because
+  llama-server puts them at the very front of the prompt for Qwen-style chat templates, and any change there makes it
+  read the whole prompt again.
+- **MCP tools stay when a server is late.** The last known tool list of each MCP server is kept (`mcp-tools.json` in the
+  data folder). A server that is still connecting, after a start or a reconnect, keeps its earlier tools in the list as
+  long as its settings are the same; a call to such a tool waits for the server (up to 20 s).
+- **The last tool round keeps the tools.** After `max_rounds` the request carries `tool_choice: "none"` instead of
+  leaving the tools out. A call that comes anyway is not run.
+- **Thoughts go back.** `reasoning_content` of the assistant messages after the last user message is sent with the next
+  request of the same answer, as the chat templates expect, so the prompt starts with exactly what the engine has read.
+
+### Lighter
+
+- **Streaming answers** are rendered in steps: finished Markdown blocks once, only the open rest again, at most about 12
+  times a second, and while the shape of the message does not change only its two text bodies are updated.
+- **The context count** is made once per change of the history, not per keystroke; the draft in the box is added to it.
+- **The live sampler sleeps** when no page looks (no request for `/api/live` or `/api/engine` for 20 s): no `/metrics`
+  and `/slots` requests to the engine, no CPU. The proxy reads a stream only when Capture is on or a page is open.
+- **The `engine` event** no longer fires for every log line (the log has its own `enginelog`); a busy engine used to make
+  every page ask for capabilities and the launch preview again and again.
+- `-lv 4` stays the default: the expert-cache hit rate and the loading phases are logged at that level only.
+- Not done: one shared event channel (`/api/events`) instead of the polling of `/api/engine`, `/api/live` and the
+  recorder's summary.
+
+### Plugins that ship with FLE Studio
+
+- **Forge**, **Remote access** (host and client, pairing, TLS), **Updates**, the **Recorder** (Live and Capture, one hook
+  into the proxy) and the **model switcher** are plugins of the package itself: the packages `fle_studio_forge`,
+  `fle_studio_remote`, `fle_studio_updater`, `fle_studio_recorder` and `fle_studio_switch`, found through the entry point
+  group `fle_studio.plugins`. They are on by default; Settings → Plugins turns each one off (`plugins.json` lists them
+  under `disabled`). `FLE_STUDIO_NO_BUNDLED=1` starts FLE Studio with the core alone. URLs, settings and data are the
+  same as before.
+- The plugin API got what such plugins need (docs/PLUGINS.md): `ctx.studio`, `ctx.api`, `ctx.boot` (also early),
+  `ctx.page(path=, nav=)`, `ctx.describe`, `ctx.hook`, and in the page `kit.settingsSection`, `modelMenuProviders`,
+  `chatListHeads` and the `transport` of api.js.
+- Without the plugins: a server opened to the network speaks plain http with the access key (it says so at start),
+  `--pair-code` explains that pairing needs the Remote access plugin, and there is no `/forge`, no update check, no
+  hosts and no Live page.
+- Size of the core (`src/fle_studio`: Python, JavaScript and CSS): 27,100 lines before, 19,400 now (72 %). The plugins
+  add 8,400 lines in the same wheel. The 60 % aim would need the Experiments cluster (bench, tuner, quality, stats,
+  about 3,300 lines) to move too; it is tied to the Engine page and is left for a decision.
+- The CI runs the core suite once more with `FLE_STUDIO_NO_BUNDLED=1` (`tests/test_core_alone.py` and everything but
+  `tests/plugins/`).
+- The "Studio Forge ... Roadmap" card on the Models page is gone; it announced something that has existed for a while.
+
+### Fixes
+
+- README: names 0.3 and no longer lists Tools and MCP twice.
+
 ## [0.3.2] - 2026-10-25
 
 - **Speculation menu**: Engine → Advanced disables the Speculation setting, with the reason underneath, when it would

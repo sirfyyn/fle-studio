@@ -1,5 +1,9 @@
 # Host and client: one FLE Studio computes for another
 
+This is the **Remote access** plugin, which comes with FLE Studio and is on by default (Settings → Plugins turns it off;
+[PLUGINS.md](PLUGINS.md)). Without it a Studio opened to the network speaks plain http with the access key, has no hosts
+and no pairing.
+
 A Studio on your Mac can work on a machine with a GPU, for example a server in the next room. The browser only ever
 talks to the Studio on the Mac; that Studio passes everything on to the host. Chat, live data, models, engine,
 experiments and settings all run against the host, and so does every page that is added later: nothing in the

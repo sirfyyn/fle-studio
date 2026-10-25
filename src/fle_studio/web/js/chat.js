@@ -48,6 +48,8 @@ export function mount(main, chatId) {
   let caps = { vision: false, tools: null, n_ctx: null, max_upload_mb: 25, pdf: true };
   let toolInfo = { enabled: false, tools: [], servers: [], max_rounds: 8, connecting: false };
   let toolPolls = 0;
+  let ctxHistory = { key: "", used: 0, exact: false }; // the context count, see contextUse (declared here: the first render runs early)
+  let ctxAtt = { key: "", tokens: 0 };
   let alive = true;
   const unsub = [];
 
@@ -498,9 +500,6 @@ export function mount(main, chatId) {
   // How full the context window is: the engine's own count up to the last answer, an estimate for the rest.
   // The count is made once per change of the history (a turn), not per keystroke: the history part is kept under a key
   // made of cheap numbers (lengths), and the draft in the box is added to it. The estimate is additive over messages.
-  let ctxHistory = { key: "", used: 0, exact: false };
-  let ctxAtt = { key: "", tokens: 0 };
-
   function historyKey(nodes, c) {
     let n = 0;
     for (const m of nodes) {

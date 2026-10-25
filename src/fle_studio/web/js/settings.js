@@ -1,7 +1,7 @@
 // Settings: looks, where models live, how the chat samples, the Hugging Face token and access from other machines.
 
 import { post } from "./api.js";
-import { applyTheme, on, refreshPlugins, refreshState, store, topbar } from "./app.js";
+import { applyTheme, on, refreshPlugins, refreshState, settingsSections, store, topbar } from "./app.js";
 import { toolsSection, stopToolsPolling } from "./settings-tools.js";
 import { clear, fmt, h, icon, toast } from "./ui.js";
 
