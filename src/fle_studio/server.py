@@ -35,13 +35,11 @@ from urllib.parse import parse_qs, urlparse
 from . import (
     __version__,
     bench,
-    capture,
     catalog,
     chat_api,
     chats,
     hf,
     launch,
-    livechat,
     mcp_api,
     net,
     paths,
@@ -120,13 +118,6 @@ class Studio:
         self.engine.on_load_failure = self.load_failure_fallback
         self.live = Live(self.engine)
         self.chats = Chats(self.data_dir)
-        self.livechat = livechat.LiveChat()
-        self.capture = capture.Capture(
-            self.data_dir,
-            lambda: self.config.get("capture.enabled"),
-            lambda: self.config.get("capture.max_mb"),
-            self.livechat,
-        )
         self.bench = bench.Bench(self.engine, self.data_dir)
         self.quality = quality.Quality(self.data_dir)
         self.cache = CacheWatch()
@@ -510,12 +501,6 @@ ROUTES: list[tuple[str, re.Pattern[str], str]] = [
         ("POST", r"^/api/bench/start$", "bench_start"),
         ("POST", r"^/api/bench/cancel$", "bench_cancel"),
         ("POST", r"^/api/bench/(?P<id>[0-9a-f]+)/delete$", "bench_delete"),
-        ("GET", r"^/api/livechat$", "live_chat"),
-        ("DELETE", r"^/api/livechat$", "live_chat_clear"),
-        ("DELETE", r"^/api/livechat/(?P<id>[0-9a-f]{12})$", "live_chat_delete"),
-        ("POST", r"^/api/livechat/(?P<id>[0-9a-f]{12})/star$", "live_chat_star"),
-        ("GET", r"^/api/capture$", "capture"),
-        ("POST", r"^/api/capture/clear$", "capture_clear"),
     ]
 ]
 
@@ -813,7 +798,11 @@ class Handler(BaseHTTPRequestHandler):
             return
         body = self._body(MAX_PROXY) or None
         chat_api.screen_proxy_body(self.path, body)  # tools and a forced answer format must not share a request
-        rec = self.studio.capture.begin(self.path, body)
+        rec = None  # a recorder of the request, from a plugin (hook proxy_record: the recorder plugin)
+        for make in self.studio.plugins.hooks("proxy_record"):
+            rec = make(self.path, body)
+            if rec is not None:
+                break
         u = urlparse(base)
         if u.scheme == "https":
             conn: http.client.HTTPConnection = http.client.HTTPSConnection(
@@ -843,11 +832,12 @@ class Handler(BaseHTTPRequestHandler):
                 rec.done(resp.status, data)
             self._send(resp.status, data, ctype)
             return
-        # A stream is read for the Live chat, for Capture and for the speed of the last answer only when someone looks
-        # at them: Capture is on, or a page is open. Otherwise the bytes are just passed on.
-        if rec and not (self.studio.config.get("capture.enabled") or self.studio.live.watched()):
+        # A stream is read only when someone looks at what comes of it: a recorder that wants it (Capture is on, or a
+        # page may show the Live chat), or a page that shows the speed of the last answer. Otherwise the bytes are
+        # just passed on.
+        if rec is not None and not rec.wants_stream():
             rec = None
-        watch = rec is not None or self.studio.live.watched()
+        read_here = rec is None and self.studio.live.watched()  # no recorder reads it: the tail gives the speed
         self.send_response(resp.status)
         self.send_header("Content-Type", ctype)
         self.send_header("Cache-Control", "no-cache")
@@ -863,17 +853,19 @@ class Handler(BaseHTTPRequestHandler):
                     break
                 self.wfile.write(chunk)
                 self.wfile.flush()
-                if watch:
+                if read_here:
                     tail = (tail + chunk)[-262144:]
-                if rec:
+                if rec is not None:
                     rec.feed(chunk)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
             pass  # the browser stopped reading (Stop button); closing our side cancels the generation
         finally:
             conn.close()
-            if rec:
+            if rec is not None:
                 rec.done(resp.status)
-        if watch:
+        if rec is not None and rec.timings:
+            self.studio.live.record_response(rec.timings, rec.usage)  # the recorder has read the stream already
+        elif read_here:
             self._record_stream(tail)
 
     def _record(self, data: bytes) -> None:
@@ -898,39 +890,6 @@ class Handler(BaseHTTPRequestHandler):
 
     def api_ping(self, query: dict[str, str]) -> None:
         self.send_json(200, {"app": "fle-studio", "version": __version__})
-
-    def api_live_chat(self, query: dict[str, str]) -> None:
-        if query.get("summary"):
-            self.send_json(200, self.studio.livechat.summary())
-        else:
-            self.send_json(200, self.studio.livechat.snapshot())
-
-    def api_live_chat_clear(self, query: dict[str, str]) -> None:
-        self.send_json(200, {"deleted": self.studio.livechat.clear()})
-
-    def api_live_chat_delete(self, query: dict[str, str], id: str) -> None:  # noqa: A002
-        if not self.studio.livechat.delete(id):
-            raise ApiError(404, "That conversation is already gone")
-        self.send_json(200, {"ok": True})
-
-    def api_live_chat_star(self, query: dict[str, str], id: str) -> None:  # noqa: A002
-        """Copy a Live conversation (up to one message, if the body names it) into the chat archive as a favorite."""
-        message = self.read_json().get("message")
-        try:
-            data = self.studio.livechat.star_data(id, str(message) if message else None)
-        except KeyError:
-            raise ApiError(404, "That conversation or message is already gone") from None
-        saved = self.studio.chats.save(None, data)
-        self.studio.livechat.mark_starred(id)
-        self.send_json(200, saved)
-
-    def api_capture(self, query: dict[str, str]) -> None:
-        self.send_json(200, self.studio.capture.status())
-
-    def api_capture_clear(self, query: dict[str, str]) -> None:
-        if self.read_json().get("confirm") is not True:
-            raise ApiError(400, 'Send {"confirm": true} to delete all captured files')
-        self.send_json(200, {"deleted": self.studio.capture.clear()})
 
     def api_state(self, query: dict[str, str]) -> None:
         self.send_json(200, self.studio.state())

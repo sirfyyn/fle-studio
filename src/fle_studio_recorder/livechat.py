@@ -16,7 +16,8 @@ import threading
 import time
 from typing import Any
 
-from . import chat_tree
+from fle_studio import chat_tree
+
 from .capture import _strip_images
 
 MAX_MESSAGES = 100

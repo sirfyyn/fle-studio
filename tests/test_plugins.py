@@ -63,7 +63,13 @@ def test_nothing_is_on_until_turned_on(tmp_path: Path, web: Path) -> None:
     assert calls == ["register demo api 1"]
     assert json.loads((tmp_path / "plugins.json").read_text()) == {"enabled": ["demo"]}
     item = reg.view()["plugins"][0]
-    assert item["loaded"] and item["page"] == {"title": "Demo", "icon": "spark", "script": "main.js", "path": ""}
+    assert item["loaded"] and item["page"] == {
+        "title": "Demo",
+        "icon": "spark",
+        "script": "main.js",
+        "path": "",
+        "nav": True,
+    }
     assert (tmp_path / "plugins" / "demo").is_dir()
 
     again = plugins.Plugins(

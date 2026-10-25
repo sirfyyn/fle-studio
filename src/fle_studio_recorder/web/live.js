@@ -2,10 +2,10 @@
 // The server joins requests that repeat the history into one conversation and keeps the newest 100 messages. A star
 // copies a conversation (or everything up to one message) into the normal chat list, where it stays.
 
-import { del, get, post } from "./api.js";
-import { on, refreshChats, store, topbar } from "./app.js";
-import { renderMarkdown } from "./md.js";
-import { clear, confirmDialog, fmt, h, icon, toast } from "./ui.js";
+import { del, get, post } from "/js/api.js";
+import { on, refreshChats, store, topbar } from "/js/app.js";
+import { renderMarkdown } from "/js/md.js";
+import { clear, confirmDialog, fmt, h, icon, toast } from "/js/ui.js";
 
 function textOf(content) {
   if (typeof content === "string") return content;

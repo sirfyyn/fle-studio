@@ -53,6 +53,18 @@ class Recorder:
         self._usage: dict[str, Any] | None = None
         self._meta: dict[str, Any] = {}
 
+    @property
+    def timings(self) -> dict[str, Any] | None:
+        """The engine's timings of a streamed answer, once it has been read (for the speed shown on the Live panel)."""
+        return self._timings
+
+    @property
+    def usage(self) -> dict[str, Any] | None:
+        return self._usage
+
+    def wants_stream(self) -> bool:
+        return self.owner.wants_stream()
+
     def feed(self, chunk: bytes) -> None:
         """A piece of a text/event-stream answer."""
         self._buf += chunk
@@ -140,12 +152,25 @@ class Recorder:
 
 
 class Capture:
-    def __init__(self, data_dir: Path, enabled: Any, max_mb: Any, live: Any = None) -> None:
+    def __init__(
+        self,
+        data_dir: Path,
+        enabled: Any,
+        max_mb: Any,
+        live: Any = None,
+        watched: Any = lambda: False,
+    ) -> None:
         self.dir = Path(data_dir) / SUBDIR
         self._enabled = enabled  # callables, so a change in the settings takes effect at once
         self._max_mb = max_mb
         self.live = live  # the in-memory Live chat (livechat.py), which sees every request whether or not Capture is on
+        self._watched = watched  # is a page open that may show the Live chat?
         self._lock = threading.Lock()
+
+    def wants_stream(self) -> bool:
+        """Whether a streamed answer is read at all: Capture is on, or somebody can look at the Live chat. Otherwise
+        the proxy only passes the bytes on."""
+        return bool(self._enabled()) or bool(self._watched())
 
     def begin(self, path: str, body: bytes | None) -> Recorder | None:
         if not (self._enabled() or self.live) or not body or not path.split("?", 1)[0].rstrip("/").endswith(RECORDED):

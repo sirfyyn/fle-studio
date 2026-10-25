@@ -55,6 +55,24 @@ def test_no_bundled_plugin_is_found_or_loaded(core: tuple[Studio, int]) -> None:
     assert studio.plugins.loaded == {}
 
 
+def test_the_proxy_streams_and_shows_the_speed_without_a_recorder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from chat_support import make_stack
+
+    monkeypatch.setenv(plugins.NO_BUNDLED, "1")
+    body = {"messages": [{"role": "user", "content": "Say hello in one short sentence."}], "max_tokens": 16}
+    for stack in make_stack(tmp_path):
+        assert stack.studio.plugins.hooks("proxy_record") == []
+        stack.studio.live.touch()  # a page is open
+        status, _, raw = stack.call("POST", "/v1/chat/completions", {**body, "stream": True})
+        assert status == 200 and b"data:" in raw and b"[DONE]" in raw
+        status, live = stack.json("GET", "/api/live")
+        assert status == 200 and live["last_response"] and live["last_response"]["predicted_n"], "speed from the tail"
+        status, answer = stack.chat(body)  # not streamed
+        assert status == 200 and answer["choices"]
+
+
 def test_the_core_pages_and_calls_answer_without_plugins(core: tuple[Studio, int]) -> None:
     studio, port = core
     for path in ("/api/state", "/api/engine", "/api/live", "/api/settings", "/api/chats", "/api/tools", "/api/models"):
@@ -63,5 +81,5 @@ def test_the_core_pages_and_calls_answer_without_plugins(core: tuple[Studio, int
     status, body = call(studio, port, "GET", "/")
     assert status == 200 and b"fle-token" in body
     # what a plugin would have added is simply not there
-    for gone in ("/api/engine/switch", "/api/forge", "/api/update"):
+    for gone in ("/api/engine/switch", "/api/forge", "/api/update", "/api/livechat", "/api/capture"):
         assert call(studio, port, "GET", gone)[0] == 404, gone

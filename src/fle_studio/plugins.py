@@ -76,6 +76,7 @@ class Page:
     icon: str = "grid"
     script: str = "main.js"
     path: str = ""  # a plugin of the package itself may have a path of its own, like /forge, instead of /p/<id>
+    nav: bool = True  # an entry in the sidebar menu; False for a page that something else links to
 
 
 @dataclass
@@ -100,10 +101,10 @@ class PluginContext:
     _hooks: dict[str, list[Callable[..., Any]]] = field(default_factory=dict)
     _stops: list[Callable[[], None]] = field(default_factory=list)
 
-    def page(self, title: str, icon: str = "grid", script: str = "main.js", path: str = "") -> None:
+    def page(self, title: str, icon: str = "grid", script: str = "main.js", path: str = "", nav: bool = True) -> None:
         """Add an entry to the sidebar that opens /p/<id>. The page loads /plugins/<id>/<script> as an ES module and
         calls its `mount(main, kit)`; see docs/PLUGINS.md. `path` (only for the plugins of the package itself) puts
-        the page at a path of its own, like /forge."""
+        the page at a path of its own, like /forge. `nav=False` leaves the entry out of the menu."""
         title = str(title).strip()[:40]
         if not title:
             raise ValueError("page: a title is needed")
@@ -111,7 +112,7 @@ class PluginContext:
             raise ValueError("page: script must be a .js file in the plugin's web folder")
         if path and not (self.bundled and re.match(r"^/[a-z][a-z0-9-]{0,31}$", path)):
             raise ValueError("page: a path of its own is for the plugins of FLE Studio's package, like /forge")
-        self._page = Page(title, str(icon or "grid"), script, path)
+        self._page = Page(title, str(icon or "grid"), script, path, bool(nav))
 
     def web(self, folder: Any) -> None:
         """The folder whose files are served under /plugins/<id>/.
@@ -193,7 +194,10 @@ class Found:
 
 
 # What the core lets a plugin of the package itself take part in: name -> what the hook gets and gives.
-HOOKS: dict[str, str] = {}
+HOOKS: dict[str, str] = {
+    "proxy_record": "(path, body) -> recorder | None, when a request goes through /v1. A recorder has feed(chunk), "
+    "done(status, body=None), wants_stream() and, once a stream is read, timings and usage.",
+}
 
 
 def discover() -> list[Found]:
@@ -355,7 +359,13 @@ class Plugins:
                     "enabled": self.is_on(pid),
                     "loaded": ctx is not None,
                     "error": self.errors.get(pid, ""),
-                    "page": {"title": page.title, "icon": page.icon, "script": page.script, "path": page.path}
+                    "page": {
+                        "title": page.title,
+                        "icon": page.icon,
+                        "script": page.script,
+                        "path": page.path,
+                        "nav": page.nav,
+                    }
                     if page
                     else None,
                     "boot": ctx._boot if ctx else "",

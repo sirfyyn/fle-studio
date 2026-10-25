@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 from chat_support import Stack, make_stack
 
-from fle_studio.capture import Capture
+from fle_studio_recorder.capture import Capture
 
 
 @pytest.fixture

@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 from chat_support import Stack, make_stack
 
-from fle_studio.livechat import MAX_MESSAGES, LiveChat
+from fle_studio_recorder.livechat import MAX_MESSAGES, LiveChat
 
 
 def record(messages: list[dict[str, Any]], answer: str, status: int = 200, **extra: Any) -> dict[str, Any]:

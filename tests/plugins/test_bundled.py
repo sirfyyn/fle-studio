@@ -14,7 +14,7 @@ import pytest
 from fle_studio import plugins
 from fle_studio.server import Studio, make_server
 
-SHIPPED = {"forge", "switch", "updater"}
+SHIPPED = {"forge", "recorder", "switch", "updater"}
 
 
 @pytest.fixture
@@ -84,7 +84,7 @@ def test_forge_is_a_page_and_routes_that_come_and_go_with_the_plugin(running: tu
     studio, port = running
     _, view = call(studio, port, "GET", "/api/plugins")
     forge = {p["id"]: p for p in view["plugins"]}["forge"]
-    assert forge["page"] == {"title": "Forge", "icon": "forge", "script": "forge.js", "path": "/forge"}
+    assert forge["page"] == {"title": "Forge", "icon": "forge", "script": "forge.js", "path": "/forge", "nav": True}
     status, body = call(studio, port, "GET", "/plugins/forge/forge.js")
     assert status == 200 and b"export function mount" in body
     assert call(studio, port, "GET", "/plugins/forge/forge.css")[0] == 200

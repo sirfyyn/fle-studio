@@ -1,7 +1,7 @@
 """The live chat must keep its order when the clock is coarse (Windows ticks about every 15 ms)."""
 
-from fle_studio import livechat
-from fle_studio.livechat import MAX_MESSAGES, LiveChat
+from fle_studio_recorder import livechat
+from fle_studio_recorder.livechat import MAX_MESSAGES, LiveChat
 
 
 def record(question: str, answer: str) -> dict:

@@ -3,7 +3,6 @@
 import { post } from "./api.js";
 import { applyTheme, on, refreshPlugins, refreshState, store, topbar } from "./app.js";
 import { toolsSection, stopToolsPolling } from "./settings-tools.js";
-import { captureSection } from "./settings-capture.js";
 import { remoteSections } from "./hosts.js";
 import { clear, fmt, h, icon, toast } from "./ui.js";
 
@@ -34,7 +33,7 @@ export function mount(main) {
     const ui = { section, field, toggle, save, render: () => render(true) };
     const parts = [
       [10, look(s)], [20, models(s)], [30, chat(s)], [40, toolsSection(s, ui)],
-      [50, captureSection(s, ui)], [60, hub(s)], [70, network(s)],
+      [60, hub(s)], [70, network(s)],
       ...remoteSections(ui).map((el, i) => [90 + i / 10, el]),
       [100, plugins()], [110, about()],
     ];

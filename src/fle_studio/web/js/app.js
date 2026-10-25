@@ -13,7 +13,6 @@ export const store = {
   live: [], // samples from /api/live, about one per second
   liveMeta: {}, // metrics_available, last_response, totals, cache, accept_logged
   chats: [],
-  livechat: { count: 0, version: 0 }, // /api/livechat?summary=1: the Live chat, see live.js
   downloads: [],
   online: true,
   plugins: [], // /api/plugins: the plugins of this machine, see plugin-page.js
@@ -63,6 +62,10 @@ export const settingsSections = [];
 // Entries that plugins add to the chat's model menu of an attached service: async (service) => items | null
 // (items as openMenu in ui.js takes them). The model switcher plugin is one.
 export const modelMenuProviders = [];
+
+// Entries that plugins put at the top of the chat list: (pathname) => element | null. After a change the plugin
+// calls renderChatList(). The recorder plugin has the Live entry here.
+export const chatListHeads = [];
 
 // A plugin's boot script (plugins.py ctx.boot) runs once per page load and may add Settings sections, sidebar
 // notices and the like. A script that fails is reported and does not stop the page.
@@ -116,11 +119,6 @@ async function tick() {
     emit("live");
     renderEngineCard();
 
-    const lc = await get("/api/livechat?summary=1");
-    const lcChanged = lc.version !== store.livechat.version;
-    store.livechat = lc;
-    if (lcChanged) { emit("livechat"); renderChatList(); }
-
     const wantDl = store.downloads.some((d) => ACTIVE_DL.has(d.state)) || /^\/(models|engine)/.test(location.pathname);
     if (wantDl) {
       const before = new Map(store.downloads.map((d) => [d.id, d.state]));
@@ -155,11 +153,10 @@ const pages = {
   lab: () => import("./lab.js"),
   cache: () => import("./cache.js"),
   settings: () => import("./settings.js"),
-  live: () => import("./live.js"),
   plugin: () => import("./plugin-page.js"),
 };
 const routes = [
-  [/^\/$/, "chat"], [/^\/c\/([0-9a-f]{16})$/, "chat"], [/^\/live\/?$/, "live"], [/^\/models\/?$/, "models"], [/^\/engine\/?$/, "engine"],
+  [/^\/$/, "chat"], [/^\/c\/([0-9a-f]{16})$/, "chat"], [/^\/models\/?$/, "models"], [/^\/engine\/?$/, "engine"],
   [/^\/lab\/?$/, "lab"], [/^\/cache\/?$/, "cache"], [/^\/settings\/?$/, "settings"],
   [/^\/p\/([a-z][a-z0-9-]{0,31})(?:\/.*)?$/, "plugin"],
 ];
@@ -216,7 +213,7 @@ function renderNav() {
   const activeDl = store.downloads.filter((d) => ACTIVE_DL.has(d.state)).length;
   // The live poll calls this every few seconds on /models and /engine; rebuilding the links there
   // replaced the link under a pressed mouse button and the click got lost.
-  const pages = store.plugins.filter((p) => p.loaded && p.page).map((p) => [p.page.path || `/p/${p.id}`, p.page.icon, p.page.title]);
+  const pages = store.plugins.filter((p) => p.loaded && p.page && p.page.nav !== false).map((p) => [p.page.path || `/p/${p.id}`, p.page.icon, p.page.title]);
   const key = `${path} ${activeDl} ${pages.map((p) => p[0]).join(",")}`;
   if (key === navKey && nav.childElementCount) return;
   navKey = key;
@@ -239,19 +236,16 @@ function chatGroup(ts) {
   return "Older";
 }
 
-function renderChatList() {
+export function renderChatList() {
   if (searchActive()) return; // the search box shows its hits in this list
   const list = document.getElementById("chat-list");
   const active = (location.pathname.match(/^\/c\/([0-9a-f]{16})$/) || [])[1];
-  const count = store.livechat?.count || 0;
-  const liveItem = h("a", { class: `chat-item live${/^\/live\/?$/.test(location.pathname) ? " active" : ""}`, href: "/live", "data-link": true,
-    title: "Everything that goes through /v1, kept in memory only" },
-  icon("live", "sm"), h("span", { class: "t" }, "Live"), count ? h("span", { class: "badge", title: "Messages in Live" }, count) : null);
+  const heads = chatListHeads.map((make) => make(location.pathname)).filter(Boolean); // entries of plugins, like Live
   if (!store.chats.length) {
-    clear(list, liveItem, h("div", { class: "chat-empty" }, "Your conversations stay on this computer."));
+    clear(list, ...heads, h("div", { class: "chat-empty" }, "Your conversations stay on this computer."));
     return;
   }
-  const out = [liveItem];
+  const out = [...heads];
   let group = "";
   for (const c of store.chats) {
     const g = chatGroup(c.updated);

@@ -1,7 +1,7 @@
 // Settings: Capture. Keep what you do with the model as files on this computer, to build your own corpus.
 
-import { get, post } from "./api.js";
-import { clear, fmt, h, toast } from "./ui.js";
+import { get, post } from "/js/api.js";
+import { clear, fmt, h, toast } from "/js/ui.js";
 
 // ui: the small helpers of settings.js ({ section, field, toggle, save, render }).
 export function captureSection(s, ui) {
