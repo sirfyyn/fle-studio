@@ -67,7 +67,7 @@ uv tool upgrade fle-studio          # update (stays on the release you installed
 uv tool uninstall fle-studio        # remove the program (your data stays)
 ```
 
-The installer pins the release it installs (v0.3.1 at the time of writing), and `uv tool upgrade` follows that pin. To
+The installer pins the release it installs (v0.3.2 at the time of writing), and `uv tool upgrade` follows that pin. To
 move to a newer release, run the installer again; it always installs the release named in its own script, or the one
 you set with `FLE_STUDIO_REF`.
 
