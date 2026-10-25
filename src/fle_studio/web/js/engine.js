@@ -76,6 +76,7 @@ export function mount(main) {
   let previewFixes = [];
   let previewSpec = null; // {applies, reason} from the plan answer; null = not known yet, the menu stays usable
   let checkResult = null;
+  let moreOpen = false; // "More: expert cache ..." stays open when the form is rebuilt (for example by a plan answer)
   let pending = {};
 
   // ------------------------------------------------------------------------------------------- data flow
@@ -373,7 +374,7 @@ export function mount(main) {
             gpuOptions.map(([v, label]) => h("option", { value: v, selected: v === L.gpus }, label))),
           auto ? "Other GPUs stay free for other work." : "Applies when the profile sets no CUDA_VISIBLE_DEVICES."),
           field("CPU cores", coresInput(L.cpu_mask, coresHint), coresHint)) : field("CPU cores", coresInput(L.cpu_mask, coresHint), coresHint),
-        auto ? h("details", { class: "stack" },
+        auto ? h("details", { class: "stack", open: moreOpen, ontoggle: (e) => { moreOpen = e.currentTarget.open; } },
           h("summary", { class: "small muted", style: { cursor: "pointer" } }, "More: expert cache, threads, memory, port"),
           h("div", { class: "stack", style: { marginTop: "10px" } },
             h("div", { class: "grid two" },
