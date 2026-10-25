@@ -2,7 +2,7 @@
 // and the live panel with the engine's numbers.
 
 import { get, hostUrl, post, put, streamChat, upload } from "./api.js";
-import { emit, engineModelName, engineUp, navigate, on, refreshChats, store, topbar } from "./app.js";
+import { emit, engineModelName, engineUp, modelMenuProviders, navigate, on, refreshChats, store, topbar } from "./app.js";
 import { attachmentsEl, createAttach } from "./attach.js";
 import { attachmentBlock, buildRequest, estimateRequest, estimateTokens, usedImages } from "./chat-request.js";
 import { addChild, ensureTree, indexOf, newId, pathOf, removeBranch, siblingsOf, switchTo } from "./chat-tree.js";
@@ -237,19 +237,11 @@ export function mount(main, chatId) {
     const svc = store.engine?.service;
     if (svc) { // the service loads its own model with its own command
       const tail = [{ label: "Start, stop and log: Engine page", icon: "engine", onclick: () => navigate("/engine") }];
-      // A model switcher next to the service (setting switch_url) lets the menu switch the model by hand.
-      get("/api/engine/switch").then((sw) => {
-        if (!sw?.available || !sw.targets?.length) { openMenu(anchor, [{ head: svc.unit }, ...tail]); return; }
-        const items = [{ head: `${svc.unit}: switch model` }];
-        for (const t of sw.targets) {
-          const switching = sw.busy && sw.target === t.id;
-          items.push({ label: t.name, hint: switching ? "switching…" : t.active ? "loaded" : "", icon: t.active ? "check" : "models",
-            onclick: () => switchModel(t) });
-        }
-        if (sw.error) items.push({ head: sw.error });
-        items.push("sep", ...tail);
-        openMenu(anchor, items);
-      }).catch(() => openMenu(anchor, [{ head: svc.unit }, ...tail]));
+      // Plugins add entries, for example a model switcher next to the service (plugin switch).
+      Promise.all(modelMenuProviders.map((p) => p(svc).catch(() => null))).then((lists) => {
+        const extra = lists.filter(Boolean).flat();
+        openMenu(anchor, extra.length ? [...extra, "sep", ...tail] : [{ head: svc.unit }, ...tail]);
+      });
       return;
     }
     const models = (store.state?.models || []).filter((m) => m.kind === "model" && m.complete);
@@ -976,31 +968,6 @@ export function mount(main, chatId) {
   }
 
   // ------------------------------------------------------------------------------------------- engine actions
-
-  async function switchModel(t) {
-    if (t.active) return;
-    try {
-      await post("/api/engine/switch", { target: t.id });
-    } catch (e) {
-      toast(e.message, "bad", 8000);
-      return;
-    }
-    toast(`Switching to ${t.name}. The model stays loaded until you switch again.`, "info", 6000);
-    const t0 = Date.now();
-    for (;;) { // the switch waits for free slots and loads the model; follow it until it is done
-      await new Promise((r) => setTimeout(r, 3000));
-      let sw;
-      try { sw = await get("/api/engine/switch"); } catch { sw = null; }
-      if (sw && !sw.busy) {
-        store.engine = await get("/api/engine");
-        emit("engine");
-        if (sw.error) toast(sw.error, "bad", 10000);
-        else toast(`${t.name} is loaded.`, "good");
-        return;
-      }
-      if (Date.now() - t0 > 20 * 60 * 1000) { toast("The switch is taking very long; see the Engine page.", "bad", 8000); return; }
-    }
-  }
 
   async function loadModel(id) {
     try {

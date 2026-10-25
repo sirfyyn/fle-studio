@@ -8,6 +8,9 @@ import { remoteSections } from "./hosts.js";
 import { clear, fmt, h, icon, toast } from "./ui.js";
 import { updatesSection } from "./update.js";
 
+// The names of the plugins that ship with FLE Studio, for the list when one is off (its own title is not known then).
+const BUNDLED = { forge: "Forge", updater: "Updates", remote: "Remote access", recorder: "Recorder", switch: "Model switcher" };
+
 export function mount(main) {
   const unsub = [];
   const page = h("div", { class: "page-inner", style: { maxWidth: "860px" } });
@@ -29,12 +32,20 @@ export function mount(main) {
     const s = store.state?.settings;
     if (!s) return;
     if (!force && page.contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+    const ui = { section, field, toggle, save, render: () => render(true) };
+    const parts = [
+      [10, look(s)], [20, models(s)], [30, chat(s)], [40, toolsSection(s, ui)],
+      [50, captureSection(s, ui)], [60, hub(s)], [70, network(s)], [80, updatesSection(ui)],
+      ...remoteSections(ui).map((el, i) => [90 + i / 10, el]),
+      [100, plugins()], [110, about()],
+    ];
+    for (const extra of settingsSections) { // sections that plugins add (kit.settingsSection)
+      try { parts.push([extra.order, extra.build(s, ui)]); } catch (e) { console.error(`plugin ${extra.id}:`, e); }
+    }
     clear(page,
       h("div", { class: "page-head" }, h("div", null, h("h2", null, "Settings"),
         h("p", null, `Stored in ${store.state.data_dir}. Start settings for the engine live on the Engine page.`))),
-      look(s), models(s), chat(s), toolsSection(s, { section, field, toggle, save, render: () => render(true) }),
-      captureSection(s, { section, field, toggle, save, render: () => render(true) }),
-      hub(s), network(s), updatesSection({ section, toggle, save }), ...remoteSections({ section, toggle }), plugins(), about());
+      ...parts.sort((a, b) => a[0] - b[0]).map((x) => x[1]));
   }
 
   // ------------------------------------------------------------------------------------------- sections
@@ -128,16 +139,18 @@ export function mount(main) {
         try {
           await post(`/api/plugins/${p.id}/${on ? "enable" : "disable"}`, {});
           await refreshPlugins();
+          if (p.bundled) { location.reload(); return; } // what such a plugin adds to the page comes or goes with a fresh load
           render(true);
           const now = store.plugins.find((x) => x.id === p.id);
           if (now?.error) toast(`${p.id}: ${now.error}`, "bad", 8000);
         } catch (e) { toast(e.message, "bad", 7000); render(true); }
       }),
-      h("span", { class: "grow" }, h("b", null, p.page?.title || p.id), " ",
-        h("span", { class: "small muted mono" }, [p.package, p.version].filter(Boolean).join(" "))),
+      h("span", { class: "grow" }, h("b", null, p.title || p.page?.title || BUNDLED[p.id] || p.id), " ",
+        h("span", { class: "small muted mono" }, p.bundled ? "comes with FLE Studio" : [p.package, p.version].filter(Boolean).join(" ")),
+        p.summary ? h("div", { class: "small muted" }, p.summary) : null),
       p.error ? h("span", { class: "pill bad", title: p.error }, "did not load") : p.loaded ? h("span", { class: "pill good" }, "on") : null))
       : [h("span", { class: "small faint" }, "No plugins installed. A plugin is a Python package; see PLUGINS.md in the documentation.")];
-    return section("grid", "Plugins", "Extra pages from installed packages. A plugin runs inside FLE Studio with its rights: turn on only plugins you trust. They belong to this machine; a paired client does not see them.",
+    return section("grid", "Plugins", "Forge, updates, remote access, the recorder and the model switcher come with FLE Studio as plugins and are on; turn off what you do not use. Plugins you install yourself run inside FLE Studio with its rights and start off: turn on only those you trust. The page reloads after you turn one of those on or off. Plugins belong to this machine; a paired client does not see them.",
       ...rows);
   }
 

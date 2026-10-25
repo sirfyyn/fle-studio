@@ -57,6 +57,32 @@ export async function refreshPlugins() {
   return r;
 }
 
+// What plugins add to the Settings page: {order, build(ui)} where ui is what settings.js passes to its own sections
+// (section, field, toggle, save, render). The core sections have the orders 10, 20, 30 … (see settings.js).
+export const settingsSections = [];
+
+// Entries that plugins add to the chat's model menu of an attached service: async (service) => items | null
+// (items as openMenu in ui.js takes them). The model switcher plugin is one.
+export const modelMenuProviders = [];
+
+// A plugin's boot script (plugins.py ctx.boot) runs once per page load and may add Settings sections, sidebar
+// notices and the like. A script that fails is reported and does not stop the page.
+const booted = new Set();
+async function bootPlugins() {
+  const { makeKit } = await import("./plugin-kit.js");
+  for (const p of store.plugins) {
+    if (!p.loaded || !p.boot || booted.has(p.id)) continue;
+    booted.add(p.id);
+    try {
+      const mod = await import(`/plugins/${p.id}/${p.boot}`);
+      await mod.init?.(makeKit(p));
+    } catch (e) {
+      console.error(`plugin ${p.id}:`, e);
+      toast(`The plugin “${p.id}” did not start: ${e.message}`, "bad", 8000);
+    }
+  }
+}
+
 export const engineUp = () => ["ready", "attached"].includes(store.engine?.state);
 export const engineModelName = () => store.engine?.model?.name || store.engine?.plan?.model?.name || "";
 
@@ -156,6 +182,8 @@ async function route() {
     const m = path.match(re);
     if (m) { name = n; arg = m[1] || null; break; }
   }
+  const own = store.plugins.find((p) => p.loaded && p.page?.path && (path === p.page.path || path.startsWith(`${p.page.path}/`)));
+  if (own) { name = "plugin"; arg = own.id; } // a plugin of the package itself with a path of its own, like /forge
   document.getElementById("app").classList.remove("nav-open");
   if (current?.unmount) current.unmount();
   current = null;
@@ -190,7 +218,7 @@ function renderNav() {
   const activeDl = store.downloads.filter((d) => ACTIVE_DL.has(d.state)).length;
   // The live poll calls this every few seconds on /models and /engine; rebuilding the links there
   // replaced the link under a pressed mouse button and the click got lost.
-  const pages = store.plugins.filter((p) => p.loaded && p.page).map((p) => [`/p/${p.id}`, p.page.icon, p.page.title]);
+  const pages = store.plugins.filter((p) => p.loaded && p.page).map((p) => [p.page.path || `/p/${p.id}`, p.page.icon, p.page.title]);
   const key = `${path} ${activeDl} ${pages.map((p) => p[0]).join(",")}`;
   if (key === navKey && nav.childElementCount) return;
   navKey = key;
@@ -296,6 +324,7 @@ async function start() {
   initHosts();
   refreshChats().catch(() => {});
   await refreshPlugins().catch(() => {});
+  await bootPlugins();
   route();
   tick();
 }

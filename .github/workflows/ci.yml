@@ -49,6 +49,12 @@ jobs:
       - name: Test
         run: pytest -q -o faulthandler_timeout=120 --durations=15
 
+      # The core alone: the plugins that ship with FLE Studio are left out, and everything but their own tests passes.
+      - name: Test the core without its plugins
+        env:
+          FLE_STUDIO_NO_BUNDLED: "1"
+        run: pytest -q -o faulthandler_timeout=120 --ignore=tests/plugins
+
   # The wheel and the source archive build, hold the web files, and install into a clean environment.
   package:
     name: package (${{ matrix.os }})

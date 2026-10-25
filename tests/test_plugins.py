@@ -63,7 +63,7 @@ def test_nothing_is_on_until_turned_on(tmp_path: Path, web: Path) -> None:
     assert calls == ["register demo api 1"]
     assert json.loads((tmp_path / "plugins.json").read_text()) == {"enabled": ["demo"]}
     item = reg.view()["plugins"][0]
-    assert item["loaded"] and item["page"] == {"title": "Demo", "icon": "spark", "script": "main.js"}
+    assert item["loaded"] and item["page"] == {"title": "Demo", "icon": "spark", "script": "main.js", "path": ""}
     assert (tmp_path / "plugins" / "demo").is_dir()
 
     again = plugins.Plugins(
@@ -107,6 +107,86 @@ def test_context_checks_what_a_plugin_registers(tmp_path: Path) -> None:
         ctx.route("GET", r"/a", lambda r: (200, {}))
     ctx.write_settings({"a": 1})
     assert ctx.read_settings() == {"a": 1}
+
+
+# ------------------------------------------------------------------------------------------------ bundled plugins
+
+
+def own_register(calls: list[str]) -> Any:
+    def register(ctx: plugins.PluginContext) -> None:
+        calls.append(f"register {ctx.id} bundled={ctx.bundled}")
+        ctx.describe("Own", "ships with the package")
+        ctx.boot("boot.js")
+        ctx.page("Own", path="/own")
+
+        def hello(handler: Any, query: dict[str, str], item: str) -> None:
+            handler.sent.append((item, query))
+
+        ctx.api("GET", r"^/api/own/(?P<item>[a-z]+)$", hello)
+        ctx.on_stop(lambda: calls.append("stop"))
+
+    return register
+
+
+class Sink:
+    def __init__(self) -> None:
+        self.sent: list[Any] = []
+
+
+def test_plugins_of_the_package_itself_are_on_until_turned_off(tmp_path: Path) -> None:
+    calls: list[str] = []
+    find = lambda: [  # noqa: E731
+        plugins.Found("own", lambda: own_register(calls), "fle-studio", "1", bundled=True),
+        plugins.Found("other", lambda: own_register([]), "someone-else", "1"),
+    ]
+    reg = plugins.Plugins(tmp_path, "0.0", find)
+    reg.start()
+    assert calls == ["register own bundled=True"], "only the bundled plugin starts by itself"
+    other, mine = reg.view()["plugins"]  # sorted by id
+    assert mine["bundled"] and mine["enabled"] and mine["loaded"] and mine["boot"] == "boot.js"
+    assert mine["title"] == "Own" and mine["page"]["path"] == "/own"
+    assert not other["bundled"] and not other["enabled"] and not other["loaded"]
+
+    sink = Sink()
+    assert reg.handle_raw(sink, "GET", "/api/own/abc", {"q": "1"})
+    assert sink.sent == [("abc", {"q": "1"})]
+    assert not reg.handle_raw(sink, "POST", "/api/own/abc", {})
+    assert not reg.handle_raw(sink, "GET", "/api/elsewhere", {})
+
+    reg.set_enabled("own", False)
+    assert "stop" in calls and not reg.view()["plugins"][1]["enabled"]
+    assert json.loads((tmp_path / "plugins.json").read_text()) == {"enabled": [], "disabled": ["own"]}
+    assert not reg.handle_raw(sink, "GET", "/api/own/abc", {}), "the routes of a plugin that is off do not exist"
+
+    again = plugins.Plugins(tmp_path, "0.0", find)
+    again.start()  # the choice is kept over a restart
+    assert not again.view()["plugins"][1]["loaded"]
+    again.set_enabled("own", True)
+    assert again.view()["plugins"][1]["loaded"]
+    assert json.loads((tmp_path / "plugins.json").read_text()) == {"enabled": ["own"]}
+
+
+def test_the_core_runs_without_the_plugins_of_the_package(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(plugins.NO_BUNDLED, "1")
+    assert not any(f.bundled for f in plugins.discover())
+
+
+def test_only_the_package_itself_may_take_a_path_or_a_hook(tmp_path: Path) -> None:
+    foreign = plugins.PluginContext("x", tmp_path, "0.0")
+    with pytest.raises(ValueError):
+        foreign.page("T", path="/forge")
+    own = plugins.PluginContext("x", tmp_path, "0.0", bundled=True)
+    for bad in ("forge", "/a/b", "/Forge", ""):
+        if bad:
+            with pytest.raises(ValueError):
+                own.page("T", path=bad)
+    own.page("T", path="/forge")
+    with pytest.raises(ValueError):
+        own.api("GET", r"^/elsewhere$", lambda h, q: None)
+    with pytest.raises(ValueError):
+        own.boot("../x.js")
+    with pytest.raises(ValueError):
+        own.hook("no-such-hook", lambda: None)
 
 
 # ------------------------------------------------------------------------------------------------ on a real server

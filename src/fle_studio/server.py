@@ -66,7 +66,6 @@ from .forge import recipe as recipes
 from .forge.api import Forge
 from .library import Library
 from .metrics import Live
-from .switch import Switch
 
 LOOPBACK_NAMES = {"127.0.0.1", "::1", "localhost"}
 MAX_JSON = 4 * 1024 * 1024
@@ -120,7 +119,6 @@ class Studio:
         self.library = Library(lambda: self.config.models_dir, self.data_dir)
         self.profiles = launch.Profiles(self.data_dir)
         self.engine = Engine(self.data_dir)
-        self.switch = Switch(lambda: self.config.get("switch_url"))
         self.engine.restart_on_crash = bool(self.config.get("launch.restart_on_crash"))
         self.engine.on_load_failure = self.load_failure_fallback
         self.live = Live(self.engine)
@@ -160,7 +158,7 @@ class Studio:
         self.listen: dict[str, Any] = {}
         self._sys: tuple[float, dict[str, Any] | None] = (0.0, None)
         self._sys_lock = threading.Lock()
-        self.plugins = plugins.Plugins(self.data_dir, __version__)  # extra pages and routes, see plugins.py
+        self.plugins = plugins.Plugins(self.data_dir, __version__, studio=self)  # see plugins.py
         self.plugins.start()
 
     # ------------------------------------------------------------------------------------------ helpers
@@ -513,8 +511,6 @@ ROUTES: list[tuple[str, re.Pattern[str], str]] = [
         ("POST", r"^/api/engine/stop$", "engine_stop"),
         ("POST", r"^/api/engine/attach$", "engine_attach"),
         ("POST", r"^/api/engine/service/(?P<action>start|stop|restart)$", "engine_service"),
-        ("GET", r"^/api/engine/switch$", "engine_switch_status"),
-        ("POST", r"^/api/engine/switch$", "engine_switch"),
         ("GET", r"^/api/live$", "live"),
         ("GET", r"^/api/settings$", "settings"),
         ("POST", r"^/api/settings$", "settings_update"),
@@ -742,6 +738,10 @@ class Handler(BaseHTTPRequestHandler):
                     status, data = func(self.studio, query, self.read_json, **m.groupdict())
                     self.send_json(status, data)
                     return
+            if path.startswith("/api/") and self.studio.plugins.handle_raw(
+                self, self.command, path, {k: v[-1] for k, v in parse_qs(url.query).items()}
+            ):  # the routes that the plugins of FLE Studio's own package add to /api
+                return
             if self.command in ("GET", "HEAD") and not path.startswith("/api/"):
                 self.static(path)
                 return
@@ -1098,18 +1098,6 @@ class Handler(BaseHTTPRequestHandler):
         status = self.studio.engine.attach(url, self.studio.config.get("attach_key"), unit)
         self.studio.config.update({"attach_auto": True})
         self.send_json(200, status)
-
-    def api_engine_switch_status(self, query: dict[str, str]) -> None:
-        self.send_json(200, self.studio.switch.status())
-
-    def api_engine_switch(self, query: dict[str, str]) -> None:
-        body = self.read_json()
-        try:
-            self.send_json(200, self.studio.switch.start(str(body.get("target") or "")))
-        except ValueError as e:
-            self.send_json(400, {"error": {"message": str(e)}})
-        except RuntimeError as e:
-            self.send_json(409, {"error": {"message": str(e)}})
 
     def api_engine_service(self, query: dict[str, str], action: str) -> None:
         self.send_json(200, self.studio.engine.service_action(action))

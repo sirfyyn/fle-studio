@@ -1,4 +1,4 @@
-"""The model switcher client (switch.py): lists a switcher's models, switches by hand, shows progress and errors."""
+"""The model switcher client (fle_studio_switch): lists a switcher's models, switches by hand, shows progress."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from fle_studio.switch import Switch
+from fle_studio_switch.switcher import Switch
 
 
 class Fake:
