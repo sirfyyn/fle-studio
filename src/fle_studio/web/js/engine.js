@@ -51,7 +51,7 @@ export function mount(main) {
     status: h("div", { class: "card pad-lg" }),
     best: h("div", { class: "card" }),
     launch: h("div", { class: "card" }),
-    preview: h("div", { class: "card" }),
+    preview: h("div", { class: "card sticky-side" }),
     profiles: h("div", { class: "card" }),
     engines: h("div", { class: "card" }),
     attach: h("div", { class: "card" }),
@@ -74,8 +74,10 @@ export function mount(main) {
   let preview = null;
   let previewError = "";
   let previewFixes = [];
+  let previewChips = []; // [{label, value, tone}] from the plan answer: the facts in one row above the command
   let previewSpec = null; // {applies, reason} from the plan answer; null = not known yet, the menu stays usable
   let checkResult = null;
+  let moreOpen = false; // "More: expert cache ..." stays open when the form is rebuilt (for example by a plan answer)
   let pending = {};
 
   // ------------------------------------------------------------------------------------------- data flow
@@ -137,6 +139,7 @@ export function mount(main) {
     preview = answer.ok ? answer.plan : null;
     previewError = answer.ok ? "" : answer.error;
     previewFixes = answer.fixes || [];
+    previewChips = answer.ok ? answer.summary || [] : [];
     const wasOff = previewSpec?.applies === false;
     previewSpec = answer.speculation || null;
     renderPreview();
@@ -373,7 +376,7 @@ export function mount(main) {
             gpuOptions.map(([v, label]) => h("option", { value: v, selected: v === L.gpus }, label))),
           auto ? "Other GPUs stay free for other work." : "Applies when the profile sets no CUDA_VISIBLE_DEVICES."),
           field("CPU cores", coresInput(L.cpu_mask, coresHint), coresHint)) : field("CPU cores", coresInput(L.cpu_mask, coresHint), coresHint),
-        auto ? h("details", { class: "stack" },
+        auto ? h("details", { class: "stack", open: moreOpen, ontoggle: (e) => { moreOpen = e.currentTarget.open; } },
           h("summary", { class: "small muted", style: { cursor: "pointer" } }, "More: expert cache, threads, memory, port"),
           h("div", { class: "stack", style: { marginTop: "10px" } },
             h("div", { class: "grid two" },
@@ -485,16 +488,21 @@ export function mount(main) {
       h("p", null, "What Start runs. Paste it into a terminal to run the engine without FLE Studio.")),
     preview ? copyButton(() => preview.command, "Copy the command") : null);
     if (!preview) {
+      previewChips = [];
       clear(boxes.preview, head, previewError ? h("div", { class: "callout warn" }, icon("alert", "sm"), h("div", null, previewError)) : null,
         fixButtons());
       return;
     }
+    const notes = (preview.notes || []).filter((n) => n !== preview.fallback); // the fallback has a callout of its own
     clear(boxes.preview, head,
+      preview.fallback ? h("div", { class: "callout warn", style: { marginBottom: "10px" } }, icon("alert", "sm"), h("div", null, preview.fallback)) : null,
+      previewChips.length ? h("div", { class: "sum-chips", "aria-label": "Summary of this start" }, previewChips.map((c) => h("span",
+        { class: `sum-chip ${["ok", "warn", "info"].includes(c.tone) ? c.tone : "info"}` }, h("small", null, c.label), h("b", null, c.value)))) : null,
       h("div", { class: "cmd" }, highlightCommand(preview.command)),
       fixButtons(),
       explainBlock(preview, { open: mode === "simple" }),
-      preview.notes?.length ? h("ul", { class: "small muted", style: { margin: "12px 0 0", paddingLeft: "1.2em", display: "grid", gap: "4px" } },
-        preview.notes.map((n) => h("li", null, n))) : null,
+      notes.length ? h("ul", { class: "small muted", style: { margin: "12px 0 0", paddingLeft: "1.2em", display: "grid", gap: "4px" } },
+        notes.map((n) => h("li", null, n))) : null,
       h("div", { class: "row small faint wrap", style: { marginTop: "10px" } },
         h("span", null, `Engine: ${preview.engine}`), h("span", null, `Port ${preview.port}`),
         preview.draft ? h("span", null, "MTP drafting on") : null));

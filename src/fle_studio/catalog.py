@@ -299,6 +299,21 @@ def catalog(sysinfo: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+def mtp_status(supported: bool, head: bool, vocab: bool) -> dict[str, Any]:
+    """The MTP state of a catalog model for a badge: ``ready`` (both sidecars there), ``missing`` or ``none``.
+
+    ``state`` is machine-readable; ``label`` is what the badge says; ``head``/``vocab`` say which file is there."""
+    if not supported:
+        return {"state": "none", "label": "no MTP", "head": False, "vocab": False}
+    ready = head and vocab
+    return {
+        "state": "ready" if ready else "missing",
+        "label": "MTP ready" if ready else "MTP files missing",
+        "head": head,
+        "vocab": vocab,
+    }
+
+
 def extras() -> dict[str, dict[str, Any]]:
     return {
         "mtp_head": asdict(MTP_HEAD) | {"name": MTP_HEAD.name},

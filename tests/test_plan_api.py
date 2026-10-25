@@ -190,3 +190,50 @@ def test_speculation_does_not_apply_to_a_profile(api: Client, monkeypatch: pytes
     use(api, monkeypatch, model(with_sidecars=True))
     out = api.post("/api/engine/plan", {"model": "abc123abc123", "profile": "some-profile"})[1]
     assert out["speculation"]["applies"] is False and "profile" in out["speculation"]["reason"]
+
+
+def chips(out: dict[str, Any]) -> dict[str, tuple[str, str]]:
+    return {c["label"]: (c["value"], c["tone"]) for c in out["summary"]}
+
+
+def test_the_plan_answer_carries_the_summary_chips(api: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    use(api, monkeypatch, model(with_sidecars=True), parallel=4)
+    got = chips(api.post("/api/engine/plan", {"model": "abc123abc123"})[1])
+    assert got["Engine"][0] == "FLE" and got["Speculation"] == ("mtp", "ok") and got["MTP files"] == ("present", "ok")
+    assert got["Slots"][0] == "4" and got["Per slot"][0].startswith("up to ") and got["Fallback"] == ("no", "ok")
+
+
+def test_the_summary_follows_the_saved_settings(api: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    use(api, monkeypatch, model(with_sidecars=False), spec="ngram-mod")
+    got = chips(api.post("/api/engine/plan", {"model": "abc123abc123"})[1])
+    assert got["Speculation"] == ("ngram-mod", "ok")
+    assert got["MTP files"] == ("missing (not needed)", "info")  # ngram does not use them
+    api.studio.config.update({"launch": {"spec": "auto"}})
+    got = chips(api.post("/api/engine/plan", {"model": "abc123abc123"})[1])
+    assert got["MTP files"] == ("missing", "warn") and got["Speculation"] == ("none", "info")
+
+
+def test_a_plan_that_cannot_be_built_has_no_summary(api: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    use(api, monkeypatch, None)
+    out = api.post("/api/engine/plan", {"model": ""})[1]
+    assert out["ok"] is False and "summary" not in out
+
+
+def test_the_upstream_fallback_names_the_reason_in_the_plan_and_the_menu(
+    api: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    upstream = {"kind": "upstream", "flavor": "upstream", "path": "/engines/up/llama-server", "backend": "cpu"}
+    monkeypatch.setattr(api.studio, "sysinfo", lambda fresh=False: {**SYSINFO, "gpus": []})  # no NVIDIA GPU
+    monkeypatch.setattr(api.studio, "_upstream_engine", lambda info: dict(upstream))
+    use(api, monkeypatch, model(with_sidecars=True), spec="ngram-mod")
+    # The page always sends profile "auto"; that must reach the fallback just like no profile at all.
+    out = api.post("/api/engine/plan", {"model": "abc123abc123", "profile": "auto"})[1]
+    assert api.post("/api/engine/plan", {"model": "abc123abc123"})[1]["plan"]["engine"] == "upstream"
+    assert out["ok"] and out["plan"]["engine"] == "upstream" and "--spec-type" not in out["plan"]["args"]
+    why = out["plan"]["fallback"]
+    assert "FLE plan could not be built" in why and "NVIDIA GPU" in why and "fell back to upstream" in why
+    assert out["plan"]["notes"][0] == why
+    spec = out["speculation"]
+    assert spec["applies"] is False and spec["reason"] == why and "the selected engine is upstream" not in why
+    got = chips(out)
+    assert got["Fallback"] == ("yes", "warn") and got["Engine"][1] == "warn"

@@ -102,9 +102,43 @@ export function mount(main) {
     }
     const sign = c.change_pct > 0 ? "+" : "";
     return h("div", { class: `callout ${c.warn ? "warn" : "info"}`, style }, icon(c.warn ? "alert" : "info", "sm"),
-      h("div", { class: "small" }, h("b", null, `${sign}${c.change_pct.toFixed(1)} % decode speed`),
+      sparkline(c.series), // before the text: on a narrow screen the table scrolls sideways and the end is out of view
+      h("div", { class: "small grow" }, h("b", null, `${sign}${c.change_pct.toFixed(1)} % decode speed`),
         ` against ${when} (${fmt.rate(c.old)} to ${fmt.rate(c.new)} tok/s, median of ${c.tests.join(" and ")})`,
         c.warn ? ". That is a drop of more than 10 %: check what changed (settings, other load, thermal limits)." : "."));
+  }
+
+  // The decode speed of the last runs of this setting as a small line (bench.py decode_series): oldest left, this run
+  // right and marked. A run without a usable speed (cut off at the token limit) is a grey tick on the baseline.
+  function sparkline(series) {
+    if (!Array.isArray(series) || series.length < 2) return null;
+    const W = 120;
+    const H = 30;
+    const pad = 4;
+    const vals = series.map((p) => p.decode).filter((v) => typeof v === "number");
+    if (!vals.length) return null;
+    const lo = Math.min(...vals);
+    const hi = Math.max(...vals);
+    const x = (i) => pad + (i * (W - 2 * pad)) / (series.length - 1);
+    const y = (v) => (hi === lo ? H / 2 : H - pad - ((v - lo) / (hi - lo)) * (H - 2 * pad - 2));
+    const ns = "http://www.w3.org/2000/svg";
+    const el = (tag, attrs) => {
+      const e = document.createElementNS(ns, tag);
+      for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+      return e;
+    };
+    const svg = el("svg", { class: "spark", viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img",
+      "aria-label": `Decode speed of the last ${series.length} runs: ${series.map((p) => (p.decode === null ? "no value" : fmt.rate(p.decode))).join(", ")} tok/s` });
+    const pts = series.map((p, i) => (typeof p.decode === "number" ? [x(i), y(p.decode), i] : null)).filter(Boolean);
+    if (pts.length > 1) svg.append(el("polyline", { class: "line", fill: "none", points: pts.map(([px, py]) => `${px.toFixed(1)},${py.toFixed(1)}`).join(" ") }));
+    series.forEach((p, i) => {
+      if (typeof p.decode !== "number") svg.append(el("line", { class: "gap", x1: x(i), x2: x(i), y1: H - pad - 3, y2: H - pad }));
+    });
+    const last = series.length - 1;
+    for (const [px, py, i] of pts) svg.append(el("circle", { class: i === last ? "now" : "dot", cx: px.toFixed(1), cy: py.toFixed(1), r: i === last ? 3 : 1.8 }));
+    const box = h("span", { class: "spark-box", title: "Decode speed of the last runs of this setting, oldest left; grey ticks: runs cut off at the token limit" });
+    box.append(svg);
+    return box;
   }
 
   async function start() {

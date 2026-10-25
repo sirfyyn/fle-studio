@@ -85,7 +85,7 @@ export function mount(main) {
     if (active) {
       action = jobBlock(job);
     } else if (local?.complete) {
-      const mtpMissing = m.mtp && !(extras.mtp_head?.present && extras.mtp_vocab?.present);
+      const mtpMissing = m.mtp_status?.state === "missing";
       action = h("div", { class: "row wrap" },
         h("span", { class: "pill good" }, icon("check", "sm"), "In your library"),
         mtpMissing ? h("button", { class: "btn sm", title: "Faster answers through MTP drafting", onclick: () => download(m, true) },
@@ -110,6 +110,11 @@ export function mount(main) {
         fact("KL divergence", kld !== null ? fmt.two(kld) : "–", m.kld ? `Mean KL divergence against BF16 on three test texts: ${m.kld.map((x) => x.toFixed(3)).join(" / ")} (lower is better)` : ""),
         fact("Load time", m.measured?.load_s ? fmt.dur(m.measured.load_s) : "–", "Measured on the reference machine")),
       h("div", { class: "small faint" }, m.speed),
+      m.mtp_status ? h("div", { class: "row small" },
+        h("span", { class: `pill ${{ ready: "good", missing: "warn", none: "" }[m.mtp_status.state] || ""}`,
+          title: m.mtp_status.state === "none" ? "This model has no MTP head; the engine drafts without it"
+            : `MTP head ${m.mtp_status.head ? "there" : "missing"}, vocabulary file ${m.mtp_status.vocab ? "there" : "missing"}` },
+        m.mtp_status.label)) : null,
       m.fit?.advice ? h("div", { class: "fit-line" }, icon("info", "sm"), h("span", null, m.fit.advice)) : null,
       action,
       h("div", { class: "row small faint" }, h("span", null, m.license), h("span", { class: "grow" }),

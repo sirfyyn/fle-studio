@@ -11,6 +11,7 @@ from fle_studio.bench import (
     Bench,
     compare_decode,
     compare_with_history,
+    decode_series,
     setting_key,
 )
 from fle_studio.engine import Engine
@@ -100,6 +101,42 @@ def test_history_picks_the_newest_matching_finished_result() -> None:
     c = compare_with_history(new, history)
     assert c and c["previous"] == "match" and c["change_pct"] == -10.0
     assert compare_with_history(new, history[:3]) is None
+
+
+def test_the_series_is_the_same_setting_oldest_first_ending_with_the_new_run() -> None:
+    new = record("n", {"Short answer": 90.0, "Code": 110.0})
+    history = [  # newest first
+        record("other-setting", {"Short answer": 1.0}, ctx={**CTX, "model": "N"}),
+        {**record("cancelled", {"Short answer": 1.0}), "state": "cancelled"},
+        record("n", {"Short answer": 1.0}),  # the result itself, if it were saved already
+        record("c", {"Short answer": 100.0}),
+        record("b", {"Short answer": 80.0, "Code": 60.0}),
+        record("a", {"Short answer": 70.0}),
+    ]
+    series = decode_series(new, history)
+    assert [p["id"] for p in series] == ["a", "b", "c", "n"]
+    assert [p["decode"] for p in series] == [70.0, 70.0, 100.0, 100.0]  # medians of the requests per run
+    assert compare_with_history(new, history)["series"] == series  # type: ignore[index]
+
+
+def test_runs_cut_off_at_the_token_limit_or_without_the_field_have_no_value() -> None:
+    cut = record("cut", {"Short answer": 5.0, "Code": 5.0}, **{"Short answer": True, "Code": True})
+    old = {
+        "id": "old",
+        "state": "done",
+        "started": 0.5,
+        "context": CTX,
+        "tests": [one_request("Code", 9, truncated=None)],
+    }
+    series = decode_series(record("n", {"Short answer": 90.0}), [cut, old])
+    assert [(p["id"], p["decode"]) for p in series] == [("old", None), ("cut", None), ("n", 90.0)]
+
+
+def test_the_series_is_capped_and_empty_history_is_just_the_run() -> None:
+    history = [record(f"r{i}", {"Short answer": float(i + 1)}) for i in range(20)]
+    series = decode_series(record("n", {"Short answer": 1.0}), history, limit=5)
+    assert len(series) == 5 and series[-1]["id"] == "n" and series[0]["id"] == "r3"
+    assert [p["id"] for p in decode_series(record("n", {"Short answer": 1.0}), [])] == ["n"]
 
 
 def test_a_speed_test_stores_the_comparison_with_the_one_before(tmp_path: Path, monkeypatch: Any) -> None:

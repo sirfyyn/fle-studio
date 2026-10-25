@@ -1299,6 +1299,84 @@ class Session:
             self.expect(page.get_by_role("heading", name="Launch profiles", exact=True)).to_be_hidden(timeout=WAIT_MS)
             step.note = f"{n_rows} explained parts of the command, {tips} tooltips; " + shot
 
+    def speculation_menu(self) -> None:
+        """Engine > Advanced > Speculation: off with a reason for an upstream engine, live with an FLE one."""
+        page, studio = self.page, self.studio
+        more = page.locator("summary", has_text="More: expert cache")
+        field = page.locator("label.field", has_text="Speculation")
+        with self.step("Engine page: Speculation is off, with the reason, for an upstream engine") as step:
+            plan = studio.api("POST", "/api/engine/plan", {"model": self.model["id"], "profile": "auto"})
+            if plan["speculation"]["applies"] is not False:
+                raise E2EError(f"the stand-in engine should count as upstream here: {plan['speculation']}")
+            self.go("Engine", "/engine", "Engine")
+            page.locator(".mode-switch button", has_text="Advanced").click()
+            more.click()
+            self.expect(field.locator("select")).to_be_disabled(timeout=WAIT_MS)
+            self.expect(field.locator(".hint")).to_contain_text("Speculation needs the FLE engine", timeout=WAIT_MS)
+            self.expect(field.locator("select")).to_be_visible()  # the plan answer did not fold the section shut
+            page.locator(".mode-switch button", has_text="Simple").click()
+            step.note = plan["speculation"]["reason"]
+
+        fle = StudioProcess(studio.work / "fle-engine", self.out, name="studio-fle")
+        try:
+            # An FLE-looking stand-in engine and a stand-in GPU, so that Studio builds the FLE plan on any machine.
+            smi = fle.work / "bin" / ("nvidia-smi.cmd" if sys.platform == "win32" else "nvidia-smi")
+            smi.parent.mkdir(parents=True)
+            row = "0, Stand-in GPU, 24576, 512, 3, 560.00, 8.9, 30.0, 40"
+            smi.write_text(f"@echo {row}\r\n" if sys.platform == "win32" else f'#!/bin/sh\necho "{row}"\n')
+            smi.chmod(0o755)
+            fle.env.update({"FAKE_ENGINE": "fle", "PATH": f"{smi.parent}{os.pathsep}{fle.env.get('PATH', '')}"})
+            fle.start()
+            check = fle.api("POST", "/api/engines/check", {"path": str(FAKE_ENGINE)})
+            if not check.get("ok") or check.get("flavor") != "fle":
+                raise E2EError(f"the stand-in engine should look like the FLE engine: {check}")
+            fle.api("POST", "/api/settings", {"engine": {"choice": "custom", "custom_path": str(FAKE_ENGINE)}})
+            stub = fle.work / "elsewhere" / "e2e-stub-Q4_K_M.gguf"
+            stub.parent.mkdir(parents=True)
+            stub.write_bytes(gguf_stub())
+            fle.api("POST", "/api/models/add", {"path": str(stub)})
+            (fle.home / "models").mkdir(parents=True, exist_ok=True)
+            for n in (1, 2):  # the file names of a catalog model with MTP files, so Studio knows which it is
+                (fle.home / "models" / f"Qwen3.8-Flash-Next-FLE-IQ3_XXS-0000{n}-of-00002.gguf").write_bytes(gguf_stub())
+
+            with self.step("Engine page: Speculation is live with the FLE engine, the preview follows it") as step:
+                page.goto(fle.base + "/engine", wait_until="domcontentloaded")
+                self.expect(page.locator(".page-head h2")).to_have_text("Engine", timeout=WAIT_MS)
+                page.locator(".mode-switch button", has_text="Advanced").click()
+                more.click()
+                command = page.locator(".card", has=page.get_by_role("heading", name="Command", exact=True)).locator(
+                    ".cmd"
+                )
+                self.expect(command).to_contain_text("-m", timeout=WAIT_MS)
+                self.expect(field.locator("select")).to_be_enabled(timeout=WAIT_MS)
+                self.expect(command).not_to_contain_text("--spec-type ngram-mod")
+                field.locator("select").select_option(label="Ngram (modified)")
+                self.expect(command).to_contain_text("--spec-type ngram-mod", timeout=WAIT_MS)  # no reload, no Start
+                self.expect(page.locator(".card li", has_text="ngram-mod")).to_be_visible(timeout=WAIT_MS)
+                step.note = "enabled, and the command gained --spec-type ngram-mod while the engine stayed stopped"
+
+            with self.step(
+                "Engine page: MTP files missing offers the download, four slots explain the context"
+            ) as step:
+                model_sel = page.locator("label.field").filter(has_text=re.compile(r"^Model")).locator("select")
+                model_sel.select_option(
+                    value=model_sel.evaluate("s => [...s.options].find(o => o.text.startsWith('FLE-IQ3_XXS')).value")
+                )
+                field.locator("select").select_option(label="Auto (MTP when the sidecars exist)")
+                button = page.get_by_role("button", name="Download MTP files")
+                self.expect(button).to_be_visible(timeout=WAIT_MS)  # not clicked: nothing is downloaded in a test
+                self.expect(page.locator(".card li", has_text="MTP is off")).to_be_visible(timeout=WAIT_MS)
+                par = page.locator("label.field", has_text="Requests at once").locator("input")
+                par.fill("4")
+                par.press("Tab")
+                self.expect(page.locator(".card li", has_text="shared by all 4 slots")).to_be_visible(timeout=WAIT_MS)
+                step.note = "button and slot note shown; " + self.shoot("engine-speculation")
+        finally:
+            # Leave the page first: it polls its Studio, and a Studio that quits under it logs console errors.
+            page.goto(studio.base + "/", wait_until="domcontentloaded")
+            self.expect(page.locator("#nav a")).to_have_count(7, timeout=WAIT_MS)
+            fle.cleanup()
+
     def quality(self) -> None:
         page, studio = self.page, self.studio
         with self.step("Experiments page: knowledge probe, KL divergence, speed with a score") as step:
@@ -1706,7 +1784,13 @@ def run_browser(
 
     with sync_playwright() as pw:
         with report.step("Launch the browser") as step:
-            browser = pw.chromium.launch(headless=not args.headed, channel=args.channel)
+            own = os.environ.get("FLE_E2E_BROWSER")  # a Chromium binary of your own (for example a headless shell)
+            browser = pw.chromium.launch(
+                headless=not args.headed,
+                channel=args.channel,
+                executable_path=own or None,
+                args=["--no-sandbox"] if own else None,
+            )
             step.note = (
                 f"{args.channel or 'Playwright Chromium'} {browser.version}, {'headed' if args.headed else 'headless'}"
             )
@@ -1740,6 +1824,7 @@ def run_browser(
             session.engine()
             session.experiments()
             session.engine_modes()
+            session.speculation_menu()
             session.quality()
             session.cache_page()
             session.tuning()

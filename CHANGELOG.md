@@ -5,8 +5,27 @@
 - **Speculation menu**: Engine → Advanced disables the Speculation setting, with the reason underneath, when it would
   change nothing: with an upstream llama.cpp engine or a start profile. The plan answer
   (`POST /api/engine/plan`) carries `speculation: {applies, reason}` for this.
+- **Command card stays in view**: in Engine → Advanced the Command card sticks to the top while the long settings
+  column scrolls (own scroll when taller than the window; below 960 px it lies under the settings as before).
+- **Summary chips**: the plan answer carries `summary: [{label, value, tone}]` (engine, effective speculation, MTP
+  files, context, per slot, slots, fallback); Engine shows it as a chip row under the Command heading.
+- **Fallback is visible**: the plan-time upstream fallback now says that the FLE plan could not be built and why (in
+  the Command card, the Speculation hint and the status card). The reason of a load-failure fallback is the first line
+  of the new run's log file, too.
+- **Models**: every catalog card has an MTP badge (ready / files missing / no MTP); `catalog` entries carry
+  `mtp_status`.
+- **Experiments**: the comparison with the last run has a small history line of the decode speed of the last runs of
+  the same setting; runs cut off at the token limit are grey ticks (`series` in the comparison).
+- **e2e**: steps for the Speculation menu (upstream disabled with reason, FLE live preview, MTP download button, slot
+  note); `FLE_E2E_BROWSER` runs the test with a Chromium binary of your own.
 - **e2e**: the Forge step waits up to 45 s (was 15 s) for the published profile on slow macOS runners; the limit can be
   set with `FLE_E2E_FORGE_WAIT`.
+
+### Fixes
+
+- The upstream fallback of the plan never ran from the page: the page sends the profile `"auto"`, which was taken for
+  a profile of its own. It now falls back as described for 0.3.1.
+- Engine → Advanced: the opened "More: expert cache …" section no longer folds shut when the form is rebuilt.
 
 ## [0.3.1] - 2026-10-25
 
