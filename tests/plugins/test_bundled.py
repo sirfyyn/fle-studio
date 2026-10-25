@@ -13,8 +13,9 @@ import pytest
 
 from fle_studio import plugins
 from fle_studio.server import Studio, make_server
+from fle_studio_remote import remote
 
-SHIPPED = {"forge", "recorder", "switch", "updater"}
+SHIPPED = {"forge", "recorder", "remote", "switch", "updater"}
 
 
 @pytest.fixture
@@ -96,3 +97,18 @@ def test_forge_is_a_page_and_routes_that_come_and_go_with_the_plugin(running: tu
     assert call(studio, port, "GET", "/api/forge")[0] == 404
     assert call(studio, port, "GET", "/plugins/forge/forge.js")[0] == 404
     assert call(studio, port, "GET", "/api/models")[0] == 200
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/api/plugins"),
+        ("POST", "/api/plugins/demo/enable"),
+        ("GET", "/api/p/demo/hello"),
+        ("POST", "/api/p/demo/items/a"),
+        ("GET", "/plugins/demo/main.js"),
+    ],
+)
+def test_paired_clients_never_reach_plugins(method: str, path: str) -> None:
+    refused = remote.check_rights({"admin": True}, method, path, confirmed=True)
+    assert refused is not None and refused[2] == "owner_only"

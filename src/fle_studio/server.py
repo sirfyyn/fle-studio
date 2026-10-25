@@ -46,10 +46,8 @@ from . import (
     planview,
     plugins,
     quality,
-    remote,
     service,
     system,
-    tlsgen,
     tuner,
     tuning_api,
 )
@@ -134,7 +132,7 @@ class Studio:
         )
         self.token = secrets.token_urlsafe(24)
         self.lan = False
-        self.tls_fingerprint = ""  # host mode: SHA-256 of the certificate the server shows (see remote.py)
+        self.tls_fingerprint = ""  # host mode: SHA-256 of the certificate the server shows (Remote access plugin)
         self.listen: dict[str, Any] = {}
         # Set by the launcher (__main__.py): ends this process and runs the given command line again (None: just end).
         # The update plugin uses it after an update.
@@ -521,7 +519,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = f"FLEStudio/{__version__}"
     protocol_version = "HTTP/1.1"
     studio: Studio  # set on the subclass made by make_server
-    client: dict[str, Any] | None = None  # the paired client of this request (remote.py), if it came with a token
+    client: dict[str, Any] | None = None  # the paired client of this request (Remote access plugin), if any
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002 - signature from the base class
         return  # quiet; the engine log is what users read
@@ -600,9 +598,10 @@ class Handler(BaseHTTPRequestHandler):
         return name in allowed or any(name.startswith(a + ".") for a in allowed if a)
 
     def _authed(self) -> bool:
-        paired = remote.authenticate(self)  # a client token counts, also from loopback (an SSH tunnel)
-        if paired is not None:
-            return paired
+        for check in self.studio.plugins.hooks("request_auth"):
+            paired = check(self)  # a client token counts, also from loopback (an SSH tunnel)
+            if paired is not None:
+                return bool(paired)
         if _is_loopback(self.client_address[0]):
             return True
         expected = self.studio.session_cookie()
@@ -621,15 +620,15 @@ class Handler(BaseHTTPRequestHandler):
         if not self._host_ok():
             self._send(403, b"FLE Studio: this host name is not allowed.", "text/plain; charset=utf-8")
             return False
-        if path in ("/login", "/api/remote/pair"):  # pairing proves itself with the code, see remote.py
-            return True
+        if path == "/login" or any(f(path) for f in self.studio.plugins.hooks("request_open")):
+            return True  # (pairing proves itself with its code)
         if not self._authed():
             if path.startswith(("/api/", "/v1/")):
                 self.send_json(401, {"error": {"message": "Sign in with the access key", "type": "auth"}})
             else:
                 self._send(303, b"", "text/plain", {"Location": "/login"})
             return False
-        if self.client is not None and not remote.enforce(self, path):
+        if self.client is not None and not all(f(self, path) for f in self.studio.plugins.hooks("request_enforce")):
             return False
         if self.command in ("POST", "PUT", "DELETE", "PATCH"):
             origin = self.headers.get("Origin")
@@ -665,8 +664,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if not self._guard(path):
                 return
-            if path.startswith("/h/"):  # a host this Studio is a client of, see remote.py
-                remote.forward(self, url)
+            if path.startswith("/h/"):  # a host this Studio is a client of (Remote access plugin)
+                if not any(f(self, url) for f in self.studio.plugins.hooks("forward")):
+                    raise ApiError(404, "Not found")
                 return
             if path.startswith("/v1/"):
                 self.proxy()
@@ -1131,9 +1131,6 @@ chat_api.install(Handler, ROUTES, ApiError)  # attachments, tools, chat search/e
 mcp_api.install(Handler, ROUTES, ApiError)  # MCP sign-in (OAuth) and MCP Apps frames (mcp_api.py)
 
 
-remote.install(Handler, ROUTES, ApiError)  # /api/remote* (host side), /api/hosts* (client side), /h/<id>/ pass-through
-
-
 plugins.install(Handler, ROUTES, ApiError)  # /api/plugins*: the list and turning plugins on and off (plugins.py)
 
 
@@ -1158,7 +1155,8 @@ def make_server(studio: Studio, host: str, port: int, tries: int = 20, tls: bool
     """Bind to host:port, or the next free port above it.
 
     `tls`: None is automatic: a server that listens beyond this machine (host mode) speaks TLS with its own
-    certificate (settings server.tls, `--no-tls`), a loopback one does not. True forces it, False turns it off."""
+    certificate (settings server.tls, `--no-tls`), a loopback one does not. True forces it, False turns it off.
+    TLS is the Remote access plugin's work: without it the server speaks plain http (studio.listen["tls"] says)."""
     handler = type("BoundHandler", (Handler,), {"studio": studio})
     studio.lan = host not in ("127.0.0.1", "localhost", "::1")
     if tls is None:
@@ -1173,12 +1171,13 @@ def make_server(studio: Studio, host: str, port: int, tries: int = 20, tls: bool
             last = exc
             continue
         studio.tls_fingerprint = ""
-        if tls:
-            cert, key, studio.tls_fingerprint = tlsgen.ensure(studio.data_dir, remote.host_name(studio))
-            # The handshake happens in the thread of the connection, so a slow client cannot hold up the others.
-            server.socket = tlsgen.server_context(cert, key).wrap_socket(
-                server.socket, server_side=True, do_handshake_on_connect=False
-            )
-        studio.listen = {"host": host, "port": int(server.server_address[1]), "tls": bool(tls)}
+        wrapped = None
+        if tls:  # TLS comes from the Remote access plugin; without it the server speaks plain http
+            for wrap in studio.plugins.hooks("tls_wrap"):
+                wrapped = wrap(studio, server.socket, host)
+                if wrapped is not None:
+                    server.socket, studio.tls_fingerprint = wrapped
+                    break
+        studio.listen = {"host": host, "port": int(server.server_address[1]), "tls": wrapped is not None}
         return server
     raise OSError(f"No free port from {port} to {port + tries - 1}: {last}")

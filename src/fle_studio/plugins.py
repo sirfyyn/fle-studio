@@ -96,6 +96,7 @@ class PluginContext:
     _routes: list[tuple[str, re.Pattern[str], Handler]] = field(default_factory=list)
     _raw: list[tuple[str, re.Pattern[str], Callable[..., None]]] = field(default_factory=list)
     _boot: str = ""
+    _boot_early: bool = False
     _title: str = ""
     _summary: str = ""
     _hooks: dict[str, list[Callable[..., Any]]] = field(default_factory=dict)
@@ -142,13 +143,14 @@ class PluginContext:
             raise ValueError("api: the pattern must start with ^/api/ and end with $")
         self._raw.append((method, re.compile(pattern), fn))
 
-    def boot(self, script: str = "boot.js") -> None:
+    def boot(self, script: str = "boot.js", early: bool = False) -> None:
         """A script of the web folder that runs when the page starts, on every page (not only on the plugin's own):
         `export function init(kit)`. It adds what a plugin shows outside its page: a section in Settings, a
-        notice in the sidebar. See docs/PLUGINS.md."""
+        notice in the sidebar. `early` runs it before the page asks for the state of FLE Studio, for a script that
+        changes where the page's calls go (the hosts of Remote access). See docs/PLUGINS.md."""
         if not _FILE.match(script) or ".." in script or not script.endswith(".js"):
             raise ValueError("boot: script must be a .js file in the plugin's web folder")
-        self._boot = script
+        self._boot, self._boot_early = script, bool(early)
 
     def describe(self, title: str, summary: str = "") -> None:
         """The name and a line about the plugin for the list in Settings (a plugin without a page needs them)."""
@@ -197,6 +199,16 @@ class Found:
 HOOKS: dict[str, str] = {
     "proxy_record": "(path, body) -> recorder | None, when a request goes through /v1. A recorder has feed(chunk), "
     "done(status, body=None), wants_stream() and, once a stream is read, timings and usage.",
+    "request_auth": "(handler) -> True | False | None. Who is asking, by a token of its own: True signs the request in "
+    "(and sets handler.client), False refuses it, None leaves it to the access key.",
+    "request_open": "(path) -> bool. A path that needs no sign-in because it proves itself (pairing).",
+    "request_enforce": "(handler, path) -> bool. After sign-in, when handler.client is set: False means the hook has "
+    "answered the request (a refusal).",
+    "forward": "(handler, url) -> bool. A request under /h/ that belongs to another machine; True when answered.",
+    "tls_wrap": "(studio, socket, host) -> (socket, fingerprint) | None. Puts TLS on the listening socket of a server "
+    "that listens beyond this machine.",
+    "cli": "(event, studio, args, **info) -> bool. Command line parts of a plugin: event 'pair_code' (print a pairing "
+    "code, True when done) and 'started' (the server is up; print what the plugin has to say).",
 }
 
 
@@ -369,6 +381,7 @@ class Plugins:
                     if page
                     else None,
                     "boot": ctx._boot if ctx else "",
+                    "boot_early": ctx._boot_early if ctx else False,
                     "title": ctx._title if ctx else "",
                     "summary": ctx._summary if ctx else "",
                 }

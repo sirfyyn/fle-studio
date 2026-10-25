@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from fle_studio import plugins, remote
+from fle_studio import plugins
 from fle_studio.server import Studio, make_server
 
 # ------------------------------------------------------------------------------------------------ a stand-in plugin
@@ -269,18 +269,3 @@ def test_routes_and_files_only_while_on(page: Page) -> None:
 def test_the_page_falls_back_to_the_app_for_plugin_paths(page: Page) -> None:
     status, body, headers = page.call("GET", "/p/demo")
     assert status == 200 and b"fle-token" in body and headers["Content-Type"].startswith("text/html")
-
-
-@pytest.mark.parametrize(
-    ("method", "path"),
-    [
-        ("GET", "/api/plugins"),
-        ("POST", "/api/plugins/demo/enable"),
-        ("GET", "/api/p/demo/hello"),
-        ("POST", "/api/p/demo/items/a"),
-        ("GET", "/plugins/demo/main.js"),
-    ],
-)
-def test_paired_clients_never_reach_plugins(method: str, path: str) -> None:
-    refused = remote.check_rights({"admin": True}, method, path, confirmed=True)
-    assert refused is not None and refused[2] == "owner_only"

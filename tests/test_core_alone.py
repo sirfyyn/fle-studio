@@ -81,5 +81,27 @@ def test_the_core_pages_and_calls_answer_without_plugins(core: tuple[Studio, int
     status, body = call(studio, port, "GET", "/")
     assert status == 200 and b"fle-token" in body
     # what a plugin would have added is simply not there
-    for gone in ("/api/engine/switch", "/api/forge", "/api/update", "/api/livechat", "/api/capture"):
+    for gone in (
+        "/api/engine/switch",
+        "/api/forge",
+        "/api/update",
+        "/api/livechat",
+        "/api/capture",
+        "/api/remote",
+        "/api/hosts",
+        "/h/abc/api/state",
+    ):
         assert call(studio, port, "GET", gone)[0] == 404, gone
+
+
+def test_a_server_beyond_this_machine_speaks_plain_http_without_the_remote_plugin(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(plugins.NO_BUNDLED, "1")
+    studio = Studio(tmp_path / "home")
+    server = make_server(studio, "127.0.0.1", 0, tls=True)  # TLS asked for, nobody to provide it
+    try:
+        assert studio.listen["tls"] is False and studio.tls_fingerprint == ""
+    finally:
+        server.server_close()
+        studio.plugins.stop()

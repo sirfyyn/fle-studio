@@ -3,7 +3,6 @@
 import { post } from "./api.js";
 import { applyTheme, on, refreshPlugins, refreshState, store, topbar } from "./app.js";
 import { toolsSection, stopToolsPolling } from "./settings-tools.js";
-import { remoteSections } from "./hosts.js";
 import { clear, fmt, h, icon, toast } from "./ui.js";
 
 // The names of the plugins that ship with FLE Studio, for the list when one is off (its own title is not known then).
@@ -34,7 +33,6 @@ export function mount(main) {
     const parts = [
       [10, look(s)], [20, models(s)], [30, chat(s)], [40, toolsSection(s, ui)],
       [60, hub(s)], [70, network(s)],
-      ...remoteSections(ui).map((el, i) => [90 + i / 10, el]),
       [100, plugins()], [110, about()],
     ];
     for (const extra of settingsSections) { // sections that plugins add (kit.settingsSection)

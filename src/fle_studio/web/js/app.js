@@ -2,7 +2,6 @@
 
 import { del, get } from "./api.js";
 import { initChatSearch, searchActive } from "./chat-search.js";
-import { initHosts } from "./hosts.js";
 import { clear, confirmDialog, fmt, h, icon, stateBadge, toast } from "./ui.js";
 
 // ----------------------------------------------------------------------------------------------- store
@@ -70,10 +69,10 @@ export const chatListHeads = [];
 // A plugin's boot script (plugins.py ctx.boot) runs once per page load and may add Settings sections, sidebar
 // notices and the like. A script that fails is reported and does not stop the page.
 const booted = new Set();
-async function bootPlugins() {
+async function bootPlugins(early) {
   const { makeKit } = await import("./plugin-kit.js");
   for (const p of store.plugins) {
-    if (!p.loaded || !p.boot || booted.has(p.id)) continue;
+    if (!p.loaded || !p.boot || booted.has(p.id) || !!p.boot_early !== early) continue;
     booted.add(p.id);
     try {
       const mod = await import(`/plugins/${p.id}/${p.boot}`);
@@ -303,6 +302,10 @@ async function start() {
   });
   window.addEventListener("popstate", route);
   initChatSearch({ onClear: () => refreshChats().catch(() => {}) });
+  // The plugins of this machine come first, and those that change where the page's calls go (the hosts of Remote
+  // access) start before the page asks for anything else.
+  await refreshPlugins().catch(() => {});
+  await bootPlugins(true);
   try {
     await refreshState();
   } catch (e) {
@@ -312,10 +315,8 @@ async function start() {
   document.getElementById("brand-ver").textContent = `v${store.state.version}`;
   store.engine = store.state.engine;
   renderEngineCard();
-  initHosts();
   refreshChats().catch(() => {});
-  await refreshPlugins().catch(() => {});
-  await bootPlugins();
+  await bootPlugins(false);
   route();
   tick();
 }

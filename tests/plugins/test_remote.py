@@ -19,10 +19,10 @@ import pytest
 from e2e.run_e2e import gguf_stub
 from test_service import server_unit, settle, systemd  # noqa: F401 - systemd is a fixture
 
-from fle_studio import remote, tlsgen
 from fle_studio.server import Studio, make_server
+from fle_studio_remote import remote, tlsgen
 
-HERE = Path(__file__).parent
+HERE = Path(__file__).parent.parent
 FAKE_ENGINE = HERE / "fake_llama_server.py"
 FAKE_SSH = HERE / "fake_ssh.py"
 NO_VERIFY = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -707,7 +707,7 @@ WRITE_ROUTES_OF_OTHER_PARTS = [
 
 
 def test_every_write_route_of_the_other_parts_needs_admin_rights() -> None:
-    from fle_studio import remote  # noqa: PLC0415
+    from fle_studio_remote import remote  # noqa: PLC0415
 
     for method, path, default, admin in WRITE_ROUTES_OF_OTHER_PARTS:
         got = remote.check_rights({"admin": False}, method, path, False)
@@ -745,7 +745,7 @@ def test_remote_admin_paths_are_not_passed_on_not_even_the_bare_one_or_dotdot(
 
 
 def test_large_answers_are_streamed_not_buffered(engine_host: Rig, rigs: Callable[..., Rig], monkeypatch) -> None:
-    from fle_studio import remote
+    from fle_studio_remote import remote
 
     client = rigs("client", False)
     host = add_host(client, engine_host)["host"]

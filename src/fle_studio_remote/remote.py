@@ -35,12 +35,14 @@ import subprocess
 import threading
 import time
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from . import paths, tlsgen
+from fle_studio import paths
+
+from . import tlsgen
 
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O, 1/I
 CODE_LENGTH = 8
@@ -1005,11 +1007,10 @@ ROUTES: list[tuple[str, str, str]] = [
 ]
 
 
-def install(handler: type, routes: list[Any], api_error: type) -> None:
-    """Add the handlers to the server's Handler class and the routes to its route table."""
+def install(add: Callable[[str, str, Callable[..., None]], None]) -> None:
+    """Give the plugin context's `api` function the routes of this module."""
     for method, pattern, name in ROUTES:
-        routes.append((method, re.compile(pattern), name))
-        setattr(handler, f"api_{name}", globals()[f"api_{name}"])
+        add(method, pattern, globals()[f"api_{name}"])
 
 
 # ------------------------------------------------------------------------------------------------ the pass-through

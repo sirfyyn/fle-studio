@@ -94,6 +94,7 @@ Parts of FLE Studio that not everybody needs are plugins of FLE Studio's own pac
 | `forge` | the Forge page and its `/api/forge` routes: build your own FLE quant (docs/FORGE.md) |
 | `updater` | the daily look for a newer FLE Studio or engine, the notice and the one-click update |
 | `recorder` | the Live page (answers through `/v1` as a conversation in memory) and Capture (answers as files) |
+| `remote` | Remote access (docs/REMOTE.md): hosts and clients, pairing, TLS, the host chooser in the sidebar |
 | `switch` | the model switcher next to an attached service, in the chat's model menu |
 
 They are separate Python packages (`fle_studio_<id>`) in the same wheel, registered through the entry point group
@@ -112,7 +113,8 @@ For these plugins the context offers a little more than for the plugins of other
 | `ctx.boot("boot.js")` | a script that runs on every page when it starts: `export function init(kit)`; it adds Settings sections (`kit.settingsSection`), model menu entries (`modelMenuProviders` in app.js), sidebar notices |
 | `ctx.page(title, icon, script, path="/forge")` | a page at a path of its own |
 | `ctx.describe(title, summary)` | the name and a line for the list in Settings |
-| `ctx.hook(name, fn)` | take part in something the core does at a named point; `proxy_record(path, body)` gives the proxy a recorder for a request (the recorder plugin) |
+| `ctx.hook(name, fn)` | take part in something the core does at a named point: `proxy_record` (a recorder for a request), `request_auth`, `request_open`, `request_enforce`, `forward` (who may ask, and the pass-through to another machine), `tls_wrap` (TLS on the listening socket) and `cli` (command line events); the list with arguments is `HOOKS` in `plugins.py` |
+| `ctx.boot(script, early=True)` | run the boot script before the page asks for the state of FLE Studio; the hosts of Remote access need it (they change where the page's calls go, `transport` in api.js) |
 
 Their scripts may import FLE Studio's own modules (`/js/ui.js`, `/js/api.js`, `/js/app.js`); the scripts of other
 plugins use the kit.

@@ -19,7 +19,7 @@ import ssl
 import threading
 from pathlib import Path
 
-from . import paths
+from fle_studio import paths
 
 # NIST P-256 (secp256r1)
 _P = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF

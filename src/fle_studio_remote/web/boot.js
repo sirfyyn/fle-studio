@@ -1,9 +1,43 @@
-// Hosts: the switcher "This machine / <host> / Add host…" at the top of the sidebar, the notice when the host cannot be
+// Remote access (plugin `remote`), the page side. Hosts: the switcher "This machine / <host> / Add host…" at the top of the sidebar, the notice when the host cannot be
 // reached, the dialogs to add and pair a host, and the Settings cards (the hosts of this Studio, and the clients that
-// are paired with it). The page itself needs nothing else: api.js sends every request to the chosen host.
+// are paired with it). The page itself needs nothing else: the transport below makes api.js send every request to the
+// chosen host.
 
-import { activeHostId, get, post } from "./api.js";
-import { clear, confirmDialog, copyButton, h, icon, openMenu, toast } from "./ui.js";
+import { get, post, transport } from "/js/api.js";
+import { clear, confirmDialog, copyButton, h, icon, openMenu, toast } from "/js/ui.js";
+
+// ----------------------------------------------------------------------------------------------- the transport
+// The page always talks to its own Studio. When another host is chosen, every /api/ and /v1/ request goes to
+// /h/<host id>/…, which this Studio passes on to the host with this client's token. Choosing a host reloads the page.
+
+const HOST = (() => {
+  try { return localStorage.getItem("fle-host") || ""; } catch { return ""; }
+})();
+const activeHostId = () => HOST;
+
+// Plugins belong to this machine, so their calls always stay here, like the host list itself.
+const LOCAL_ONLY = /^\/api\/(?:hosts|plugins|p)(?:\/|$)/;
+transport.url = (path) => (HOST && /^\/(api|v1|app-frame)\//.test(path) && !LOCAL_ONLY.test(path) ? `/h/${HOST}${path}` : path);
+
+transport.problem = (details) => {
+  if (details?.code === "unreachable" || details?.code === "fingerprint_changed" || details?.code === "unpaired") {
+    window.dispatchEvent(new CustomEvent("fle-host-problem", { detail: details }));
+  }
+};
+
+// A host asks for a confirmation of installs and updates; the person at this page gives it, the call is repeated.
+transport.confirm = (method, path) => {
+  let name = "this host";
+  try { name = localStorage.getItem("fle-host-name") || name; } catch { /* storage blocked */ }
+  return confirmDialog({ title: "Confirm on the host", body: `This changes ${name}: ${method} ${path}. Go ahead?`, ok: "Confirm", danger: true });
+};
+
+transport.gone = (status, data) => {
+  if (!HOST || !/^This host is not in the list/.test(data?.error?.message || "")) return false;
+  remember("", "");
+  location.href = "/"; // the host was removed (maybe in another tab): back to this machine
+  return true;
+};
 
 let hosts = [];
 let sshOk = true;
@@ -223,7 +257,7 @@ function openRepair(host) {
 
 export async function initHosts() {
   if (!document.getElementById("hosts-css")) {
-    document.head.append(h("link", { id: "hosts-css", rel: "stylesheet", href: "/hosts.css" }));
+    document.head.append(h("link", { id: "hosts-css", rel: "stylesheet", href: "/plugins/remote/hosts.css" }));
   }
   try {
     await load();
@@ -253,11 +287,7 @@ function ago(ts) {
   return new Date(ts * 1000).toLocaleDateString();
 }
 
-// `section(icon, title, sub, ...body)` and `toggle(checked, onFlip)` come from the Settings page.
-export function remoteSections({ section, toggle }) {
-  return [hostsCard({ section, toggle }), accessCard({ section, toggle })];
-}
-
+// `section(icon, title, sub, ...body)` and `toggle(checked, onFlip)` come from the Settings page (the ui of a section).
 function hostsCard({ section, toggle }) {
   const list = h("div", { class: "stack", id: "hosts-list" });
   const node = section("link", "Hosts", "Other machines that compute for this one: pick one at the top of the sidebar.", list,
@@ -393,4 +423,11 @@ const accessCache = { info: null, at: 0, made: null };
 function countdown(expires) {
   const left = Math.max(0, Math.round(expires - Date.now() / 1000));
   return left > 0 ? `Valid for ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} more minutes, one use.` : "Expired.";
+}
+
+// What the page runs when the plugin is on (plugins.py ctx.boot, early): the switcher and the two Settings cards.
+export async function init(kit) {
+  await initHosts();
+  kit.settingsSection(90, (s, ui) => hostsCard(ui));
+  kit.settingsSection(91, (s, ui) => accessCard(ui));
 }

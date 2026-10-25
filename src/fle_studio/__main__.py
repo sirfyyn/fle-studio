@@ -8,7 +8,6 @@ import os
 import secrets
 import shutil
 import signal
-import socket
 import sys
 import threading
 import urllib.request
@@ -77,7 +76,9 @@ def main(argv: list[str] | None = None) -> int:
     port = args.port or int(cfg.get("server.port"))
     local_host = host in ("127.0.0.1", "localhost", "::1")
     if args.pair_code:
-        _print_pairing(studio, host, port, local_host and not args.no_tls)
+        if not _cli(studio, args, "pair_code", host=host, port=port, loopback=local_host and not args.no_tls):
+            print("Pairing needs the Remote access plugin, and it is not on (Settings → Plugins).", file=sys.stderr)
+            return 2
         return 0
     if local_host and _running(port):
         url = f"http://127.0.0.1:{port}/"
@@ -99,16 +100,9 @@ def main(argv: list[str] | None = None) -> int:
     url = f"{scheme}://{shown}:{server.server_address[1]}/"
     print(f"FLE Studio {__version__} — {url}")
     print(f"Data folder: {studio.data_dir}")
-    if studio.listen.get("tls"):
-        from . import tlsgen  # noqa: PLC0415
-
-        print(f"Host mode: TLS, certificate fingerprint (SHA-256) {tlsgen.pretty(studio.tls_fingerprint)}")
-        print("Pair a client with a code from Settings → Remote access, or run: fle-studio --pair-code")
-    if args.pair:
-        from . import remote  # noqa: PLC0415
-
-        made = remote.service(studio).clients.new_code()
-        print(f"Pairing code (10 minutes, one use): {made['pretty']}")
+    _cli(studio, args, "started")  # what plugins have to say: TLS and pairing of Remote access
+    if not local_host and not studio.listen.get("tls") and not args.no_tls:
+        print("Host mode without TLS: the access key travels in the clear. Use it on a network you trust.")
     print("Press Ctrl+C to stop (this also stops a model FLE Studio started).")
 
     attach_url, attach_unit = args.attach or "", args.service or ""
@@ -159,9 +153,6 @@ def main(argv: list[str] | None = None) -> int:
         studio.engine.shutdown()
         studio.plugins.stop()
         server.server_close()
-        from . import remote  # noqa: PLC0415
-
-        remote.shutdown(studio)  # ends the ssh tunnels this Studio started
     if restart["wanted"] and restart["argv"]:
         return _run_again(restart["argv"])
     return 0
@@ -178,16 +169,12 @@ def _run_again(argv: list[str]) -> int:
         return 1
 
 
-def _print_pairing(studio: Any, host: str, port: int, loopback: bool) -> None:
-    """`--pair-code`: a code for the data folder, written to its pairing file, which the running server reads."""
-    from . import remote, tlsgen  # noqa: PLC0415
-
-    made = remote.service(studio).clients.new_code()
-    print(f"Pairing code (10 minutes, one use): {made['pretty']}")
-    if studio.config.get("server.tls") and not loopback:
-        _, _, fp = tlsgen.ensure(studio.data_dir, remote.host_name(studio))
-        print(f"Certificate fingerprint (SHA-256): {tlsgen.pretty(fp)}")
-    print(f"In the client: Add host…, address {socket.gethostname()}:{port}, this code.")
+def _cli(studio: Any, args: argparse.Namespace, event: str, **info: Any) -> bool:
+    """Offer a command line event to the plugins that take part (hook `cli`); True when one of them did the work."""
+    done = False
+    for fn in studio.plugins.hooks("cli"):
+        done = bool(fn(event, studio, args, **info)) or done
+    return done
 
 
 if __name__ == "__main__":
