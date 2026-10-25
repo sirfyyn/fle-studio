@@ -782,6 +782,13 @@ svg.i.flip { transform: scaleX(-1); }
 
 .sticky-side .cmd { max-height: none; overflow-y: visible; }
 
+/* Decode-speed history of one setting (Experiments): a line, its dots, grey ticks for runs without a value. */
+.spark-box { flex: none; align-self: center; display: inline-flex; }
+.spark .line { stroke: var(--accent); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.spark .dot { fill: var(--accent); opacity: 0.55; }
+.spark .now { fill: var(--accent); stroke: var(--card); stroke-width: 1.5; }
+.spark .gap { stroke: var(--faint); stroke-width: 1.6; stroke-linecap: round; }
+
 /* The facts of the planned start in one row above the command: label small and muted, value bold, tone as a tint. */
 .sum-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
 .sum-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 12px;

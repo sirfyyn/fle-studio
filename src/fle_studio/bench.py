@@ -125,14 +125,49 @@ def compare_decode(new: dict[str, Any], old: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+SERIES_LENGTH = 12
+
+
+def decode_series(
+    record: dict[str, Any], history: list[dict[str, Any]], limit: int = SERIES_LENGTH
+) -> list[dict[str, Any]]:
+    """The decode speed of the last runs of the same setting as ``record`` (key as in compare_with_history), oldest
+    first and ending with ``record`` itself, for a small history line.
+
+    Each point is ``{"id", "started", "decode"}``; ``decode`` is the median of the requests that ended by themselves,
+    or None when none did (cut off at the token limit, or from before the fixed sampling): the line leaves those out."""
+    key = setting_key(record.get("context") or {})
+    runs = [record]
+    for old in history:  # newest first
+        if len(runs) >= limit:
+            break
+        if old.get("id") == record.get("id") or old.get("state") != "done" or not old.get("tests"):
+            continue
+        if setting_key(old.get("context") or {}) == key:
+            runs.append(old)
+    points = []
+    for run in reversed(runs):
+        values = [v for vs in _comparable_decode(run.get("tests") or []).values() for v in vs]
+        points.append(
+            {
+                "id": run.get("id"),
+                "started": run.get("started"),
+                "decode": round(statistics.median(values), 2) if values else None,
+            }
+        )
+    return points
+
+
 def compare_with_history(record: dict[str, Any], history: list[dict[str, Any]]) -> dict[str, Any] | None:
-    """Compare ``record`` with the newest earlier result of the same setting; None when there is none."""
+    """Compare ``record`` with the newest earlier result of the same setting; None when there is none.
+
+    The answer also carries ``series`` (see decode_series): the last runs of this setting for a history line."""
     key = setting_key(record.get("context") or {})
     for old in history:  # newest first
         if old.get("id") == record.get("id") or old.get("state") != "done" or not old.get("tests"):
             continue
         if setting_key(old.get("context") or {}) == key:
-            return compare_decode(record, old)
+            return {**compare_decode(record, old), "series": decode_series(record, history)}
     return None
 
 
