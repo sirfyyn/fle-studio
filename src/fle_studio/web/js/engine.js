@@ -51,7 +51,7 @@ export function mount(main) {
     status: h("div", { class: "card pad-lg" }),
     best: h("div", { class: "card" }),
     launch: h("div", { class: "card" }),
-    preview: h("div", { class: "card" }),
+    preview: h("div", { class: "card sticky-side" }),
     profiles: h("div", { class: "card" }),
     engines: h("div", { class: "card" }),
     attach: h("div", { class: "card" }),

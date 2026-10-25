@@ -776,7 +776,14 @@ svg.i.flip { transform: scaleX(-1); }
 .bad-text { color: var(--bad); overflow-wrap: anywhere; }
 .good-text { color: var(--good); }
 
+/* The command card of Engine stays in view while the long settings column scrolls. It scrolls by itself when it is taller
+   than the window, and (below) lies under the settings again once the two columns become one. */
+.sticky-side { align-self: start; position: sticky; top: 14px; max-height: calc(100vh - 54px - 28px); overflow-y: auto; }
+
+.sticky-side .cmd { max-height: none; overflow-y: visible; }  /* one scroll area (the card), not one inside another */
+
 @media (max-width: 960px) {
+  .sticky-side { position: static; max-height: none; overflow-y: visible; }
   .cat-grid, .grid.two, .grid.three { grid-template-columns: minmax(0, 1fr); }
   .grid.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
