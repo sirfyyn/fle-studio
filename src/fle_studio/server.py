@@ -401,8 +401,12 @@ class Studio:
         info = self.sysinfo()
         local = {m["catalog_id"]: m for m in self.library.scan() if m.get("catalog_id")}
         jobs = {j.get("dedupe"): j for j in self.downloads.list() if j["state"] not in ("done", "cancelled")}
+        extras = self.extras_view()
         out = []
         for entry in catalog.catalog(info):
+            entry["mtp_status"] = catalog.mtp_status(
+                bool(entry.get("mtp")), extras["mtp_head"]["present"], extras["mtp_vocab"]["present"]
+            )
             entry["local"] = local.get(entry["id"])
             entry["job"] = jobs.get(f"catalog:{entry['id']}")
             out.append(entry)
