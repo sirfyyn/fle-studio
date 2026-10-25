@@ -395,6 +395,8 @@ class Engine:
         if binary.suffix == ".py":  # development and test engines
             cmd = [sys.executable, str(binary), *plan.args]
         self._open_log()
+        if plan.fallback:  # first line of the new run's log file (the failed run's file is closed by now)
+            self._append(f"FLE Studio: {plan.fallback}")
         start_line = "$ " + plan.command_line().replace("\n", " ")
         self._append(start_line)
         for listener in self.line_listeners:
@@ -559,8 +561,7 @@ class Engine:
             replacement = self.on_load_failure(failed, rc, error) if self.on_load_failure else None
             if replacement is None:
                 return
-            self._append(f"FLE Studio: {replacement.fallback}")
-            self.start(replacement)
+            self.start(replacement)  # _spawn writes the reason as the first line of the new log
         except Exception as exc:  # the failed state stays as it is; the user sees why in the log
             self._append(f"FLE Studio: the fallback start did not work: {getattr(exc, 'message', exc)}")
 

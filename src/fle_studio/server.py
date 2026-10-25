@@ -44,6 +44,7 @@ from . import (
     mcp_api,
     net,
     paths,
+    planview,
     plugins,
     quality,
     remote,
@@ -242,7 +243,7 @@ class Studio:
             # Plan-time upstream fallback: if the FLE plan cannot be built (for example no NVIDIA GPU for the
             # FLE engine), retry once with an installed upstream llama-server and speculation off. This does not
             # rescue a model that fails after it has started loading.
-            if profile_ident or settings["launch"].get("profile") != "auto":
+            if prof_id != "auto":  # (the page sends "auto" itself, so that is not a reason to refuse)
                 raise ApiError(400, str(exc)) from None
             upstream = self._upstream_engine(info)
             if not upstream:
@@ -251,8 +252,12 @@ class Studio:
                 plan = self._upstream_plan(model, settings, upstream, info, port)
             except launch.PlanError as fb_exc:
                 raise ApiError(400, f"{exc} The upstream fallback failed too: {fb_exc}") from None
-            plan.notes.insert(0, f"FLE plan failed: {exc}")
-            plan.notes.insert(1, "Falling back to upstream llama.cpp; FLE features and speculation are disabled.")
+            why = str(exc).strip()
+            plan.fallback = (
+                f"The FLE plan could not be built: {why}{'' if why.endswith('.') else '.'} "
+                "Studio fell back to upstream llama.cpp; FLE features and speculation are off."
+            )
+            plan.notes.insert(0, plan.fallback)
             return plan
 
     def _upstream_plan(
@@ -339,11 +344,20 @@ class Studio:
                 "fixes": fixes,
                 "speculation": speculation,
             }
+        public = plan.public()
+        launch_cfg = self.config.data["launch"]
+        chips = planview.summary(
+            public,
+            model=self.library.get(model_ident) if model_ident else None,
+            spec_requested=str(launch_cfg.get("spec") or "auto"),
+            mtp_on=bool(launch_cfg.get("mtp", True)),
+        )
         return {
             "ok": True,
-            "plan": plan.public(),
+            "plan": public,
             "fixes": fixes,
             "speculation": self.speculation_view(profile_ident, plan),
+            "summary": chips,
         }
 
     def speculation_view(self, profile_ident: str | None, plan: launch.Plan | None) -> dict[str, Any]:
@@ -358,6 +372,8 @@ class Studio:
                 "applies": False,
                 "reason": "A start profile's own command decides; speculation applies to the automatic start only.",
             }
+        if plan is not None and plan.fallback:  # the FLE plan failed and this is the upstream replacement
+            return {"applies": False, "reason": plan.fallback}
         if plan is not None and plan.profile == "auto" and plan.engine in ("fle", "upstream"):
             flavor: str | None = plan.engine
         else:

@@ -97,6 +97,12 @@ def test_a_failed_load_starts_upstream_once(studio: Studio, parts: dict[str, Any
     assert any(t.startswith("FLE Studio: The engine ended while loading") for t in text)
     assert starts(studio) == 2
     assert studio.engine.status()["plan"]["fallback"] == plan.fallback
+    # The failed run's log file was closed before the reason was known; the reason is in the new run's file, right
+    # before its command (the buffer shows it once, too).
+    newest = sorted(studio.engine.log_dir.glob("engine-*.log"))[-1].read_text(encoding="utf-8").splitlines()
+    last_command = max(i for i, line in enumerate(newest) if line.startswith("$ "))
+    assert newest[last_command - 1] == f"FLE Studio: {plan.fallback}"
+    assert sum(1 for t in text if t == f"FLE Studio: {plan.fallback}") == 1
 
 
 def test_the_fallback_is_not_tried_a_second_time(studio: Studio, parts: dict[str, Any]) -> None:

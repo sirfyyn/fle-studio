@@ -780,7 +780,18 @@ svg.i.flip { transform: scaleX(-1); }
    than the window, and (below) lies under the settings again once the two columns become one. */
 .sticky-side { align-self: start; position: sticky; top: 14px; max-height: calc(100vh - 54px - 28px); overflow-y: auto; }
 
-.sticky-side .cmd { max-height: none; overflow-y: visible; }  /* one scroll area (the card), not one inside another */
+.sticky-side .cmd { max-height: none; overflow-y: visible; }
+
+/* The facts of the planned start in one row above the command: label small and muted, value bold, tone as a tint. */
+.sum-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.sum-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 12px;
+  background: var(--soft); border: 1px solid var(--line); max-width: 100%; }
+.sum-chip small { color: var(--faint); font-size: 11px; }
+.sum-chip b { font-weight: 600; overflow-wrap: anywhere; }
+.sum-chip.ok { background: var(--good-soft); border-color: transparent; }
+.sum-chip.ok b { color: var(--good); }
+.sum-chip.warn { background: var(--warn-soft); border-color: transparent; }
+.sum-chip.warn b { color: var(--warn); }  /* one scroll area (the card), not one inside another */
 
 @media (max-width: 960px) {
   .sticky-side { position: static; max-height: none; overflow-y: visible; }
