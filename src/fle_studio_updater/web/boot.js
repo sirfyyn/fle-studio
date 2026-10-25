@@ -2,8 +2,8 @@
 // notes, the one-click update where FLE Studio can do it, and the Settings section. The server asks GitHub at most
 // once a day; this page only shows what the server knows.
 
-import { get, post } from "./api.js";
-import { clear, copyButton, h, icon, toast } from "./ui.js";
+import { get, post } from "/js/api.js";
+import { clear, copyButton, h, icon, toast } from "/js/ui.js";
 
 let view = null;
 let card = null;
@@ -269,7 +269,7 @@ listeners.add((v) => {
 
 export function initUpdates() {
   if (!document.getElementById("update-css")) {
-    document.head.append(h("link", { id: "update-css", rel: "stylesheet", href: "/update.css" }));
+    document.head.append(h("link", { id: "update-css", rel: "stylesheet", href: "/plugins/updater/update.css" }));
   }
   const engineCard = document.getElementById("engine-card");
   if (!engineCard || card) return;
@@ -341,4 +341,10 @@ export function updatesSection({ section, toggle, save }) {
   const drop = new MutationObserver(() => { if (!document.body.contains(node)) { listeners.delete(sync); drop.disconnect(); } });
   drop.observe(document.body, { childList: true, subtree: true });
   return node;
+}
+
+// What the page runs when the plugin is on (plugins.py ctx.boot): the notice above the engine card and the Settings card.
+export function init(kit) {
+  initUpdates();
+  kit.settingsSection(80, (s, ui) => updatesSection(ui));
 }

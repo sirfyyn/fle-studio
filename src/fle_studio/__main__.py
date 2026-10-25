@@ -69,7 +69,6 @@ def main(argv: list[str] | None = None) -> int:
     if args.home:
         os.environ["FLE_STUDIO_HOME"] = str(Path(args.home).expanduser())
 
-    from . import updates  # noqa: PLC0415
     from .server import Studio, make_server  # noqa: PLC0415 - after FLE_STUDIO_HOME is set
 
     studio = Studio()
@@ -136,15 +135,14 @@ def main(argv: list[str] | None = None) -> int:
     def stop(signum: int, _frame: object) -> None:
         threading.Thread(target=server.shutdown, daemon=True).start()
 
-    # The update ends this process and, where it can, runs the same command line again (see updates.py).
+    # An update (the update plugin) ends this process and, where it can, runs the same command line again.
     restart: dict[str, Any] = {"wanted": False, "argv": None}
 
     def request_restart(argv: list[str] | None) -> None:
         restart.update(wanted=True, argv=argv)
         threading.Thread(target=server.shutdown, daemon=True).start()
 
-    updates.service(studio).on_restart = request_restart
-    updates.start_background(studio)
+    studio.restart_process = request_restart
 
     signal.signal(signal.SIGTERM, stop)
     if hasattr(signal, "SIGBREAK"):

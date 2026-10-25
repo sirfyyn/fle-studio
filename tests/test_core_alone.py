@@ -63,4 +63,5 @@ def test_the_core_pages_and_calls_answer_without_plugins(core: tuple[Studio, int
     status, body = call(studio, port, "GET", "/")
     assert status == 200 and b"fle-token" in body
     # what a plugin would have added is simply not there
-    assert call(studio, port, "GET", "/api/engine/switch")[0] == 404
+    for gone in ("/api/engine/switch", "/api/forge", "/api/update"):
+        assert call(studio, port, "GET", gone)[0] == 404, gone

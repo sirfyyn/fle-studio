@@ -11,10 +11,11 @@ from typing import Any
 import pytest
 from fake_github import FakeGitHub, release
 
-from fle_studio import __version__, paths, updates
+from fle_studio import __version__, paths
 from fle_studio.config import Config
+from fle_studio_updater import updates
 
-FAKE_UV = Path(__file__).parent / "fake_uv.py"
+FAKE_UV = Path(__file__).parent.parent / "fake_uv.py"
 STUDIO_PIP = {"kind": "pip", "source": "git", "service": False, "launcher": ""}
 STUDIO_TOOL = {"kind": "uv-tool", "source": "git", "service": False, "launcher": ""}
 

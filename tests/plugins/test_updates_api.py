@@ -12,8 +12,8 @@ from typing import Any
 import pytest
 from fake_github import FakeGitHub, release
 
-from fle_studio import updates
 from fle_studio.server import Studio, make_server
+from fle_studio_updater import updates
 
 
 class Page:

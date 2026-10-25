@@ -6,7 +6,6 @@ import { toolsSection, stopToolsPolling } from "./settings-tools.js";
 import { captureSection } from "./settings-capture.js";
 import { remoteSections } from "./hosts.js";
 import { clear, fmt, h, icon, toast } from "./ui.js";
-import { updatesSection } from "./update.js";
 
 // The names of the plugins that ship with FLE Studio, for the list when one is off (its own title is not known then).
 const BUNDLED = { forge: "Forge", updater: "Updates", remote: "Remote access", recorder: "Recorder", switch: "Model switcher" };
@@ -35,7 +34,7 @@ export function mount(main) {
     const ui = { section, field, toggle, save, render: () => render(true) };
     const parts = [
       [10, look(s)], [20, models(s)], [30, chat(s)], [40, toolsSection(s, ui)],
-      [50, captureSection(s, ui)], [60, hub(s)], [70, network(s)], [80, updatesSection(ui)],
+      [50, captureSection(s, ui)], [60, hub(s)], [70, network(s)],
       ...remoteSections(ui).map((el, i) => [90 + i / 10, el]),
       [100, plugins()], [110, about()],
     ];

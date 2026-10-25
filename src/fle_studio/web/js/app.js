@@ -4,7 +4,6 @@ import { del, get } from "./api.js";
 import { initChatSearch, searchActive } from "./chat-search.js";
 import { initHosts } from "./hosts.js";
 import { clear, confirmDialog, fmt, h, icon, stateBadge, toast } from "./ui.js";
-import { initUpdates } from "./update.js";
 
 // ----------------------------------------------------------------------------------------------- store
 
@@ -319,7 +318,6 @@ async function start() {
   document.getElementById("brand-ver").textContent = `v${store.state.version}`;
   store.engine = store.state.engine;
   renderEngineCard();
-  initUpdates();
   initHosts();
   refreshChats().catch(() => {});
   await refreshPlugins().catch(() => {});

@@ -25,6 +25,7 @@ import sys
 import threading
 import time
 import traceback
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from pathlib import Path
@@ -53,7 +54,6 @@ from . import (
     tlsgen,
     tuner,
     tuning_api,
-    updates,
 )
 from .cachewatch import CacheWatch
 from .chats import Chats
@@ -145,6 +145,9 @@ class Studio:
         self.lan = False
         self.tls_fingerprint = ""  # host mode: SHA-256 of the certificate the server shows (see remote.py)
         self.listen: dict[str, Any] = {}
+        # Set by the launcher (__main__.py): ends this process and runs the given command line again (None: just end).
+        # The update plugin uses it after an update.
+        self.restart_process: Callable[[list[str] | None], None] | None = None
         self._sys: tuple[float, dict[str, Any] | None] = (0.0, None)
         self._sys_lock = threading.Lock()
         self.plugins = plugins.Plugins(self.data_dir, __version__, studio=self)  # see plugins.py
@@ -1167,9 +1170,6 @@ class Handler(BaseHTTPRequestHandler):
 
 chat_api.install(Handler, ROUTES, ApiError)  # attachments, tools, chat search/export/import (chat_api.py)
 mcp_api.install(Handler, ROUTES, ApiError)  # MCP sign-in (OAuth) and MCP Apps frames (mcp_api.py)
-
-
-updates.install(Handler, ROUTES, ApiError)  # /api/update*: the update check and the one-click update (updates.py)
 
 
 remote.install(Handler, ROUTES, ApiError)  # /api/remote* (host side), /api/hosts* (client side), /h/<id>/ pass-through

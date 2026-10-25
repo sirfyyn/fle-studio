@@ -14,7 +14,7 @@ import pytest
 from fle_studio import plugins
 from fle_studio.server import Studio, make_server
 
-SHIPPED = {"forge", "switch"}
+SHIPPED = {"forge", "switch", "updater"}
 
 
 @pytest.fixture
@@ -68,6 +68,16 @@ def test_they_are_on_by_default_and_each_can_be_turned_off(running: tuple[Studio
 
     call(studio, port, "POST", "/api/plugins/switch/enable")
     assert call(studio, port, "GET", "/api/engine/switch")[0] == 200
+
+
+def test_the_update_plugin_brings_its_routes_and_its_restart_hook(running: tuple[Studio, int]) -> None:
+    studio, port = running
+    status, data = call(studio, port, "GET", "/api/update")
+    assert status == 200 and "install" in data and "run" in data
+    assert studio.plugins.loaded["updater"]._boot == "boot.js"
+    call(studio, port, "POST", "/api/plugins/updater/disable")
+    assert call(studio, port, "GET", "/api/update")[0] == 404
+    assert call(studio, port, "GET", "/api/state")[0] == 200
 
 
 def test_forge_is_a_page_and_routes_that_come_and_go_with_the_plugin(running: tuple[Studio, int]) -> None:

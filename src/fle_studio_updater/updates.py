@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
 
-from . import __version__, net, paths
+from fle_studio import __version__, net, paths
 
 REPO = "sirfyyn/fle-studio"
 REPO_URL = f"https://github.com/{REPO}"
@@ -177,7 +177,7 @@ def fetch_app_release(include_pre: bool) -> dict[str, Any] | None:
 
 def engine_updates(installed: list[dict[str, Any]], release: dict[str, Any]) -> list[dict[str, Any]]:
     """FLE engines (not llama.cpp) that have a newer build in `release`, one entry per installed variant."""
-    from . import engines  # noqa: PLC0415
+    from fle_studio import engines  # noqa: PLC0415
 
     latest = str(release.get("tag_name") or "")
     if not latest or not _SAFE_TAG_ENGINE.match(latest):
@@ -400,7 +400,7 @@ def restart_command() -> list[str]:
 
 def windows_helper_text() -> str:
     """The PowerShell script that does the update after FLE Studio has ended (see update_helper.ps1)."""
-    return resources.files("fle_studio").joinpath("update_helper.ps1").read_text(encoding="utf-8")
+    return resources.files(__package__).joinpath("update_helper.ps1").read_text(encoding="utf-8")
 
 
 class Updates:
@@ -699,19 +699,25 @@ def service(studio: Any) -> Updates:
     return found  # type: ignore[no-any-return]
 
 
-def start_background(studio: Any) -> None:
-    """Check once a day while FLE Studio runs: the first look a few seconds after the start."""
+def start_background(studio: Any) -> Callable[[], None]:
+    """Check once a day while FLE Studio runs: the first look a few seconds after the start.
+
+    Returns the function that ends the loop (the plugin is turned off)."""
     updates = service(studio)
+    stop = threading.Event()
 
     def loop() -> None:
-        time.sleep(8)
+        if stop.wait(8):
+            return
         while True:
             with contextlib.suppress(Exception):  # a failed check must never end the loop
                 if updates.due():
                     updates.check()
-            time.sleep(1800)
+            if stop.wait(1800):
+                return
 
     threading.Thread(target=loop, name="update-check", daemon=True).start()
+    return stop.set
 
 
 ROUTES: list[tuple[str, str, str]] = [
@@ -763,10 +769,9 @@ def api_update_ack(self: Any, query: dict[str, str]) -> None:
     self.send_json(200, updates.view())
 
 
-def install(handler: type, routes: list[Any], api_error: type) -> None:
-    """Add the handlers to the server's Handler class and the routes to its route table."""
+def install(add: Callable[[str, str, Callable[..., None]], None], api_error: type) -> None:
+    """Give the plugin context's `api` function the routes of this module."""
     global _ApiError
     _ApiError = api_error
     for method, pattern, name in ROUTES:
-        routes.append((method, re.compile(pattern), name))
-        setattr(handler, f"api_{name}", globals()[f"api_{name}"])
+        add(method, pattern, globals()[f"api_{name}"])
