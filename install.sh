@@ -20,7 +20,7 @@
 #   -h, --help    show this help
 #
 # Environment:
-#   FLE_STUDIO_REF     git tag, branch or commit to install (default: v0.3.2)
+#   FLE_STUDIO_REF     git tag, branch or commit to install (default: v0.4.0)
 #   FLE_STUDIO_SOURCE  install from this folder or wheel file instead of GitHub (offline installs, CI);
 #                      FLE_STUDIO_REF and git are not used then
 
@@ -28,7 +28,7 @@ set -eu
 
 REPO_URL="https://github.com/sirfyyn/fle-studio"
 UV_INSTALLER_URL="https://astral.sh/uv/install.sh"
-REF="${FLE_STUDIO_REF:-v0.3.2}"
+REF="${FLE_STUDIO_REF:-v0.4.0}"
 SOURCE="${FLE_STUDIO_SOURCE:-}"
 START=1
 UV_TMP=""
@@ -62,7 +62,7 @@ Options:
   -h, --help    show this help
 
 Environment:
-  FLE_STUDIO_REF     git tag, branch or commit to install (default: v0.3.2)
+  FLE_STUDIO_REF     git tag, branch or commit to install (default: v0.4.0)
   FLE_STUDIO_SOURCE  install from this folder or wheel file instead of GitHub (needs no git)
 EOF
 }
