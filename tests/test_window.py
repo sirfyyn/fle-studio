@@ -13,7 +13,7 @@ from fle_studio import __version__, window
 def test_chrome_gets_a_profile_of_its_own() -> None:
     cmd = window.chrome_command("/c/chrome", "http://127.0.0.1:8642/", Path("/data/FLE Studio/chrome"))
     assert cmd[0] == "/c/chrome" and "--app=http://127.0.0.1:8642/" in cmd
-    assert "--user-data-dir=/data/FLE Studio/chrome" in cmd  # one argument, spaces and all
+    assert f"--user-data-dir={Path('/data/FLE Studio/chrome')}" in cmd  # one argument, spaces and all
     assert "--no-first-run" in cmd
 
 

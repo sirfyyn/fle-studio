@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import plistlib
 import stat
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -144,11 +145,19 @@ def test_install_command_gives_the_plugin_back() -> None:
             Requirement("p", "git", "https://x/p", (), "v2", "pkg"),
             ["--with", "p @ git+https://x/p@v2#subdirectory=pkg"],
         ),
-        (Requirement("p", "directory", "/src/p", ("x",)), ["--with", "p[x] @ file:///src/p"]),
     ],
 )
 def test_every_kind_of_package_comes_back(req: Requirement, expected: list[str]) -> None:
     assert selfupdate.with_args(req) == expected
+
+
+def test_a_folder_package_with_extras_goes_back_as_a_file_address(tmp_path: Path) -> None:
+    """A real absolute path of this platform: `/src/p` is not absolute on Windows."""
+    folder = tmp_path / "p"
+    assert selfupdate.with_args(Requirement("p", "directory", str(folder), ("x",))) == [
+        "--with",
+        f"p[x] @ {folder.as_uri()}",
+    ]
 
 
 def test_studio_with_its_own_extras_keeps_them() -> None:
@@ -424,6 +433,11 @@ def test_a_service_that_is_not_loaded_is_left_alone(machine: Machine) -> None:
     assert machine.kicks() == [] and any("not loaded" in line for line in said)
 
 
+# systemd unit files hold POSIX paths and are split like a shell line; with Windows paths that makes no sense.
+posix_units = pytest.mark.skipif(sys.platform == "win32", reason="unit files hold POSIX paths")
+
+
+@posix_units
 def test_the_systemd_user_unit_is_restarted_on_linux(machine: Machine) -> None:
     machine.systemd_service()
     code, said = run_update(machine, platform="linux", version="v0.4.2")
@@ -432,6 +446,7 @@ def test_the_systemd_user_unit_is_restarted_on_linux(machine: Machine) -> None:
     assert not any(c[0] == "codesign" for c in machine.calls)  # the Dock starter is a Mac thing
 
 
+@posix_units
 def test_systemd_without_a_user_session_says_how_to_get_one(machine: Machine) -> None:
     machine.systemd_service()
     machine.restart_result = Result(1, "Failed to connect to bus: No medium found")
@@ -690,6 +705,7 @@ def test_launchd_agents_are_found_by_the_program_they_start(machine: Machine) ->
     assert [(s.manager, s.name, s.port) for s in found] == [("launchd", "de.example.fle-studio", 8642)]
 
 
+@posix_units
 def test_systemd_units_are_found_by_their_exec_line(machine: Machine) -> None:
     machine.systemd_service()
     machine.systemd_service("other.service", exec_line="/usr/bin/sleep 1000")
@@ -708,6 +724,16 @@ def test_the_unit_of_the_server_is_found_as_it_is_written(machine: Machine) -> N
     assert [(s.name, s.port, s.definition) for s in selfupdate.find_services(host, 1)] == [
         ("fle-studio.service", 8642, unit)
     ]
+
+
+def test_on_windows_no_service_is_looked_for_and_the_update_says_where_to_go(machine: Machine) -> None:
+    """No launchd, no systemd: the command line names the way that works; a running Studio is told to restart."""
+    with pytest.raises(Problem) as err:
+        run_update(machine, platform="win32", version="v0.4.2")
+    assert "Settings" in err.value.remedy and "install.ps1" in err.value.remedy
+    said: list[str] = []
+    assert selfupdate.settle(machine.host("win32"), [], 8642, "0.4.2", selfupdate.Log(machine.data, said.append)) == 3
+    assert "started by hand" in said[0] and "start fle-studio again" in said[0]
 
 
 def test_no_services_on_windows_or_without_folders(machine: Machine) -> None:
@@ -755,7 +781,8 @@ def test_an_old_starter_is_replaced_and_signed_again(machine: Machine) -> None:
     lines = dock_starter.refresh(machine.host(), "/x/fle-studio", 8642)
     assert "Refreshed the Dock starter and signed it again" in lines[0]
     assert program.read_text() == dock_starter.shim_text("/x/fle-studio", 8642)
-    assert program.stat().st_mode & stat.S_IXUSR
+    if sys.platform != "win32":  # Windows has no execute bit; the Dock starter is a Mac thing anyway
+        assert program.stat().st_mode & stat.S_IXUSR
     signing = [c for c in machine.calls if c[0] == "codesign"]
     assert signing[0][:4] == ["codesign", "--force", "--sign", "-"] and signing[1][1] == "--verify"
 
