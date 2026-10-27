@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 from fake_github import FakeGitHub, release
 
-from fle_studio import __version__, paths
+from fle_studio import __version__, paths, selfupdate
 from fle_studio.config import Config
 from fle_studio_updater import updates
 
@@ -200,12 +200,9 @@ def test_service_mode_is_recognised() -> None:
 
 def test_advice_one_click_only_for_a_plain_uv_tool_from_github() -> None:
     ok = updates.advice(STUDIO_TOOL, "v0.2.0", True, True)
-    assert (
-        ok["can_auto"]
-        and ok["command"] == "uv tool install --python 3.12 --force git+https://github.com/sirfyyn/fle-studio@v0.2.0"
-    )
-    service = updates.advice({**STUDIO_TOOL, "service": True}, "v0.2.0", True, True)
-    assert not service["can_auto"] and "service" in service["reason"] and service["command"]
+    assert ok["can_auto"] and ok["command"] == "fle-studio update --version v0.2.0"
+    # a service is no obstacle any more: the update keeps the packages and starts the same command line again
+    assert updates.advice({**STUDIO_TOOL, "service": True}, "v0.2.0", True, True)["can_auto"]
     assert not updates.advice({**STUDIO_TOOL, "source": "wheel"}, "v0.2.0", True, True)["can_auto"]
     assert "uv was not found" in updates.advice(STUDIO_TOOL, "v0.2.0", False, True)["reason"]
     assert "git" in updates.advice(STUDIO_TOOL, "v0.2.0", True, False)["reason"]
@@ -413,12 +410,25 @@ def run_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     monkeypatch.setattr(updates, "launcher_command", lambda install, uv: [sys.executable, str(FAKE_UV), "--launcher"])
     monkeypatch.setattr(updates, "detect_install", lambda engine_unit=False: dict(STUDIO_TOOL))
     monkeypatch.setattr(paths, "IS_WIN", False)
+    # uv's receipt: Studio from GitHub and a plugin next to it, which has to come along
+    plugin = tmp_path / "ginny"
+    plugin.mkdir()
+    receipt = selfupdate.Receipt(
+        (
+            selfupdate.Requirement("fle-studio", "git", "https://github.com/sirfyyn/fle-studio", rev="v0.4.0"),
+            selfupdate.Requirement("fle-studio-ginny", "directory", str(plugin)),
+        ),
+        "3.12",
+    )
+    env = tmp_path / "tool-env"
+    env.mkdir()
+    monkeypatch.setattr(selfupdate, "read_receipt", lambda host, uv: (receipt, env, None))
     with FakeGitHub([release("v9.0.0", "Notes")]) as gh:
         u = make_updates(tmp_path, monkeypatch, gh)
         u.check()
         restarts: list[Any] = []
         u.on_restart = restarts.append
-        yield {"u": u, "out": out, "restarts": restarts, "tmp": tmp_path}
+        yield {"u": u, "out": out, "restarts": restarts, "tmp": tmp_path, "plugin": plugin}
 
 
 def wait_run(u: updates.Updates, want: str = "") -> dict[str, Any]:
@@ -441,6 +451,8 @@ def test_one_click_update_installs_then_restarts_with_the_same_command_line(run_
         "--python",
         "3.12",
         "--force",
+        "--with",
+        str(run_env["plugin"]),  # the plugin next to Studio is installed again
         "git+https://github.com/sirfyyn/fle-studio@v9.0.0",
     ]
     assert run_env["restarts"] == [updates.restart_command()]
@@ -456,6 +468,7 @@ def test_a_failed_install_leaves_the_old_version_running(
     u.apply("v9.0.0")
     run = wait_run(u)
     assert run["state"] == "failed" and "old version keeps running" in run["message"] and "code 3" in run["message"]
+    assert "fle-studio update --rollback" in run["message"]  # what to do is part of the message
     assert any("failed to fetch" in line for line in run["tail"]) and run["log"].endswith("update.log")
     assert run_env["restarts"] == []  # nothing was restarted
     assert u.view()["run"]["state"] == "failed"
@@ -486,7 +499,6 @@ def test_apply_refuses_installs_that_cannot_update_themselves(
 ) -> None:
     u: updates.Updates = run_env["u"]
     cases = [
-        ({**STUDIO_TOOL, "service": True}, "service"),
         (STUDIO_PIP, "pip"),
         ({**STUDIO_TOOL, "source": "folder"}, "folder"),
     ]
@@ -538,6 +550,7 @@ def test_windows_gets_a_helper_instead_of_an_install_from_inside(
     assert "-File" in cmd and cmd[-2] == "-Job"
     job = json.loads(Path(cmd[-1]).read_text(encoding="utf-8"))
     assert job["spec"] == "git+https://github.com/sirfyyn/fle-studio@v9.0.0" and job["tag"] == "v9.0.0"
+    assert job["with"] == ["--with", str(run_env["plugin"])]  # the plugin comes along on Windows as well
     assert job["start"][-2:] == ["9000", "--no-browser"] and job["uv"][0] == sys.executable
     script = Path(cmd[cmd.index("-File") + 1]).read_text(encoding="utf-8")
     assert "Wait-Process" in script and "tool install" in script and "Start-Process" in script

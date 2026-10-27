@@ -22,13 +22,14 @@ import sys
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
 
-from fle_studio import __version__, net, paths
+from fle_studio import __version__, net, paths, selfupdate
+from fle_studio.versions import SAFE_TAG as _SAFE_TAG
+from fle_studio.versions import Version, is_newer, parse_version  # noqa: F401 - the tests use them from here
 
 REPO = "sirfyyn/fle-studio"
 REPO_URL = f"https://github.com/{REPO}"
@@ -38,9 +39,6 @@ RETRY_OFFLINE = 3600  # when the last try found no network at all
 MANUAL_GAP = 5  # seconds between two presses of "Check now"
 NOTES_MAX = 4000
 UV_PYTHON = "3.12"  # what the installers use
-
-# A tag that may reach a command line or a link. Plain release tags only.
-_SAFE_TAG = re.compile(r"^v?\d+(?:\.\d+){0,3}(?:[-.]?(?:a|b|rc|alpha|beta)[-.]?\d+)?(?:\.post\d+)?(?:\.dev\d+)?$")
 
 
 def api_base() -> str:
@@ -54,68 +52,6 @@ class UpdateError(Exception):
     def __init__(self, message: str, status: int = 409) -> None:
         super().__init__(message)
         self.status = status
-
-
-# ------------------------------------------------------------------------------------------------ versions (PEP 440)
-
-_VERSION = re.compile(
-    r"""^\s*v?(?:(?P<epoch>\d+)!)?(?P<release>\d+(?:\.\d+)*)
-    (?:[-_.]?(?P<pre_l>alpha|a|beta|b|preview|pre|rc|c)[-_.]?(?P<pre_n>\d*))?
-    (?:-(?P<post_implicit>\d+)|[-_.]?(?:post|rev|r)[-_.]?(?P<post_n>\d*))?
-    (?:[-_.]?dev[-_.]?(?P<dev_n>\d*))?
-    (?:\+[a-z0-9]+(?:[-_.][a-z0-9]+)*)?\s*$""",
-    re.I | re.X,
-)
-_PHASE = {"a": 0, "alpha": 0, "b": 1, "beta": 1, "c": 2, "rc": 2, "pre": 2, "preview": 2}
-
-
-@dataclass(frozen=True)
-class Version:
-    text: str  # the version as people write it: "0.2.0", "0.2.0rc1"
-    key: tuple[Any, ...]
-    prerelease: bool
-
-    def __lt__(self, other: Version) -> bool:
-        return self.key < other.key
-
-    def __gt__(self, other: Version) -> bool:
-        return self.key > other.key
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, Version) and self.key == other.key
-
-    def __hash__(self) -> int:
-        return hash(self.key)
-
-
-def parse_version(text: str) -> Version | None:
-    """A PEP 440 version (a leading "v" is allowed, as in release tags), or None when it is not one."""
-    m = _VERSION.match(text or "")
-    if not m:
-        return None
-    release = [int(x) for x in m["release"].split(".")]
-    while len(release) > 1 and release[-1] == 0:
-        release.pop()  # 1.0 == 1.0.0
-    pre = (_PHASE[m["pre_l"].lower()], int(m["pre_n"] or 0)) if m["pre_l"] else None
-    has_post = m["post_implicit"] is not None or m["post_n"] is not None or "post" in (text or "").lower()
-    post = int(m["post_implicit"] or m["post_n"] or 0) if has_post else None
-    dev = int(m["dev_n"] or 0) if re.search(r"dev", text or "", re.I) else None
-    # Same order as the packaging library: a dev release of 1.0 comes before 1.0a1, which comes before 1.0.
-    if pre is None and post is None and dev is not None:
-        pre_key: tuple[int, int] = (-1, 0)
-    elif pre is None:
-        pre_key = (3, 0)
-    else:
-        pre_key = pre
-    post_key = (-1,) if post is None else (post,)
-    dev_key = (1, 0) if dev is None else (0, dev)
-    key = (int(m["epoch"] or 0), tuple(release), pre_key, post_key, dev_key)
-    return Version(text.strip().lstrip("vV"), key, pre is not None or dev is not None)
-
-
-def is_newer(candidate: str, current: str) -> bool:
-    a, b = parse_version(candidate), parse_version(current)
-    return bool(a and b and a > b)
 
 
 # ------------------------------------------------------------------------------------------------ releases
@@ -301,9 +237,8 @@ def update_command(install: dict[str, Any], tag: str) -> str:
         return ""
     git = f"git+{REPO_URL}@{tag}"
     if install["kind"] == "uv-tool":
-        if install["source"] == "git":
-            return f"uv tool install --python {UV_PYTHON} --force {git}"
-        return ""
+        # `fle-studio update` keeps the packages installed next to Studio; a bare `uv tool install --force` drops them
+        return f"fle-studio update --version {tag}" if install["source"] == "git" else ""
     if install["kind"] == "pip":
         return f'"{sys.executable}" -m pip install --upgrade "{git}"'
     return ""
@@ -313,12 +248,7 @@ def advice(install: dict[str, Any], tag: str, uv: bool, git: bool) -> dict[str, 
     """Whether the one-click update is possible and, when it is not, what to do instead."""
     command = update_command(install, tag)
     reason = ""
-    if install["service"]:
-        reason = (
-            "FLE Studio runs as a service here. Update it by hand, then restart the service "
-            "(systemctl --user restart fle-studio)."
-        )
-    elif install["kind"] != "uv-tool":
+    if install["kind"] != "uv-tool":
         reason = {
             "pip": "This copy was installed with pip, so pip updates it.",
             "source": "This copy runs from a source folder. Update the checkout with git, then restart FLE Studio.",
@@ -347,19 +277,7 @@ def _exe(name: str) -> str:
 
 def find_uv() -> list[str] | None:
     """uv as a command, also when it is not on this process's PATH (it is installed in the home folder)."""
-    found = shutil.which("uv")
-    if found:
-        return [found]
-    home = Path.home()
-    for folder in (
-        os.environ.get("UV_INSTALL_DIR"),
-        os.environ.get("XDG_BIN_HOME"),
-        str(home / ".local" / "bin"),
-        str(home / ".cargo" / "bin"),
-    ):
-        if folder and (Path(folder) / _exe("uv")).is_file():
-            return [str(Path(folder) / _exe("uv"))]
-    return None
+    return selfupdate.find_uv()
 
 
 def find_git() -> bool:
@@ -593,18 +511,28 @@ class Updates:
         }
 
     def _run_unix(self, tag: str, uv: list[str], install: dict[str, Any]) -> None:
-        cmd = [*uv, "tool", "install", "--python", UV_PYTHON, "--force", self._spec(tag)]
-        self._log_line(f"$ {' '.join(cmd)}")
+        # The same steps as `fle-studio update`: the packages next to Studio are installed again with the new version.
+        host = selfupdate.Host(run=lambda cmd, stream: selfupdate.real_run(cmd, False))
         try:
-            with self.log.open("a", encoding="utf-8") as fh:
-                done = subprocess.run(cmd, stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT, timeout=1200)
-        except (OSError, subprocess.SubprocessError) as exc:
-            self._log_line(f"could not run uv: {exc}")
-            self._fail(f"Could not run uv: {exc}. The old version keeps running.")
-            return
-        if done.returncode != 0:
-            self._log_line(f"uv exited with code {done.returncode}")
-            self._fail(f"The update failed (uv exited with code {done.returncode}). The old version keeps running.")
+            receipt, env, bin_dir = selfupdate.read_receipt(host, uv)
+            main = receipt.main
+            assert main is not None
+            selfupdate.install(
+                host,
+                uv,
+                self.dir,
+                receipt,
+                env,
+                selfupdate.launcher_of(receipt, bin_dir),
+                main,
+                receipt.extras,
+                receipt.python or UV_PYTHON,
+                tag,
+                selfupdate.Log(self.dir, lambda _text: None),  # into update.log only
+            )
+        except selfupdate.Problem as problem:
+            self._log_line(problem.text())
+            self._fail(f"{problem.text()}\nThe old version keeps running.")
             return
         launcher = launcher_command(install, uv)
         try:
@@ -633,12 +561,20 @@ class Updates:
         script = self.dir / "update-helper.ps1"
         job = self.dir / "update-job.json"
         start = [*launcher_command(install, uv), *user_args()]
+        spec, with_args = self._spec(tag), []
+        with contextlib.suppress(selfupdate.Problem):  # the packages next to Studio come along, as with the command
+            receipt, _, _ = selfupdate.read_receipt(selfupdate.Host(), uv)
+            for extra in receipt.extras:
+                with_args += selfupdate.with_args(extra)
+            if receipt.main is not None:
+                spec = selfupdate.main_spec(receipt.main, tag)
         job.write_text(
             json.dumps(
                 {
                     "pid": os.getpid(),
                     "uv": uv,
-                    "spec": self._spec(tag),
+                    "spec": spec,
+                    "with": with_args,
                     "python": UV_PYTHON,
                     "tag": tag,
                     "log": str(self.log),
