@@ -28,10 +28,22 @@ def _running(port: int) -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    # Two commands that are not the server: they have their own options (fle-studio update --help).
+    if argv[:1] == ["update"]:
+        from . import selfupdate  # noqa: PLC0415
+
+        return selfupdate.cli(argv[1:])
+    if argv[:1] == ["open"]:
+        from . import window  # noqa: PLC0415
+
+        return window.cli(argv[1:])
     ap = argparse.ArgumentParser(
         prog="fle-studio",
         description="Local launcher for the FLE engine and llama.cpp: "
         "chat, live inference data, model downloads and launch profiles.",
+        epilog="Other commands: 'fle-studio update' installs a new version and restarts the service "
+        "(--rollback goes back); 'fle-studio open' opens the app window.",
     )
     ap.add_argument("--host", help="address to listen on (default 127.0.0.1; 0.0.0.0 opens it to the network)")
     ap.add_argument("--port", type=int, help="port (default 8642)")
