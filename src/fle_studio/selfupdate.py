@@ -279,7 +279,7 @@ def with_args(r: Requirement) -> list[str]:
     if r.kind == "editable":
         return ["--with-editable", r.where]
     if r.kind in ("directory", "path"):
-        return ["--with", f"{label} @ {Path(r.where).as_uri()}" if r.extras else r.where]
+        return ["--with", f"{label} @ {Path(os.path.abspath(r.where)).as_uri()}" if r.extras else r.where]
     if r.kind == "git":
         return ["--with", f"{label} @ {git_spec(r)}"]
     if r.kind == "url":
