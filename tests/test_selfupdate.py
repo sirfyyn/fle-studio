@@ -15,7 +15,7 @@ from typing import Any
 
 import pytest
 
-from fle_studio import __version__, dock_starter, selfupdate
+from fle_studio import dock_starter, selfupdate
 from fle_studio.selfupdate import Host, Options, Problem, Requirement, Result
 from fle_studio.versions import same_version
 
@@ -68,6 +68,35 @@ def test_receipt_variants_of_other_uv_versions_and_sources() -> None:
     e = next(x for x in r.extras if x.name == "e")
     assert (e.rev, e.subdirectory) == ("v2", "pkg")
     assert r.python == "3.11" and r.launcher == ""
+
+
+def test_the_private_index_of_a_plugin_is_kept() -> None:
+    """uv keeps --index-url in [tool.options]; a plugin from a private index could not be found again without it."""
+    text = (
+        f'[tool]\nrequirements = [\n    {{ name = "fle-studio", git = "{GIT}?rev=v0.4.0" }},\n'
+        '    { name = "fle-studio-ginny" },\n]\npython = "3.12"\n\n'
+        '[tool.options]\nindex-url = "https://git.example.org/pypi/simple"\n'
+        'extra-index-url = ["https://a.example.org/simple", "https://b.example.org/simple"]\n'
+    )
+    r = selfupdate.parse_receipt(text)
+    assert r.options == (
+        "--index-url",
+        "https://git.example.org/pypi/simple",
+        "--extra-index-url",
+        "https://a.example.org/simple",
+        "--extra-index-url",
+        "https://b.example.org/simple",
+    )
+    assert r.main is not None
+    cmd = selfupdate.install_command(["uv"], r.main, r.extras, r.python, "v0.4.1", r.options)
+    assert cmd[:7] == ["uv", "tool", "install", "--python", "3.12", "--force", "--index-url"]
+    assert cmd[-3:] == ["--with", "fle-studio-ginny", f"git+{GIT}@v0.4.1"]
+
+
+def test_the_index_survives_the_record_for_rollback(tmp_path: Path) -> None:
+    r = selfupdate.parse_receipt(MAC_RECEIPT + '\n[tool.options]\nindex-url = "https://x/simple"\n')
+    selfupdate.save_previous(tmp_path, r, "0.4.0")
+    assert selfupdate.load_previous(tmp_path)[1].options == ("--index-url", "https://x/simple")
 
 
 def test_a_receipt_without_requirements_has_no_studio() -> None:
@@ -557,14 +586,11 @@ def test_a_program_that_reports_another_version_is_caught(machine: Machine) -> N
 # ------------------------------------------------------------------------------------------------ rollback
 
 
-def test_rollback_installs_the_version_before_with_the_packages_it_had(
-    machine: Machine, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_rollback_installs_the_version_before_with_the_packages_it_had(machine: Machine) -> None:
     machine.launchd_service()
     run_update(machine, version="v0.4.2")  # remembers 0.4.1 as it was, with the plugin
     assert (machine.data / "update-previous.json").is_file()
     machine.calls.clear()
-    monkeypatch.setattr(selfupdate, "__version__", "0.4.2")  # now the running code is the new one
     code, said = run_update(machine, rollback=True)
     assert code == 0
     assert machine.installs() == [
@@ -583,8 +609,10 @@ def test_rollback_installs_the_version_before_with_the_packages_it_had(
     assert "Going back from FLE Studio 0.4.2 to 0.4.1" in "\n".join(said)
     assert "Running: 0.4.1 on port 8642" in "\n".join(said)  # the service was restarted onto the old version
     # going back twice goes forward again: the record now holds 0.4.2
-    monkeypatch.setattr(selfupdate, "__version__", "0.4.1")
     assert selfupdate.load_previous(machine.data)[0] == "0.4.2"
+    machine.calls.clear()
+    run_update(machine, rollback=True)  # and again: forward to 0.4.2, with the plugin still along
+    assert machine.installs()[0][-1] == f"git+{GIT}@v0.4.2" and str(machine.plugin) in machine.installs()[0]
 
 
 def test_rollback_without_a_record_says_what_to_do(machine: Machine) -> None:
@@ -610,7 +638,7 @@ def test_a_damaged_record_is_no_record(tmp_path: Path) -> None:
 
 
 def test_rolling_back_to_the_running_version_is_refused(machine: Machine) -> None:
-    selfupdate.save_previous(machine.data, selfupdate.parse_receipt(MAC_RECEIPT), __version__)
+    selfupdate.save_previous(machine.data, selfupdate.parse_receipt(MAC_RECEIPT), machine.installed)
     with pytest.raises(Problem, match="already the version"):
         run_update(machine, rollback=True)
 
@@ -668,6 +696,18 @@ def test_systemd_units_are_found_by_their_exec_line(machine: Machine) -> None:
     machine.systemd_service("second.service", exec_line=f"-{machine.launcher} --port=9001")
     found = selfupdate.find_services(machine.host("linux"), 8642)
     assert [(s.name, s.port) for s in found] == [("fle-studio.service", 8642), ("second.service", 9001)]
+
+
+def test_the_unit_of_the_server_is_found_as_it_is_written(machine: Machine) -> None:
+    """fle-studio.service on Titan: %h in ExecStart, the engine unit and the port as arguments."""
+    unit = machine.systemd_service(
+        exec_line="%h/.local/bin/fle-studio --service rhea.service --no-browser --no-tls --port 8642"
+    )
+    host = machine.host("linux")
+    (host.home / ".local" / "bin").mkdir(parents=True)  # %h/.local/bin/fle-studio need not exist to be recognised
+    assert [(s.name, s.port, s.definition) for s in selfupdate.find_services(host, 1)] == [
+        ("fle-studio.service", 8642, unit)
+    ]
 
 
 def test_no_services_on_windows_or_without_folders(machine: Machine) -> None:

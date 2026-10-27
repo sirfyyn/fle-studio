@@ -529,6 +529,7 @@ class Updates:
                 receipt.python or UV_PYTHON,
                 tag,
                 selfupdate.Log(self.dir, lambda _text: None),  # into update.log only
+                options=receipt.options,
             )
         except selfupdate.Problem as problem:
             self._log_line(problem.text())

@@ -172,6 +172,7 @@ class Receipt:
     requirements: tuple[Requirement, ...]
     python: str = ""
     launcher: str = ""
+    options: tuple[str, ...] = ()  # uv arguments the receipt keeps in [tool.options]: --index-url URL, ...
 
     @property
     def main(self) -> Requirement | None:
@@ -248,7 +249,18 @@ def parse_receipt(text: str) -> Receipt:
         where = re.search(rf"install-path\s*=\s*{_STRING}", entry)
         if name and where:
             launcher = _unescape(where.group(1))
-    return Receipt(requirements, python.group(1) if python else "", launcher)
+    return Receipt(requirements, python.group(1) if python else "", launcher, _options(text))
+
+
+def _options(text: str) -> tuple[str, ...]:
+    """The package index addresses uv stored in `[tool.options]`; a plugin from a private index needs them again."""
+    section = re.search(r"^\[tool\.options\]\s*\n(.*?)(?=^\[|\Z)", text, re.M | re.S)
+    out: list[str] = []
+    for key, flag in (("index-url", "--index-url"), ("extra-index-url", "--extra-index-url")):
+        line = re.search(rf"^{key}\s*=\s*(.+)$", section.group(1), re.M) if section else None
+        for url in re.findall(r'"([^"]+)"', line.group(1)) if line else []:
+            out += [flag, url]
+    return tuple(out)
 
 
 # ------------------------------------------------------------------------------------------------ install command
@@ -289,9 +301,14 @@ def main_spec(main: Requirement, tag: str | None = None) -> str:
 
 
 def install_command(
-    uv: Sequence[str], main: Requirement, extras: Sequence[Requirement], python: str, tag: str | None = None
+    uv: Sequence[str],
+    main: Requirement,
+    extras: Sequence[Requirement],
+    python: str,
+    tag: str | None = None,
+    options: Sequence[str] = (),
 ) -> list[str]:
-    cmd = [*uv, "tool", "install", "--python", python or DEFAULT_PYTHON, "--force"]
+    cmd = [*uv, "tool", "install", "--python", python or DEFAULT_PYTHON, "--force", *options]
     for r in extras:
         cmd += with_args(r)
     cmd.append(main_spec(main, tag))
@@ -574,6 +591,7 @@ def save_previous(data_dir: Path, receipt: Receipt, version: str) -> None:
         "v": 1,
         "version": version,
         "python": receipt.python,
+        "options": list(receipt.options),
         "saved": time.time(),
         "requirements": [r.to_json() for r in receipt.requirements],
     }
@@ -589,7 +607,8 @@ def load_previous(data_dir: Path) -> tuple[str, Receipt]:
         reqs = tuple(Requirement.from_json(x) for x in record["requirements"])
         if record.get("v") != 1 or not any(r.name == PACKAGE for r in reqs):
             raise ValueError("unknown record")
-        return str(record["version"]), Receipt(reqs, str(record.get("python") or ""))
+        options = tuple(str(x) for x in record.get("options") or [])
+        return str(record["version"]), Receipt(reqs, str(record.get("python") or ""), "", options)
     except (OSError, ValueError, KeyError, TypeError):
         raise Problem(
             "There is no earlier version to go back to (an update has not run on this machine yet, or its record "
@@ -680,8 +699,11 @@ def install(
     python: str,
     tag: str | None,
     say: Log,
+    current: str = __version__,
+    options: Sequence[str] = (),
 ) -> tuple[Receipt, str]:
-    """Check what can be checked beforehand, remember the current state, run uv, and look at the result.
+    """Check what can be checked beforehand, remember the current state (`current` is the installed version), run uv
+    and look at the result.
 
     Returns the new receipt and the new launcher. The command that is run is the same for the command line and for the
     button in the Updates card, so both keep the same packages."""
@@ -699,8 +721,8 @@ def install(
     problem = ownership_problem(host, env, launcher)
     if problem:
         raise problem
-    command = install_command(uv, main, extras, python, tag)
-    save_previous(data_dir, receipt, __version__)  # also for a rollback: going back twice goes forward again
+    command = install_command(uv, main, extras, python, tag, options)
+    save_previous(data_dir, receipt, current)  # also for a rollback: going back twice goes forward again
     say("Installing …")
     say("$ " + shlex.join(command))
     done = host.run(command, True)
@@ -778,32 +800,37 @@ def update(opts: Options, host: Host, data_dir: Path, out: Callable[[str], None]
         )
     receipt, env, bin_dir = read_receipt(host, uv)
     launcher = launcher_of(receipt, bin_dir)
+    # What is installed is what the installed program says, not what the code running this command is
+    current = (_installed_version(host, launcher) if launcher else "") or __version__
     if opts.rollback:
         want_version, target = load_previous(data_dir)
-        if same_version(want_version, __version__):
-            raise Problem(f"FLE Studio {__version__} is already the version before the last update.")
+        if same_version(want_version, current):
+            raise Problem(f"FLE Studio {current} is already the version before the last update.")
         tag = None
-        say(f"Going back from FLE Studio {__version__} to {want_version}.")
+        say(f"Going back from FLE Studio {current} to {want_version}.")
     else:
         target = receipt
         tag = normalise_tag(opts.version) if opts.version else latest_tag()
         want_version = tag.lstrip("v")
-        say(f"FLE Studio {__version__} is installed; the target is {want_version}.")
+        say(f"FLE Studio {current} is installed; the target is {want_version}.")
     main = target.main
     assert main is not None  # read_receipt and load_previous both ask for it
     extras = tuple(r for r in target.extras if r.name not in opts.drop)
     python = target.python or receipt.python or DEFAULT_PYTHON
+    options = target.options
     if extras:
         say("Kept next to FLE Studio: " + ", ".join(r.name for r in extras))
     if opts.dry_run:
-        say("Dry run. Would run: " + shlex.join(install_command(uv, main, extras, python, tag)))
+        say("Dry run. Would run: " + shlex.join(install_command(uv, main, extras, python, tag, options)))
         return 0
 
-    already = same_version(want_version, __version__) and not opts.reinstall and not opts.rollback
+    already = same_version(want_version, current) and not opts.reinstall and not opts.rollback
     if already:
         say(f"{want_version} is already installed; checking the service.")
     else:
-        receipt, launcher = install(host, uv, data_dir, receipt, env, launcher, main, extras, python, tag, say)
+        receipt, launcher = install(
+            host, uv, data_dir, receipt, env, launcher, main, extras, python, tag, say, current, options
+        )
     shown = _installed_version(host, launcher) if launcher else ""
     if not shown or not same_version(shown, want_version):
         raise Problem(

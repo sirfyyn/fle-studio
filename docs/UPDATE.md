@@ -22,6 +22,9 @@ The button in Settings → Updates installs the same way. One command, nothing t
    uv tool install --python 3.12 --force --with /Users/me/fle-studio-ginny git+https://github.com/sirfyyn/fle-studio@v0.4.1
    ```
 
+   A package index given at the first install (`--index-url`, `--extra-index-url`) is kept in the receipt too and is
+   passed again, so a plugin from a private index is found again.
+
 2. **Checks before it changes anything:** `git` is there; every plugin folder still exists (otherwise it stops and
    offers `--drop NAME`); the uv folder belongs to you (see "Errors" below).
 3. **Remembers what was installed** (`update-previous.json` in the data folder), then installs.
