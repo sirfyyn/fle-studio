@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.4.1] - 2026-10-27
+
+Updating is one step now. The 0.3.2 to 0.4.0 update went wrong three ways at once: the service went on running the
+old version, a plugin installed next to Studio was lost, and the uv environment became root-owned.
+
+- **`fle-studio update [--version vX.Y.Z]`.** Reads the packages installed next to Studio from uv's receipt and installs
+  them again with the new version (`uv tool install --force` drops them), checks that the program reports the new
+  version, restarts the service (launchd on macOS, systemd user unit on Linux), asks the running server which version it
+  has, and prints *installed* and *running*. See [docs/UPDATE.md](docs/UPDATE.md).
+- **`fle-studio update --rollback`** (alias `--zurueck`) goes back to the version before, with the packages it had.
+- **Errors explain themselves:** no network, an unknown release, a missing git, a plugin folder that is gone
+  (`--drop PACKAGE`), a root-owned environment (the exact `sudo chown -R` is printed), a service that does not come up.
+- **The update button** in Settings → Updates takes the same packages along, and now also works when Studio runs as a
+  service (the process starts again in place, so the service keeps tracking it).
+- **`fle-studio open`** opens the app window with a Chrome profile of its own (`<data folder>/chrome`) and restarts a
+  service that runs an older version than the installed one. The macOS Dock starter is a three-line shim around it,
+  and `fle-studio update` rewrites an existing "FLE Studio Starter.app" and signs it again.
+
 ## [0.4.0] - 2026-10-25
 
 Two aims: the prompt cache of llama-server holds across a tool conversation, and the core gets

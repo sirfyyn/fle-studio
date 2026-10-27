@@ -20,7 +20,7 @@
 #   -h, --help    show this help
 #
 # Environment:
-#   FLE_STUDIO_REF     git tag, branch or commit to install (default: v0.4.0)
+#   FLE_STUDIO_REF     git tag, branch or commit to install (default: v0.4.1)
 #   FLE_STUDIO_SOURCE  install from this folder or wheel file instead of GitHub (offline installs, CI);
 #                      FLE_STUDIO_REF and git are not used then
 
@@ -28,7 +28,7 @@ set -eu
 
 REPO_URL="https://github.com/sirfyyn/fle-studio"
 UV_INSTALLER_URL="https://astral.sh/uv/install.sh"
-REF="${FLE_STUDIO_REF:-v0.4.0}"
+REF="${FLE_STUDIO_REF:-v0.4.1}"
 SOURCE="${FLE_STUDIO_SOURCE:-}"
 START=1
 UV_TMP=""
@@ -62,7 +62,7 @@ Options:
   -h, --help    show this help
 
 Environment:
-  FLE_STUDIO_REF     git tag, branch or commit to install (default: v0.4.0)
+  FLE_STUDIO_REF     git tag, branch or commit to install (default: v0.4.1)
   FLE_STUDIO_SOURCE  install from this folder or wheel file instead of GitHub (needs no git)
 EOF
 }
@@ -236,12 +236,11 @@ printf '\n'
 say "$VERSION is installed."
 printf '\n'
 printf '  Start:      fle-studio\n'
-printf '  Update:     uv tool upgrade fle-studio\n'
 if [ -n "$SOURCE" ]; then
-  printf '              (this install came from %s; run the installer again to update it)\n' "$SOURCE"
+  printf '  Update:     run the installer again (this install came from %s)\n' "$SOURCE"
 else
-  printf '              (this install follows "%s"; to move to another release, run the installer again\n' "$REF"
-  printf '               with FLE_STUDIO_REF=<tag>)\n'
+  printf '  Update:     fle-studio update     (latest release; keeps your plugins, restarts the service)\n'
+  printf '              fle-studio update --rollback     (back to the version before)\n'
 fi
 printf '  Uninstall:  uv tool uninstall fle-studio\n'
 printf '\n'

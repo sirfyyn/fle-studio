@@ -101,6 +101,9 @@ systemctl --user enable --now fle-studio.service
 sudo loginctl enable-linger USER      # only if it should run without a login
 ```
 
+To update Studio on such a machine, run `fle-studio update`. It finds `fle-studio.service` (any user unit whose
+`ExecStart` is `fle-studio`), restarts it and checks the version through `/api/ping`; see [UPDATE.md](UPDATE.md).
+
 Studio is light (a few polls per second while a page is open), but on a machine that is being measured, pin it away
 from the engine's cores, for example with `CPUAffinity=` in the unit above.
 

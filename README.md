@@ -63,13 +63,13 @@ nothing is fetched from PyPI): `FLE_STUDIO_SOURCE=/path/to/fle-studio sh install
 
 ```sh
 fle-studio                          # start; opens http://127.0.0.1:8642 in your browser
-uv tool upgrade fle-studio          # update (stays on the release you installed, see below)
+fle-studio update                   # update to the latest release (see "Updates" below)
+fle-studio update --rollback        # back to the version before the last update
 uv tool uninstall fle-studio        # remove the program (your data stays)
 ```
 
-The installer pins the release it installs (v0.4.0 at the time of writing), and `uv tool upgrade` follows that pin. To
-move to a newer release, run the installer again; it always installs the release named in its own script, or the one
-you set with `FLE_STUDIO_REF`.
+The installer installs the release named in its own script (v0.4.1 at the time of writing), or the one you set with
+`FLE_STUDIO_REF`. After that, `fle-studio update` is the way to move to another release.
 
 Options of `fle-studio`:
 
@@ -94,14 +94,34 @@ is cached; offline, it stays silent. Switch the check off, or include pre-releas
 When a newer version exists, a quiet card appears in the sidebar: "FLE Studio X.Y.Z is available". It opens the release
 notes (shown as plain text), a link to the release and **Later**, which hides that version.
 
-- **One click** works when FLE Studio is installed as a uv tool (the installers do that) and does not run as a service.
-  It runs `uv tool install --python 3.12 --force git+https://github.com/sirfyyn/fle-studio@vX.Y.Z`, then starts again
-  with the same command line. If the install fails, the old version keeps running and you see the message and the log
-  (`update.log` in the data folder). On Windows a small helper does the install after FLE Studio has ended, because the
-  running program file is locked.
-- **Everything else** (service mode, pip or virtual-environment installs, a folder or a wheel) shows the command to copy.
+- **One click** (or one command, below) works when FLE Studio is installed as a uv tool (the installers do that),
+  also when it runs as a service. It installs the release together with every package you added next to Studio, then
+  starts again with the same command line. If the install fails, the old version keeps running and you see the message
+  and the log (`update.log` in the data folder). On Windows a small helper does the install after FLE Studio has
+  ended, because the running program file is locked.
+- **Everything else** (pip or virtual-environment installs, a folder or a wheel) shows the command to copy.
 - **FLE engines** you installed from the Engine page: if a newer FLE engine build exists, the same card says so, and the
   Engine page has the **Update** button.
+
+### `fle-studio update`
+
+One command for everything that used to be by hand. See [docs/UPDATE.md](docs/UPDATE.md) for the details.
+
+```sh
+fle-studio update                     # latest release
+fle-studio update --version v0.4.1    # a named release
+fle-studio update --rollback          # the version before the last update (again: forward)
+fle-studio update --dry-run           # show the install command, do nothing
+```
+
+It reads which packages sit next to FLE Studio in the uv environment (a plugin such as `fle-studio-ginny`) and
+installs them again with the new version; plain `uv tool install --force` forgets them. It then restarts the service
+that runs Studio (launchd on macOS, a systemd user unit on Linux), asks the running server for its version and prints
+both: *installed* and *running*. When something is wrong it says what and gives the command to fix it, for example
+the `sudo chown -R` for an environment that an earlier `sudo` run made root-owned.
+
+`fle-studio open` opens the app window (Chrome app mode with a profile of its own). On macOS the Dock starter
+("FLE Studio Starter.app") runs it, and it restarts a service that still runs an older version first.
 
 ### From source
 
