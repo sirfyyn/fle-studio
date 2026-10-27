@@ -19,7 +19,10 @@ try { Wait-Process -Id $j.pid -Timeout 90 -ErrorAction Stop } catch { }
 $uv = @($j.uv)
 $uvArgs = @()
 if ($uv.Count -gt 1) { $uvArgs = $uv[1..($uv.Count - 1)] }
-& $uv[0] @uvArgs tool install --python $j.python --force $j.spec *>> $j.log
+# Packages installed next to FLE Studio (a plugin) come along; "uv tool install --force" alone would drop them.
+$withArgs = @()
+if ($j.with) { $withArgs = @($j.with) }
+& $uv[0] @uvArgs tool install --python $j.python --force @withArgs $j.spec *>> $j.log
 $code = $LASTEXITCODE
 if ($code -eq 0) { $status = 'ok'; Note 'uv finished' } else { $status = 'failed'; Note "uv exited with code $code" }
 
