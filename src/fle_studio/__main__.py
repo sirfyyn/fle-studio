@@ -138,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
 
         threading.Thread(target=autostart, daemon=True).start()
 
-    def stop(signum: int, _frame: object) -> None:
+    def stop(_signum: int, _frame: object) -> None:
         threading.Thread(target=server.shutdown, daemon=True).start()
 
     # An update (the update plugin) ends this process and, where it can, runs the same command line again.
