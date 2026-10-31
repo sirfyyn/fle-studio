@@ -16,6 +16,7 @@ import threading
 import time
 import urllib.error
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,16 @@ class _Stop(Exception):
     def __init__(self, why: str) -> None:
         super().__init__(why)
         self.why = why  # pause | cancel
+
+
+@dataclass
+class _Transfer:
+    """Progress of one file: bytes on disk, running checksum, and the window for the speed estimate."""
+
+    offset: int
+    h: Any
+    window_t: float
+    window_b: int
 
 
 class Downloads:
@@ -203,6 +214,41 @@ class Downloads:
         if dest.exists() and (not f["size"] or dest.stat().st_size == f["size"]):
             f["done"] = dest.stat().st_size
             return
+        st = self._resume_point(job, f, part)
+        job["state"] = "downloading"
+        token = self._token() or ""
+        tries = 0
+        while True:
+            self._check(job)
+            try:
+                self._pull(job, f, part, st, token)
+                if f["size"] and st.offset < f["size"]:
+                    raise http.client.IncompleteRead(b"", f["size"] - st.offset)
+                break
+            except urllib.error.HTTPError as exc:
+                if exc.code in (401, 403):
+                    raise RuntimeError(
+                        "Access denied by the server. Gated repo? Accept its terms on Hugging Face "
+                        "and add a token in Settings."
+                    ) from None
+                if exc.code == 404:
+                    raise RuntimeError(f"Not found: {f['url']}") from None
+                if exc.code == 416 and f["size"] and st.offset >= f["size"]:
+                    break
+                tries = self._backoff(job, tries, exc)
+            except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError) as exc:
+                tries = self._backoff(job, tries, exc)
+        if st.h and f["sha256"] and st.h.hexdigest() != f["sha256"]:
+            bad = dest.with_name(dest.name + ".bad")
+            part.replace(bad)
+            f["done"] = 0
+            raise RuntimeError(
+                f"{dest.name} is damaged (checksum mismatch); it was moved to {bad.name}. Resume to download it again."
+            )
+        part.replace(dest)
+
+    def _resume_point(self, job: dict[str, Any], f: dict[str, Any], part: Path) -> _Transfer:
+        """Where an interrupted download continues: size of the .part file, and its checksum state if one is checked."""
         h = hashlib.sha256() if f["sha256"] else None
         offset = part.stat().st_size if part.exists() else 0
         if f["size"] and offset > f["size"]:
@@ -221,61 +267,39 @@ class Downloads:
                     seen += len(block)
                     f["done"] = seen
         f["done"] = offset
-        job["state"] = "downloading"
-        token = self._token() or ""
-        tries = 0
-        window_t, window_b = time.time(), offset
-        while True:
-            self._check(job)
-            try:
-                headers = {"Range": f"bytes={offset}-"} if offset else {}
-                with net.open_url(f["url"], headers=headers, token=token, timeout=60) as r:
-                    if offset and r.status == 200:  # no range support: start over
-                        offset, h = 0, (hashlib.sha256() if f["sha256"] else None)
-                        part.unlink(missing_ok=True)
-                    if not f["size"]:
-                        length = r.headers.get("Content-Length")
-                        f["size"] = offset + int(length) if length and length.isdigit() else 0
-                    with part.open("ab") as out:
-                        while True:
-                            self._check(job)
-                            chunk = r.read(CHUNK)
-                            if not chunk:
-                                break
-                            out.write(chunk)
-                            if h:
-                                h.update(chunk)
-                            offset += len(chunk)
-                            f["done"] = offset
-                            now = time.time()
-                            if now - window_t >= 2:
-                                rate = (offset - window_b) / (now - window_t)
-                                job["speed"] = rate if not job["speed"] else 0.7 * job["speed"] + 0.3 * rate
-                                window_t, window_b = now, offset
-                if f["size"] and offset < f["size"]:
-                    raise http.client.IncompleteRead(b"", f["size"] - offset)
-                break
-            except urllib.error.HTTPError as exc:
-                if exc.code in (401, 403):
-                    raise RuntimeError(
-                        "Access denied by the server. Gated repo? Accept its terms on Hugging Face "
-                        "and add a token in Settings."
-                    ) from None
-                if exc.code == 404:
-                    raise RuntimeError(f"Not found: {f['url']}") from None
-                if exc.code == 416 and f["size"] and offset >= f["size"]:
-                    break
-                tries = self._backoff(job, tries, exc)
-            except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError) as exc:
-                tries = self._backoff(job, tries, exc)
-        if h and f["sha256"] and h.hexdigest() != f["sha256"]:
-            bad = dest.with_name(dest.name + ".bad")
-            part.replace(bad)
-            f["done"] = 0
-            raise RuntimeError(
-                f"{dest.name} is damaged (checksum mismatch); it was moved to {bad.name}. Resume to download it again."
-            )
-        part.replace(dest)
+        return _Transfer(offset=offset, h=h, window_t=time.time(), window_b=offset)
+
+    def _pull(self, job: dict[str, Any], f: dict[str, Any], part: Path, st: _Transfer, token: str) -> None:
+        """One connection: request from st.offset on and append to the .part file until the stream ends."""
+        headers = {"Range": f"bytes={st.offset}-"} if st.offset else {}
+        with net.open_url(f["url"], headers=headers, token=token, timeout=60) as r:
+            if st.offset and r.status == 200:  # no range support: start over
+                st.offset, st.h = 0, (hashlib.sha256() if f["sha256"] else None)
+                part.unlink(missing_ok=True)
+            if not f["size"]:
+                length = r.headers.get("Content-Length")
+                f["size"] = st.offset + int(length) if length and length.isdigit() else 0
+            with part.open("ab") as out:
+                while True:
+                    self._check(job)
+                    chunk = r.read(CHUNK)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+                    if st.h:
+                        st.h.update(chunk)
+                    st.offset += len(chunk)
+                    f["done"] = st.offset
+                    self._update_speed(job, st)
+
+    @staticmethod
+    def _update_speed(job: dict[str, Any], st: _Transfer) -> None:
+        """Smoothed bytes/s over windows of at least two seconds."""
+        now = time.time()
+        if now - st.window_t >= 2:
+            rate = (st.offset - st.window_b) / (now - st.window_t)
+            job["speed"] = rate if not job["speed"] else 0.7 * job["speed"] + 0.3 * rate
+            st.window_t, st.window_b = now, st.offset
 
     def _backoff(self, job: dict[str, Any], tries: int, exc: Exception) -> int:
         tries += 1
